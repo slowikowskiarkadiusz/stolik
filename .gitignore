@@ -1,0 +1,15 @@
+# Cargo
+/target/
+
+# Rust analyzer
+/.rust-analyzer/
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
