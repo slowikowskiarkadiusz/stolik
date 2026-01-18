@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Default, Clone)]
 pub struct V2 {
     pub x: f32,
     pub y: f32,

@@ -4,5 +4,7 @@ version = "0.0.1"
 edition = "2024"
 
 [dependencies]
-core = { path = "../core", features = ["std"] }
-esp-idf-sys = { version="0.34", features=["binstart"] }
+core = { path = "../core" }
+
+[target.'cfg(feature = "esp32")'.dependencies]
+esp-idf-sys = "0.34"

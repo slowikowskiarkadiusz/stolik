@@ -5,4 +5,6 @@ edition = "2024"
 
 [dependencies]
 core = { path = "../core", features = ["std"] }
+
+[target.'cfg(feature = "desktop")'.dependencies]
 sfml = "0.21"

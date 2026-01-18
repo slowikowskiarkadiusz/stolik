@@ -2,9 +2,11 @@
 
 mod v2;
 use crate::v2::V2;
+mod matrix;
+use crate::matrix::Matrix;
 
-pub fn lib() -> V2 {
-    let v1 = V2::new(1.0, 2.0);
-    let v2 = V2::new(3.0, 2.0);
-    &v1 / v2.x
+pub fn lib() -> String {
+    let mut matrix = Matrix::new(8, 8, 0);
+    matrix.set(1, 2, 17);
+    matrix.to_string()
 }
