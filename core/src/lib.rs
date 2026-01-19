@@ -2,9 +2,9 @@
 
 pub mod engine;
 use crate::engine::matrix::Matrix;
+use crate::engine::color::Color;
 
 pub fn lib() -> String {
-    let mut matrix = Matrix::new(8, 8, 0);
-    matrix.set(1, 2, 17);
-    matrix.to_string()
+    let a: u16 = 300;
+    (a.clamp(0, 255) as u8).to_string()
 }
