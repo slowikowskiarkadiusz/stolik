@@ -15,7 +15,7 @@ impl<T: Clone> Matrix<T> {
         }
     }
 
-    pub fn at(&self, x: u8, y: u8) -> &T {
+    pub fn get(&self, x: u8, y: u8) -> &T {
         if x > self.width {
             panic!("Matrix::at: x outside of (0, {}): {}", self.width, x)
         }
@@ -62,8 +62,8 @@ impl<T: Default + Clone + PartialEq + Display> fmt::Display for Matrix<T> {
             return_value.push('|');
 
             for x in 0..self.width {
-                if self.at(x, y) != &T::default() {
-                    let val = self.at(x, y).to_string();
+                if self.get(x, y) != &T::default() {
+                    let val = self.get(x, y).to_string();
                     write!(return_value, "{}", val)?;
                     let len = val.len();
                     if len > longest {
