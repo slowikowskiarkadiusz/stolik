@@ -1,4 +1,6 @@
-use std::f32::consts::PI;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+use core::f32::consts::PI;
 
 #[derive(PartialEq, Default, Clone)]
 pub struct V2 {
@@ -86,7 +88,7 @@ impl V2 {
     }
 }
 
-use std::ops::{Add, Div, Mul, Sub};
+use core::ops::{Add, Div, Mul, Sub};
 
 impl Add for &V2 {
     type Output = V2;
@@ -154,7 +156,7 @@ impl Div<&V2> for &V2 {
     }
 }
 
-use std::fmt;
+use core::fmt;
 
 impl fmt::Display for &V2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
