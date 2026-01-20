@@ -39,12 +39,11 @@ impl Matrix<Color> {
         }
 
         let center = V2::new(other.width as f32 / 2.0, other.height as f32 / 2.0);
-        let mut angle: u16 = (other_rotation % 360.0) as u16;
+        let mut angle: i16 = (other_rotation % 360.0) as i16;
         if angle < 0 {
             angle += 360;
         }
 
-        let use_trig: bool = (angle % 90) != 0;
         let rad = other_rotation * PI / 180.0;
         let cos = rad.cos();
         let sin = rad.sin();
@@ -123,5 +122,15 @@ impl Matrix<Color> {
         }
 
         self
+    }
+
+    pub fn dim(&mut self, to_opacity: u8) {
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let mut color = self.get(x, y).clone();
+                color.a *= to_opacity;
+                self.set(x, y, color);
+            }
+        }
     }
 }
