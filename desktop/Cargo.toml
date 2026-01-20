@@ -5,6 +5,6 @@ edition = "2024"
 
 [dependencies]
 core = { path = "../core", features = ["std"] }
+minifb = "0.28.0"
 
 [target.'cfg(feature = "desktop")'.dependencies]
-sfml = "0.21"

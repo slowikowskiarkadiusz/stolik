@@ -11,40 +11,45 @@ impl Color {
         Self { r, g, b, a }
     }
 
-    pub fn red(a: Option<u8>) -> Color {
-        Color::new(1, 0, 0, a.unwrap_or(255))
+    pub fn red() -> Color {
+        Color::new(255, 0, 0, 255)
     }
 
-    pub fn green(a: Option<u8>) -> Color {
-        Color::new(0, 1, 0, a.unwrap_or(255))
+    pub fn green() -> Color {
+        Color::new(0, 255, 0, 255)
     }
 
-    pub fn blue(a: Option<u8>) -> Color {
-        Color::new(0, 0, 1, a.unwrap_or(255))
+    pub fn blue() -> Color {
+        Color::new(0, 0, 255, 255)
     }
 
-    pub fn yellow(a: Option<u8>) -> Color {
-        Color::new(1, 1, 0, a.unwrap_or(255))
+    pub fn yellow() -> Color {
+        Color::new(255, 255, 0, 255)
     }
 
-    pub fn cyan(a: Option<u8>) -> Color {
-        Color::new(0, 1, 1, a.unwrap_or(255))
+    pub fn cyan() -> Color {
+        Color::new(0, 255, 255, 255)
     }
 
-    pub fn magenta(a: Option<u8>) -> Color {
-        Color::new(1, 0, 1, a.unwrap_or(255))
+    pub fn magenta() -> Color {
+        Color::new(255, 0, 255, 255)
     }
 
-    pub fn white(a: Option<u8>) -> Color {
-        Color::new(1, 1, 1, a.unwrap_or(255))
+    pub fn white() -> Color {
+        Color::new(255, 255, 255, 255)
     }
 
-    pub fn black(a: Option<u8>) -> Color {
-        Color::new(0, 0, 0, a.unwrap_or(255))
+    pub fn black() -> Color {
+        Color::new(0, 0, 0, 255)
     }
 
     pub fn none() -> Color {
-        Color::black(Some(0))
+        Color::black()
+    }
+
+    pub fn a(&mut self, alpha:u8) -> &Color {
+        self.a = alpha;
+        self
     }
 
     pub fn is_none(&self) -> bool {
