@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[derive(PartialEq, Clone)]
 pub struct Color {
     pub r: u8,

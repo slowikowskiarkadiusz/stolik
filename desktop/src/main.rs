@@ -1,6 +1,9 @@
-use core::engine;
+pub mod desktop_threading_provider;
 
+use core::engine;
+use crate::engine::threading_provider::ThreadingProvider;
 use crate::engine::color::Color;
+use crate::desktop_threading_provider::DesktopThreadProvider;
 use minifb::{Key, Window, WindowOptions};
 
 const DOTS_EDGE_COUNT: usize = 64;
@@ -9,6 +12,10 @@ const SCREEN_WIDTH: usize = DOTS_EDGE_COUNT * DOT_SIZE;
 const SCREEN_HEIGHT: usize = DOTS_EDGE_COUNT * DOT_SIZE;
 
 fn main() {
+    let threading_provider = DesktopThreadProvider::new();
+    let dt = threading_provider.start(||{});
+    dt.thread.join().unwrap();
+
     let mut window = Window::new(
         "Circle",
         SCREEN_WIDTH,
