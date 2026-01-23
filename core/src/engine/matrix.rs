@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[derive(Clone)]
 pub struct Matrix<T: Clone> {
     pub width: u8,
     pub height: u8,
@@ -11,7 +12,7 @@ impl<T: Clone> Matrix<T> {
         Self {
             width,
             height,
-            data: vec![init; (width * height) as usize],
+            data: vec![init; (width as usize * height as usize) as usize],
         }
     }
 
@@ -22,7 +23,7 @@ impl<T: Clone> Matrix<T> {
         if y > self.height {
             panic!("Matrix::at: y outside of (0, {}): {}", self.height, y)
         }
-        &self.data[(y * self.width + x) as usize]
+        &self.data[(y as usize * self.width as usize + x as usize) as usize]
     }
 
     pub fn set(&mut self, x: u8, y: u8, to: T) -> &mut Self {

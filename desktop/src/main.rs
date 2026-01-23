@@ -1,21 +1,22 @@
 pub mod desktop_threading_provider;
 
-use core::engine;
-use crate::engine::threading_provider::ThreadingProvider;
+use crate::desktop_threading_provider::DesktopThread;
 use crate::engine::color::Color;
-use crate::desktop_threading_provider::DesktopThreadProvider;
+use core::engine::{self, color_matrix::ColorMatrix, engine::Engine};
 use minifb::{Key, Window, WindowOptions};
+use std::sync::{Arc, Mutex};
 
 const DOTS_EDGE_COUNT: usize = 64;
 const DOT_SIZE: usize = 10;
 const SCREEN_WIDTH: usize = DOTS_EDGE_COUNT * DOT_SIZE;
 const SCREEN_HEIGHT: usize = DOTS_EDGE_COUNT * DOT_SIZE;
 
-fn main() {
-    let threading_provider = DesktopThreadProvider::new();
-    let dt = threading_provider.start(||{});
-    dt.thread.join().unwrap();
+struct Shared {
+    color_matrix: Option<ColorMatrix>,
+}
 
+fn main() {
+    println!("T");
     let mut window = Window::new(
         "Circle",
         SCREEN_WIDTH,
@@ -26,20 +27,37 @@ fn main() {
 
     let mut buffer = vec![0u32; SCREEN_WIDTH * SCREEN_HEIGHT];
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        clear(&mut buffer);
+    let shared = Arc::new(Mutex::new(Shared { color_matrix: None }));
+    let shared_engine_copy = shared.clone();
 
-        for x in 0..DOTS_EDGE_COUNT {
-            for y in 0..DOTS_EDGE_COUNT {
-                draw_circle(
-                    &mut buffer,
-                    SCREEN_WIDTH,
-                    SCREEN_HEIGHT,
-                    (x * DOT_SIZE + DOT_SIZE / 2) as i32,
-                    (y * DOT_SIZE + DOT_SIZE / 2) as i32,
-                    DOT_SIZE as i32 / 3,
-                    Color::green().a(255 / 2).clone(),
-                );
+    let engine = Engine::<DesktopThread>::new(Arc::new(move |mat: ColorMatrix| {
+        let mut s = shared_engine_copy.lock().unwrap();
+        s.color_matrix = Some(mat);
+    }));
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        let m = {
+            let mut s = shared.lock().unwrap();
+            let clone = s.color_matrix.clone();
+            s.color_matrix = None;
+            clone
+        };
+
+        if let Some(matrix) = m {
+            clear(&mut buffer);
+
+            for x in 0..DOTS_EDGE_COUNT {
+                for y in 0..DOTS_EDGE_COUNT {
+                    draw_circle(
+                        &mut buffer,
+                        SCREEN_WIDTH,
+                        SCREEN_HEIGHT,
+                        (x * DOT_SIZE + DOT_SIZE / 2) as i32,
+                        (y * DOT_SIZE + DOT_SIZE / 2) as i32,
+                        DOT_SIZE as i32 / 3,
+                        matrix.get(x as u8, y as u8).clone(),
+                    );
+                }
             }
         }
 
