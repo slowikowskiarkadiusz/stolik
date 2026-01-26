@@ -7,13 +7,11 @@ pub struct RectangleActor {
 }
 
 impl RectangleActor {
-    pub fn spawn(center: V2, size: &V2, color: Color) -> &Self {
+    pub fn spawn(center: V2, size: &V2, color: Color) -> u16 {
         let mut actor = InnerActor::_new(center, size);
         let color_matrix = ColorMatrix::new(size.x as u8, size.y as u8, color);
         actor.render_color_matrix = Some(color_matrix);
-        let obj = Self { actor };
-        register_actor(Box::new(obj));
-        &obj
+        register_actor(Box::new(Self { actor }))
     }
 }
 
@@ -24,5 +22,8 @@ impl TActor for RectangleActor {
 
     fn get_mut_actor(&mut self) -> &mut InnerActor {
         &mut self.actor
+    }
+
+    fn update(&mut self, delta_time: f32) {
     }
 }

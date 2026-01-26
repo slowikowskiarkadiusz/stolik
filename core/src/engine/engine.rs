@@ -2,27 +2,28 @@
 
 use crate::{
     engine::{
-        actor::actor::{InnerActor, TActor},
+        actor::actor::{TActor},
         color::Color,
         color_matrix::ColorMatrix,
         scene::Scene,
         threading_provider::Thread,
-        v2::V2,
     },
     scenes::pong::pong_scene::PongScene,
 };
 use std::{
     cell::RefCell,
     collections::HashMap,
-    sync::{Arc, LazyLock, Mutex},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 pub static SCREEN_SIZE: u8 = 64;
 thread_local! {
-    static ACTOR_MAP: RefCell<HashMap<u16, Box<dyn TActor>>> = RefCell::new(HashMap::new());
+    static ACTOR_MAP: RefCell<HashMap<ActorId, Box<dyn TActor>>> = RefCell::new(HashMap::new());
     static CURRENT_SCENE: RefCell<Box<dyn Scene>> = RefCell::new(Box::new(PongScene::new()));
 }
+
+pub type ActorId = u16;
 
 pub struct Engine {
     last_timestamp: u128,
@@ -102,8 +103,8 @@ pub fn open_scene(obj: Box<dyn Scene>) {
     });
 }
 
-pub fn register_actor(mut actor: Box<dyn TActor>) -> u16 {
-    let mut actor_id: u16 = 0;
+pub fn register_actor(mut actor: Box<dyn TActor>) -> ActorId {
+    let mut actor_id: ActorId = 0;
     ACTOR_MAP.with(|x| {
         let mut map = x.borrow_mut();
         let iter = map.iter();
@@ -117,8 +118,8 @@ pub fn register_actor(mut actor: Box<dyn TActor>) -> u16 {
             actor_id = k.clone();
         }
 
-        actor.as_mut().set_id(actor_id as u16);
-        map.insert(actor_id as u16, actor);
+        actor.as_mut().set_id(actor_id as ActorId);
+        map.insert(actor_id as ActorId, actor);
 
         actor_id
     });

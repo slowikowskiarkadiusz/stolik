@@ -4,7 +4,7 @@ use crate::engine::{
         rectangle_actor::RectangleActor,
     },
     color::Color,
-    engine::{Engine, SCREEN_SIZE},
+    engine::{ActorId, Engine, SCREEN_SIZE},
     scene::Scene,
     v2::V2,
 };
@@ -12,9 +12,9 @@ use crate::engine::{
 pub struct PongScene {
     actors: Vec<Box<dyn TActor>>,
     score: (u8, u8),
-    paddle: (RectangleActor, RectangleActor),
-    score_zone: (RectangleActor, RectangleActor),
-    ball: RectangleActor,
+    paddle: (ActorId, ActorId),
+    score_zone: (ActorId, ActorId),
+    ball: ActorId,
     ball_speed: V2,
     ball_speed_multiplier: f32,
     size_factor: f32,

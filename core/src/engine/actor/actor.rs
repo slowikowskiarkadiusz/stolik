@@ -1,8 +1,7 @@
-use crate::engine::{color_matrix::ColorMatrix, v2::V2};
+use crate::engine::{color_matrix::ColorMatrix, engine::ActorId, v2::V2};
 
 pub struct InnerActor {
-    // pub name: String,
-    pub id: u16,
+    pub id: ActorId,
     pub center: V2,
     pub size: V2,
     pub anchor_offset: V2,
