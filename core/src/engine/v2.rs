@@ -123,6 +123,17 @@ impl Mul<f32> for &V2 {
     }
 }
 
+impl Mul<u8> for &V2 {
+    type Output = V2;
+
+    fn mul(self, rhs: u8) -> Self::Output {
+        V2 {
+            x: self.x * rhs as f32,
+            y: self.y * rhs as f32,
+        }
+    }
+}
+
 impl Div<f32> for &V2 {
     type Output = V2;
 

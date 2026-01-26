@@ -30,7 +30,9 @@ fn main() {
     let shared = Arc::new(Mutex::new(Shared { color_matrix: None }));
     let shared_engine_copy = shared.clone();
 
-    let engine = Engine::<DesktopThread>::new(Arc::new(move |mat: ColorMatrix| {
+    let engine = Engine::new();
+
+    Engine::run(Arc::new(move |mat: &ColorMatrix| {
         let mut s = shared_engine_copy.lock().unwrap();
         s.color_matrix = Some(mat);
     }));

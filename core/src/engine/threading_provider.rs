@@ -1,5 +1,5 @@
-pub trait TThread {
+pub trait Thread {
     fn start(handle: Box<dyn Fn() + Send>) -> Self;
     fn stop(&self);
-    fn sleep_for(ms: u32);
+    fn sleep_for(ms: u64);
 }

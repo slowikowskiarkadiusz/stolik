@@ -113,6 +113,8 @@ impl<T: Default + Clone> Matrix<T> {
 use core::fmt::{self, Display, Write};
 use std::f32::consts::PI;
 
+use crate::engine::v2::V2;
+
 impl<T: Default + Clone + PartialEq + Display> fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut return_value = String::new();

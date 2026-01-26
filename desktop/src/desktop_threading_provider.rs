@@ -1,4 +1,4 @@
-use crate::engine::threading_provider::TThread;
+use crate::engine::threading_provider::Thread;
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -13,7 +13,7 @@ impl DesktopThread {
     }
 }
 
-impl TThread for DesktopThread {
+impl Thread for DesktopThread {
     fn start(handle: Box<dyn Fn() + Send>) -> DesktopThread {
         let t = thread::spawn(move || {
             handle();
@@ -21,8 +21,8 @@ impl TThread for DesktopThread {
         DesktopThread::new(t)
     }
 
-    fn sleep_for(ms: u32) {
-        thread::sleep(Duration::from_millis(1000));
+    fn sleep_for(ms: u64) {
+        thread::sleep(Duration::from_millis(ms));
     }
 
     fn stop(&self) {
