@@ -57,5 +57,5 @@ impl Scene for PongScene {
 
     fn init(&mut self) {}
 
-    fn update(&self, delta_time: f32) {}
+    fn update(&self, _delta_time: f32) {}
 }

@@ -54,7 +54,9 @@ impl DesktopInput {
     fn is_key(&self, key: Option<Key>, key_state: KeyState) -> bool {
         fn func(key: Option<Key>, arr: &[bool]) -> bool {
             if let Some(k) = key {
-                return arr[k as usize];
+                return DesktopInput::map_key(k)
+                    .iter()
+                    .any(|kk| arr[kk.clone() as usize]);
             } else {
                 return arr.iter().any(|x| !!x);
             }
