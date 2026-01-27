@@ -6,7 +6,7 @@ use crate::engine::{
     color::Color,
     engine::{ActorId, Engine, SCREEN_SIZE},
     scene::Scene,
-    v2::V2,
+    v2::{self, V2},
 };
 
 pub struct PongScene {
@@ -30,9 +30,14 @@ impl PongScene {
         Self {
             actors: Vec::new(),
             score: (0, 0),
+            // p1Paddle = engine::instantiate<rectangle_actor>(v2(screen.x / 2, 3 * size_factor), v2(7, 1) * size_factor);
+            // p2Paddle = engine::instantiate<rectangle_actor>(v2(screen.x / 2, screen.y - 4 * size_factor), v2(7, 1) * size_factor);
+            // p1ScoreZone = engine::instantiate<rectangle_actor>(v2(screen.x / 2, -4 * size_factor), v2(screen.x, 10), color::none());
+            // p2ScoreZone = engine::instantiate<rectangle_actor>(v2(screen.x / 2, screen.y + 4 * size_factor), v2(screen.x, 10), color::none());
+            // ball = engine::instantiate<rectangle_actor>(screen / 2, v2(2, 2) * size_factor, color::white());
             paddle: (
-                RectangleActor::spawn(engine, V2::zero(), &V2::one(), Color::white()),
-                RectangleActor::spawn(engine, V2::zero(), &V2::one(), Color::white()),
+                RectangleActor::spawn(engine, V2::new(SCREEN_SIZE as f32 / 2.0, 3.0 * size_factor), &V2::new(7.0, 1.0), Color::white()),
+                RectangleActor::spawn(engine, V2::new(SCREEN_SIZE as f32 / 2.0, SCREEN_SIZE as f32 - 4.0 * size_factor), &V2::new(7.0, 1.0), Color::white()),
             ),
             score_zone: (
                 RectangleActor::spawn(engine, V2::zero(), &V2::one(), Color::white()),

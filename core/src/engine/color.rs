@@ -49,7 +49,7 @@ impl Color {
         Color::black()
     }
 
-    pub fn a(&mut self, alpha:u8) -> &Color {
+    pub fn a(&mut self, alpha: u8) -> &Color {
         self.a = alpha;
         self
     }
@@ -101,5 +101,15 @@ impl Color {
 impl Default for Color {
     fn default() -> Self {
         Color::none()
+    }
+}
+
+use core::fmt::{self, Display, Write};
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let return_value = if self.is_none() { " " } else { "o" };
+
+        write!(f, "{return_value}")
     }
 }

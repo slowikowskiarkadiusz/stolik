@@ -32,7 +32,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(input: Box<dyn Input>) -> Self {
-        let mut obj = Self {
+        let mut engine = Self {
             delta_time: 0.0,
             last_timestamp: 0,
             is_blue: false,
@@ -41,10 +41,11 @@ impl Engine {
             input: RefCell::new(input),
         };
 
-        let pong_scene = PongScene::new(&mut obj);
-        obj.open_scene(Box::new(pong_scene));
+        engine.close_scene();
+        let pong_scene = PongScene::new(&mut engine);
+        engine.open_scene(Box::new(pong_scene));
 
-        obj
+        engine
     }
 
     pub fn run<T: Thread>(
@@ -73,7 +74,7 @@ impl Engine {
                 actor.update(delta_time);
             }
 
-            for (_key, actor) in self.actor_map.get_mut() {
+            for (_key, actor) in self.actor_map.borrow().iter() {
                 if let Some(actor_color_matrix) = actor.get_render_color_matrix() {
                     screen.write(
                         actor_color_matrix,
@@ -99,28 +100,50 @@ impl Engine {
     }
 
     pub fn open_scene(&mut self, obj: Box<dyn Scene>) {
-        self.actor_map.get_mut().clear();
-
         *self.current_scene.get_mut() = obj;
         self.current_scene.get_mut().init();
     }
 
+    pub fn close_scene(&mut self) {
+        self.actor_map.get_mut().clear();
+    }
+
     pub fn register_actor(&mut self, mut actor: Box<dyn TActor>) -> ActorId {
-        let map = self.actor_map.get_mut();
+        let map = self.actor_map.borrow();
         let iter = map.iter();
 
+        let iter_max = map.iter().map(|x| x.0).max();
         let mut actor_id: ActorId = 0;
-        for (k, _v) in iter {
-            if k - actor_id > 1 {
-                actor_id = k.clone();
-                break;
-            }
+        if let Some(max_id) = iter_max {
+            actor_id = max_id.clone();
 
-            actor_id = k.clone();
+            if actor_id == u16::MAX {
+                let mut found = false;
+                for (k, _v) in iter {
+                    if k - actor_id > 1 {
+                        actor_id = k.clone();
+                        found = true;
+                        break;
+                    }
+
+                    actor_id = k.clone();
+                }
+
+                if !found {
+                    actor_id += 1;
+                }
+            } else {
+                actor_id += 1;
+            }
         }
 
+        println!("len: {}, id: {}", map.len(), actor_id);
+        drop(map);
+
         actor.as_mut().set_id(actor_id as ActorId);
-        map.insert(actor_id as ActorId, actor);
+        self.actor_map
+            .borrow_mut()
+            .insert(actor_id as ActorId, actor);
 
         actor_id
     }

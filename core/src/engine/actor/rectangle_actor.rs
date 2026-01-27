@@ -2,7 +2,7 @@ use crate::engine::{
     actor::actor::{InnerActor, TActor},
     color::Color,
     color_matrix::ColorMatrix,
-    engine::{Engine},
+    engine::Engine,
     v2::V2,
 };
 
@@ -28,5 +28,6 @@ impl TActor for RectangleActor {
         &mut self.actor
     }
 
-    fn update(&mut self, _delta_time: f32) {}
+    fn update(&mut self, _delta_time: f32) {
+    }
 }

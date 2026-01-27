@@ -8,6 +8,10 @@ pub struct V2 {
     pub y: f32,
 }
 
+pub fn v2(x: f32, y: f32) -> V2 {
+    V2::new(x, y)
+}
+
 impl V2 {
     pub const fn new(x: f32, y: f32) -> Self {
         Self { x, y }

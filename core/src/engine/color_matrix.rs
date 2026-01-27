@@ -97,12 +97,18 @@ impl Matrix<Color> {
                             self.set(x, y, Color::none());
                         }
 
-                        let r =
-                            (src.r * src.a + dst.r * dst.a * (255 - src.a)) as f32 / out_a as f32;
-                        let g =
-                            (src.g * src.a + dst.g * dst.a * (255 - src.a)) as f32 / out_a as f32;
-                        let b =
-                            (src.b * src.a + dst.b * dst.a * (255 - src.a)) as f32 / out_a as f32;
+                        let r = (src.r as u16 * src.a as u16
+                            + dst.r as u16 * dst.a as u16 * (255 - src.a as u16))
+                            as f32
+                            / out_a as f32;
+                        let g = (src.g as u16 * src.a as u16
+                            + dst.g as u16 * dst.a as u16 * (255 - src.a as u16))
+                            as f32
+                            / out_a as f32;
+                        let b = (src.b as u16 * src.a as u16
+                            + dst.b as u16 * dst.a as u16 * (255 - src.a as u16))
+                            as f32
+                            / out_a as f32;
 
                         self.set(
                             x,
