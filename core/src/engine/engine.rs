@@ -5,7 +5,7 @@ use crate::{
         actor::actor::TActor,
         color::Color,
         color_matrix::ColorMatrix,
-        input::input::{EmptyInput, Input},
+        input::input::Input,
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
     },
@@ -17,17 +17,6 @@ use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
-
-thread_local! {
-    static ENGINE: RefCell<Engine> = RefCell::new(Engine::new_dummy());
-}
-
-pub fn get_engine<F, R>(f: F) -> R
-where
-    F: FnOnce(&mut Engine) -> R,
-{
-    ENGINE.with(|e| f(&mut e.borrow_mut()))
-}
 
 pub static SCREEN_SIZE: u8 = 64;
 pub type ActorId = u16;
@@ -42,28 +31,20 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new_dummy() -> Self {
-        Self {
-            delta_time: 0.0,
-            last_timestamp: 0,
-            is_blue: false,
-            actor_map: RefCell::new(HashMap::new()),
-            current_scene: RefCell::new(Box::new(EmptyScene::new())),
-            input: RefCell::new(Box::new(EmptyInput::new())),
-        }
-    }
-
-    pub fn new(input: Box<dyn Input>) {
-        ENGINE.set(Self {
+    pub fn new(input: Box<dyn Input>) -> Self {
+        let mut obj = Self {
             delta_time: 0.0,
             last_timestamp: 0,
             is_blue: false,
             actor_map: RefCell::new(HashMap::new()),
             current_scene: RefCell::new(Box::new(EmptyScene::new())),
             input: RefCell::new(input),
-        });
+        };
 
-        ENGINE.with_borrow_mut(|f| f.open_scene(Box::new(PongScene::new())));
+        let pong_scene = PongScene::new(&mut obj);
+        obj.open_scene(Box::new(pong_scene));
+
+        obj
     }
 
     pub fn run<T: Thread>(
@@ -113,7 +94,7 @@ impl Engine {
                 .unwrap()
                 .as_millis();
 
-            T::sleep_for(33 - (last_timestamp as u64 - now_ms as u64));
+            T::sleep_for(33 - (now_ms as u64 - last_timestamp as u64));
         }
     }
 

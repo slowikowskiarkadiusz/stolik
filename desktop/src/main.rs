@@ -7,7 +7,7 @@ use crate::{
 use core::engine::{
     self,
     color_matrix::ColorMatrix,
-    engine::{Engine, get_engine},
+    engine::{Engine},
 };
 use minifb::{Key, Window, WindowOptions};
 use std::sync::{Arc, Mutex};
@@ -36,13 +36,13 @@ fn main() {
     let shared_engine_copy = shared.clone();
 
     std::thread::spawn(move || {
-        Engine::new(Box::new(DesktopInput::new()));
+        let mut engine = Engine::new(Box::new(DesktopInput::new()));
         let on_frame_func = Arc::new(move |mat: ColorMatrix| {
             let mut s = shared_engine_copy.lock().unwrap();
             s.color_matrix = Some(mat);
         });
 
-        get_engine(|e| e.run::<DesktopThread>(on_frame_func));
+        engine.run::<DesktopThread>(on_frame_func);
     });
 
     while window.is_open() && !window.is_key_down(Key::Escape) {

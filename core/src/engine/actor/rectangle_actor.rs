@@ -2,7 +2,7 @@ use crate::engine::{
     actor::actor::{InnerActor, TActor},
     color::Color,
     color_matrix::ColorMatrix,
-    engine::get_engine,
+    engine::{Engine},
     v2::V2,
 };
 
@@ -11,11 +11,11 @@ pub struct RectangleActor {
 }
 
 impl RectangleActor {
-    pub fn spawn(center: V2, size: &V2, color: Color) -> u16 {
+    pub fn spawn(engine: &mut Engine, center: V2, size: &V2, color: Color) -> u16 {
         let mut actor = InnerActor::_new(center, size);
         let color_matrix = ColorMatrix::new(size.x as u8, size.y as u8, color);
         actor.render_color_matrix = Some(color_matrix);
-        get_engine(|e| e.register_actor(Box::new(Self { actor })))
+        engine.register_actor(Box::new(Self { actor }))
     }
 }
 

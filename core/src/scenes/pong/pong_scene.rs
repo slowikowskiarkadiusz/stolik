@@ -25,20 +25,20 @@ pub struct PongScene {
 }
 
 impl PongScene {
-    pub fn new() -> Self {
+    pub fn new(engine: &mut Engine) -> Self {
         let size_factor = SCREEN_SIZE as f32;
         Self {
             actors: Vec::new(),
             score: (0, 0),
             paddle: (
-                RectangleActor::spawn(V2::zero(), &V2::one(), Color::white()),
-                RectangleActor::spawn(V2::zero(), &V2::one(), Color::white()),
+                RectangleActor::spawn(engine, V2::zero(), &V2::one(), Color::white()),
+                RectangleActor::spawn(engine, V2::zero(), &V2::one(), Color::white()),
             ),
             score_zone: (
-                RectangleActor::spawn(V2::zero(), &V2::one(), Color::white()),
-                RectangleActor::spawn(V2::zero(), &V2::one(), Color::white()),
+                RectangleActor::spawn(engine, V2::zero(), &V2::one(), Color::white()),
+                RectangleActor::spawn(engine, V2::zero(), &V2::one(), Color::white()),
             ),
-            ball: RectangleActor::spawn(V2::zero(), &V2::one(), Color::white()),
+            ball: RectangleActor::spawn(engine, V2::zero(), &V2::one(), Color::white()),
             ball_speed: V2::one(),
             ball_speed_multiplier: 1.0,
             size_factor: 1.0,
