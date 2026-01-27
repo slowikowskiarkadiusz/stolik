@@ -90,7 +90,7 @@ impl<T: Clone> Matrix<T> {
                 let src_x = (x as f32 / factor).floor() as u8;
                 let src_y = (y as f32 / factor).floor() as u8;
 
-                if src_x < old_width && src_y < old_height{
+                if src_x < old_width && src_y < old_height {
                     scaled.set(x, y, self.get(src_x, src_y).clone());
                 }
             }
@@ -112,8 +112,6 @@ impl<T: Default + Clone> Matrix<T> {
 
 use core::fmt::{self, Display, Write};
 use std::f32::consts::PI;
-
-use crate::engine::v2::V2;
 
 impl<T: Default + Clone + PartialEq + Display> fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

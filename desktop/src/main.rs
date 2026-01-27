@@ -1,7 +1,7 @@
+pub mod desktop_input;
 pub mod desktop_threading_provider;
 
-use crate::desktop_threading_provider::DesktopThread;
-use crate::engine::color::Color;
+use crate::{desktop_input::DesktopInput, desktop_threading_provider::DesktopThread, engine::color::Color};
 use core::engine::{self, color_matrix::ColorMatrix, engine::Engine};
 use minifb::{Key, Window, WindowOptions};
 use std::sync::{Arc, Mutex};
@@ -16,7 +16,6 @@ struct Shared {
 }
 
 fn main() {
-    println!("T");
     let mut window = Window::new(
         "Circle",
         SCREEN_WIDTH,
@@ -30,12 +29,15 @@ fn main() {
     let shared = Arc::new(Mutex::new(Shared { color_matrix: None }));
     let shared_engine_copy = shared.clone();
 
-    let engine = Engine::new();
+    std::thread::spawn(move || {
+        let mut engine = Engine::new(Box::new(DesktopInput::new()));
+        let on_frame_func = Arc::new(move |mat: ColorMatrix| {
+            let mut s = shared_engine_copy.lock().unwrap();
+            s.color_matrix = Some(mat);
+        });
 
-    Engine::run(Arc::new(move |mat: &ColorMatrix| {
-        let mut s = shared_engine_copy.lock().unwrap();
-        s.color_matrix = Some(mat);
-    }));
+        engine.run::<DesktopThread>(on_frame_func);
+    });
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let m = {
@@ -46,7 +48,9 @@ fn main() {
         };
 
         if let Some(matrix) = m {
-            clear(&mut buffer);
+            for p in buf.iter_mut() {
+                *p = 0x000000;
+            }
 
             for x in 0..DOTS_EDGE_COUNT {
                 for y in 0..DOTS_EDGE_COUNT {
@@ -66,12 +70,6 @@ fn main() {
         window
             .update_with_buffer(&buffer, SCREEN_WIDTH, SCREEN_HEIGHT)
             .unwrap();
-    }
-}
-
-fn clear(buf: &mut [u32]) {
-    for p in buf.iter_mut() {
-        *p = 0x000000;
     }
 }
 
