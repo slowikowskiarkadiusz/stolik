@@ -1,8 +1,9 @@
-use crate::engine::{color_matrix::ColorMatrix, engine::ActorId, v2::V2};
+use crate::engine::{color_matrix::ColorMatrix, engine::{ActorId, EngineView}, v2::V2};
 
 pub struct InnerActor {
     pub name: String,
     pub id: ActorId,
+    pub has_temp_id: bool,
     pub center: V2,
     pub size: V2,
     pub anchor_offset: V2,
@@ -17,6 +18,7 @@ impl InnerActor {
         Self {
             name,
             id: 0,
+            has_temp_id: true,
             center,
             original_size: size.clone(),
             size: size.clone(),
@@ -33,12 +35,13 @@ pub trait TActor: Send + Sync {
 
     fn get_mut_actor(&mut self) -> &mut InnerActor;
 
-    fn get_id(&self) -> u16 {
-        self.get_actor().id
+    fn get_id(&self) -> (u16, bool) {
+        (self.get_actor().id, self.get_actor().has_temp_id)
     }
 
-    fn set_id(&mut self, new_value: u16) {
+    fn set_id(&mut self, new_value: u16, is_temp_id: bool) {
         self.get_mut_actor().id = new_value;
+        self.get_mut_actor().has_temp_id = is_temp_id;
     }
 
     fn get_center(&self) -> &V2 {
@@ -97,5 +100,5 @@ pub trait TActor: Send + Sync {
         &self.get_actor().render_color_matrix
     }
 
-    fn update(&mut self, delta_time: f32);
+    fn update(&mut self, engine: &EngineView);
 }

@@ -2,7 +2,7 @@
 
 use crate::{
     engine::{
-        actor::actor::TActor,
+        actor::{actor::TActor, rectangle_actor::RectangleActor},
         color::Color,
         color_matrix::ColorMatrix,
         input::input::Input,
@@ -19,11 +19,46 @@ use std::{
 };
 
 pub static SCREEN_SIZE: u8 = 64;
+pub type TempActorId = u16;
 pub type ActorId = u16;
 
+pub struct CommandBuffer {
+    next_temp_spawn_id: TempActorId,
+    to_spawn: Vec<(TempActorId, Box<dyn TActor>)>,
+    pub spawn_map: HashMap<TempActorId, ActorId>,
+}
+
+impl CommandBuffer {
+    pub fn new() -> Self {
+        Self {
+            next_temp_spawn_id: 0,
+            to_spawn: Vec::new(),
+            spawn_map: HashMap::new(),
+        }
+    }
+
+    pub fn spawn(&mut self, mut new_actor: Box<dyn TActor>) -> TempActorId {
+        let temp_id = self.next_temp_spawn_id;
+        //TODO handle overflow
+        self.next_temp_spawn_id += 1;
+        new_actor.as_mut().set_id(temp_id, true);
+        self.to_spawn.push((temp_id, new_actor));
+        temp_id
+    }
+
+    pub fn something<T: TActor>(actor: Box<T>, action: )
+}
+
+pub struct EngineView<'a> {
+    pub delta_time: f32,
+    pub command_buffer: &'a mut CommandBuffer,
+    pub input: &'a dyn Input,
+}
+
 pub struct Engine {
+    command_buffer: CommandBuffer,
     last_timestamp: u128,
-    delta_time: f32,
+    pub delta_time: f32,
     is_blue: bool,
     pub actor_map: RefCell<HashMap<ActorId, Box<dyn TActor>>>,
     current_scene: RefCell<Box<dyn Scene>>,
@@ -33,6 +68,7 @@ pub struct Engine {
 impl Engine {
     pub fn new(input: Box<dyn Input>) -> Self {
         let mut engine = Self {
+            command_buffer: CommandBuffer::new(),
             delta_time: 0.0,
             last_timestamp: 0,
             is_blue: false,
@@ -42,7 +78,14 @@ impl Engine {
         };
 
         engine.close_scene();
-        let pong_scene = PongScene::new(&mut engine);
+        let input = engine.input.borrow();
+        let view = EngineView {
+            delta_time: 0.0,
+            command_buffer: &mut engine.command_buffer,
+            input: input.as_ref(),
+        };
+        let pong_scene = PongScene::new(&view);
+        drop(input);
         engine.open_scene(Box::new(pong_scene));
 
         engine
@@ -66,12 +109,19 @@ impl Engine {
 
             self.input.borrow_mut().update(delta_time);
 
-            self.current_scene.get_mut().update(delta_time);
+            let input = self.input.borrow();
+            let view = EngineView {
+                delta_time,
+                command_buffer: &mut self.command_buffer,
+                input: input.as_ref(),
+            };
+
+            self.current_scene.get_mut().update(&view);
 
             let mut screen = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
 
             for (_key, actor) in self.actor_map.get_mut() {
-                actor.update(delta_time);
+                actor.update(&view);
             }
 
             for (_key, actor) in self.actor_map.borrow().iter() {
@@ -139,7 +189,7 @@ impl Engine {
 
         drop(map);
 
-        actor.as_mut().set_id(actor_id as ActorId);
+        actor.set_id(actor_id as ActorId);
         self.actor_map
             .borrow_mut()
             .insert(actor_id as ActorId, actor);

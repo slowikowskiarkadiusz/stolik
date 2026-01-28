@@ -1,16 +1,20 @@
+use std::sync::{Arc, Mutex};
+
 use crate::engine::{
-    actor::{
-        actor::{InnerActor, TActor},
-        rectangle_actor::RectangleActor,
-    }, color::Color, engine::{ActorId, Engine, SCREEN_SIZE}, input::key::Key, scene::Scene, v2::{self, V2}
+    actor::{actor::TActor, rectangle_actor::RectangleActor},
+    color::Color,
+    engine::{ActorId, EngineView, SCREEN_SIZE},
+    input::key::Key,
+    scene::Scene,
+    v2::V2,
 };
 
 pub struct PongScene {
     actors: Vec<Box<dyn TActor>>,
     score: (u8, u8),
-    paddle: (ActorId, ActorId),
-    score_zone: (ActorId, ActorId),
-    ball: ActorId,
+    paddle: (Option<ActorId>, Option<ActorId>),
+    score_zone: (Option<ActorId>, Option<ActorId>),
+    ball: Option<ActorId>,
     paddle_speed: f32,
     max_bounce_speed: f32,
     original_ball_speed: f32,
@@ -24,53 +28,14 @@ pub struct PongScene {
 }
 
 impl PongScene {
-    pub fn new(engine: &mut Engine) -> Self {
+    pub fn new(engine: &EngineView) -> Self {
         let size_factor = SCREEN_SIZE as f32 / 32.0;
         Self {
             actors: Vec::new(),
             score: (0, 0),
-            paddle: (
-                RectangleActor::spawn(
-                    engine,
-                    V2::new(SCREEN_SIZE as f32 / 2.0, 3.0 * size_factor),
-                    &V2::new(7.0, 1.0),
-                    Color::white(),
-                    Some(String::from("paddle1")),
-                ),
-                RectangleActor::spawn(
-                    engine,
-                    V2::new(
-                        SCREEN_SIZE as f32 / 2.0,
-                        SCREEN_SIZE as f32 - 4.0 * size_factor,
-                    ),
-                    &V2::new(7.0, 1.0),
-                    Color::white(),
-                    Some(String::from("paddle2")),
-                ),
-            ),
-            score_zone: (
-                RectangleActor::spawn(
-                    engine,
-                    V2::zero(),
-                    &V2::one(),
-                    Color::white(),
-                    Some(String::from("score_zone1")),
-                ),
-                RectangleActor::spawn(
-                    engine,
-                    V2::zero(),
-                    &V2::one(),
-                    Color::white(),
-                    Some(String::from("score_zone2")),
-                ),
-            ),
-            ball: RectangleActor::spawn(
-                engine,
-                V2::zero(),
-                &V2::one(),
-                Color::white(),
-                Some(String::from("ball")),
-            ),
+            paddle: (None, None),
+            score_zone: (None, None),
+            ball: None,
             paddle_speed: 3.0,
             max_bounce_speed: 0.03,
             original_ball_speed: 0.007,
@@ -99,19 +64,34 @@ impl PongScene {
         }
     }
 
-    // void pong_scene::handle_input(float deltaTime) {
-    //     if (input::is_key_press(key::P1_LEFT) ^ input::is_key_press(key::P1_RIGHT))
-    //         move_paddle(p1Paddle, (input::is_key_press(key::P1_RIGHT) ? 1 : -1) * paddle_speed * deltaTime * size_factor);
-
-    //     if (input::is_key_press(key::P2_LEFT) ^ input::is_key_press(key::P2_RIGHT))
-    //         move_paddle(p2Paddle, (input::is_key_press(key::P2_RIGHT) ? 1 : -1) * paddle_speed * deltaTime * size_factor);
-    // }
-
-    fn handle_input(&self, delta_time: f32, engine: &Engine) {
-        let input = engine.input.borrow();
-        let actor_map = engine.actor_map.borrow_mut();
+    fn handle_input(&self, engine: &EngineView) {
+        let input = engine.1;
         if input.is_key_press(Key::P1Left) ^ input.is_key_press(Key::P1Right) {
-            PongScene::move_paddle(actor_map.get_mut(self.paddle.0).unwrap().as_mut() as RectangleActor, delta);
+            let paddle = &mut self.paddle.0.lock().unwrap();
+            PongScene::move_paddle(
+                paddle,
+                if input.is_key_press(Key::P1Left) {
+                    -1.0
+                } else {
+                    1.0
+                } * self.paddle_speed
+                    * self.size_factor
+                    * engine.0,
+            );
+        }
+
+        if input.is_key_press(Key::P2Left) ^ input.is_key_press(Key::P2Right) {
+            let paddle = &mut self.paddle.1.lock().unwrap();
+            PongScene::move_paddle(
+                paddle,
+                if input.is_key_press(Key::P2Left) {
+                    -1.0
+                } else {
+                    1.0
+                } * self.paddle_speed
+                    * self.size_factor
+                    * engine.0,
+            );
         }
     }
 }
@@ -121,7 +101,50 @@ impl Scene for PongScene {
         &self.actors
     }
 
-    fn init(&mut self) {}
+    fn init(&mut self) {
+        let size_factor = SCREEN_SIZE as f32 / 32.0;
+        let paddle = (
+            RectangleActor::new(
+                V2::new(SCREEN_SIZE as f32 / 2.0, 3.0 * size_factor),
+                &V2::new(7.0, 1.0),
+                Color::white(),
+                Some(String::from("paddle1")),
+            ),
+            RectangleActor::new(
+                V2::new(
+                    SCREEN_SIZE as f32 / 2.0,
+                    SCREEN_SIZE as f32 - 4.0 * size_factor,
+                ),
+                &V2::new(7.0, 1.0),
+                Color::white(),
+                Some(String::from("paddle2")),
+            ),
+        );
+        let score_zone = (
+            RectangleActor::new(
+                V2::zero(),
+                &V2::one(),
+                Color::white(),
+                Some(String::from("score_zone1")),
+            ),
+            RectangleActor::new(
+                V2::zero(),
+                &V2::one(),
+                Color::white(),
+                Some(String::from("score_zone2")),
+            ),
+        );
+        let ball = RectangleActor::new(
+            V2::zero(),
+            &V2::one(),
+            Color::white(),
+            Some(String::from("ball")),
+        );
 
-    fn update(&self, _delta_time: f32, engine: &Engine) {}
+
+    }
+
+    fn update(&self, engine: &EngineView) {
+        self.handle_input(engine);
+    }
 }
