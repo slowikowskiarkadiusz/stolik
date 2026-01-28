@@ -4,11 +4,7 @@ pub mod desktop_threading_provider;
 use crate::{
     desktop_input::DesktopInput, desktop_threading_provider::DesktopThread, engine::color::Color,
 };
-use core::engine::{
-    self,
-    color_matrix::ColorMatrix,
-    engine::{Engine},
-};
+use core::engine::{self, color_matrix::ColorMatrix, engine::Engine};
 use minifb::{Key, Window, WindowOptions};
 use std::sync::{Arc, Mutex};
 

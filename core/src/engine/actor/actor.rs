@@ -1,6 +1,7 @@
 use crate::engine::{color_matrix::ColorMatrix, engine::ActorId, v2::V2};
 
 pub struct InnerActor {
+    pub name: String,
     pub id: ActorId,
     pub center: V2,
     pub size: V2,
@@ -12,8 +13,9 @@ pub struct InnerActor {
 }
 
 impl InnerActor {
-    pub fn _new(center: V2, size: &V2) -> Self {
+    pub fn _new(center: V2, size: &V2, name: String) -> Self {
         Self {
+            name,
             id: 0,
             center,
             original_size: size.clone(),
@@ -45,6 +47,10 @@ pub trait TActor: Send + Sync {
 
     fn set_center(&mut self, new_value: V2) {
         self.get_mut_actor().center = new_value;
+    }
+
+    fn move_by(&mut self, delta: V2) {
+        self.set_center(self.get_center() + &delta);
     }
 
     fn get_size(&self) -> &V2 {

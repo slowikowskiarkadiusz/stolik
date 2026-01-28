@@ -104,7 +104,7 @@ impl Default for Color {
     }
 }
 
-use core::fmt::{self, Display, Write};
+use core::fmt::{self};
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

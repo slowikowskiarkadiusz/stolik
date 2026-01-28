@@ -11,8 +11,22 @@ pub struct RectangleActor {
 }
 
 impl RectangleActor {
-    pub fn spawn(engine: &mut Engine, center: V2, size: &V2, color: Color) -> u16 {
-        let mut actor = InnerActor::_new(center, size);
+    pub fn spawn(
+        engine: &mut Engine,
+        center: V2,
+        size: &V2,
+        color: Color,
+        name: Option<String>,
+    ) -> u16 {
+        let mut actor = InnerActor::_new(
+            center,
+            size,
+            if let Some(name_unwrapped) = name {
+                name_unwrapped
+            } else {
+                String::from("rectangle")
+            },
+        );
         let color_matrix = ColorMatrix::new(size.x as u8, size.y as u8, color);
         actor.render_color_matrix = Some(color_matrix);
         engine.register_actor(Box::new(Self { actor }))
@@ -28,6 +42,5 @@ impl TActor for RectangleActor {
         &mut self.actor
     }
 
-    fn update(&mut self, _delta_time: f32) {
-    }
+    fn update(&mut self, _delta_time: f32) {}
 }

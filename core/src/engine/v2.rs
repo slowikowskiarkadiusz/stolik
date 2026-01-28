@@ -127,6 +127,17 @@ impl Mul<f32> for &V2 {
     }
 }
 
+impl Mul<f32> for V2 {
+    type Output = V2;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        V2 {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
 impl Mul<u8> for &V2 {
     type Output = V2;
 

@@ -28,7 +28,7 @@ impl<T: Clone> Matrix<T> {
 
     pub fn set(&mut self, x: u8, y: u8, to: T) -> &mut Self {
         if x < self.width && y < self.height {
-            self.data[(y * self.width + x) as usize] = to;
+            self.data[(y as u16 * self.width as u16 + x as u16) as usize] = to;
         }
         self
     }
@@ -111,7 +111,7 @@ impl<T: Default + Clone> Matrix<T> {
 }
 
 use core::fmt::{self, Display, Write};
-use std::f32::consts::PI;
+use core::f32::consts::PI;
 
 impl<T: Default + Clone + PartialEq + Display> fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -130,13 +130,13 @@ impl<T: Default + Clone + PartialEq + Display> fmt::Display for Matrix<T> {
                         longest = len;
                     }
                 } else {
-                    return_value.push_str(".")
+                    return_value.push_str(" ")
                 }
             }
             return_value.push_str("|\n");
         }
 
-        return_value = return_value.replace(".", &".".repeat(longest));
+        return_value = return_value.replace(" ", &" ".repeat(longest));
 
         write!(f, "{return_value}")
     }

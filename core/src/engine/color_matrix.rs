@@ -63,8 +63,9 @@ impl Matrix<Color> {
 
                 if (angle % 90) != 0 {
                     rx = dx * cos - dy * sin;
-                    // TODO??? ry = dy * cos - dy * sin;
-                    ry = dy * cos - dx * sin;
+                    // TODO???
+                    ry = dy * sin + dy * cos;
+                    // ry = dy * cos - dx * sin;
                 } else {
                     if angle == 90 {
                         rx = -dy;
@@ -111,8 +112,8 @@ impl Matrix<Color> {
                             / out_a as f32;
 
                         self.set(
-                            x,
-                            y,
+                            final_x as u8,
+                            final_y as u8,
                             Color::new(
                                 r.clamp(0.0, 255.0) as u8,
                                 g.clamp(0.0, 255.0) as u8,
@@ -121,7 +122,7 @@ impl Matrix<Color> {
                             ),
                         );
                     } else {
-                        self.set(x, y, src.clone());
+                        self.set(final_x as u8, final_y as u8, src.clone());
                     }
                 }
             }

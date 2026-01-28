@@ -25,9 +25,9 @@ pub struct Engine {
     last_timestamp: u128,
     delta_time: f32,
     is_blue: bool,
-    actor_map: RefCell<HashMap<ActorId, Box<dyn TActor>>>,
+    pub actor_map: RefCell<HashMap<ActorId, Box<dyn TActor>>>,
     current_scene: RefCell<Box<dyn Scene>>,
-    input: RefCell<Box<dyn Input>>,
+    pub input: RefCell<Box<dyn Input>>,
 }
 
 impl Engine {
@@ -137,7 +137,6 @@ impl Engine {
             }
         }
 
-        println!("len: {}, id: {}", map.len(), actor_id);
         drop(map);
 
         actor.as_mut().set_id(actor_id as ActorId);
