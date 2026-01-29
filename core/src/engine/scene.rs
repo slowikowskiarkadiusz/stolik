@@ -14,11 +14,11 @@ impl EmptyScene {
 }
 
 impl Scene for EmptyScene {
-    fn init(&mut self, world: &mut World) {
+    fn init(&mut self, _: &mut World) {
         todo!()
     }
 
-    fn tick(&mut self, _input: &Box<dyn Input>, _world: &mut World, _delta_time: f32) {
+    fn tick(&mut self, _: &Box<dyn Input>, _: &mut World, _: f32) {
         todo!()
     }
 }

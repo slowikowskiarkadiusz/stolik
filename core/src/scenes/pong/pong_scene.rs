@@ -9,45 +9,46 @@ use crate::engine::{
 };
 
 pub struct PongScene {
-    score: (u8, u8),
+    // score: (u8, u8),
     paddle: (Option<ActorId>, Option<ActorId>),
     score_zone: (Option<ActorId>, Option<ActorId>),
     ball: Option<ActorId>,
     paddle_speed: f32,
-    max_bounce_speed: f32,
-    original_ball_speed: f32,
-    ball_speed: V2,
-    ball_speed_multiplier: f32,
+    // max_bounce_speed: f32,
+    // original_ball_speed: f32,
+    // ball_speed: V2,
+    // ball_speed_multiplier: f32,
     size_factor: f32,
-    can_score: bool,
-    can_collide: (bool, bool),
-    can_bounce: bool,
-    do_play: bool,
+    // can_score: bool,
+    // can_collide: (bool, bool),
+    // can_bounce: bool,
+    // do_play: bool,
 }
 
 impl PongScene {
     pub fn new() -> Self {
         Self {
-            score: (0, 0),
+            // score: (0, 0),
             paddle: (None, None),
             score_zone: (None, None),
             ball: None,
             paddle_speed: 3.0,
-            max_bounce_speed: 0.03,
-            original_ball_speed: 0.007,
-            ball_speed: V2::one(),
-            ball_speed_multiplier: 1.0,
+            // max_bounce_speed: 0.03,
+            // original_ball_speed: 0.007,
+            // ball_speed: V2::one(),
+            // ball_speed_multiplier: 1.0,
             size_factor: SCREEN_SIZE as f32 / 32.0,
-            can_score: true,
-            can_collide: (true, true),
-            can_bounce: true,
-            do_play: true,
+            // can_score: true,
+            // can_collide: (true, true),
+            // can_bounce: true,
+            // do_play: true,
         }
     }
 
     fn move_paddle(paddle: &ActorId, world: &mut World, delta: f32) {
         let transform = world.get_mut_transform(paddle).unwrap();
-        transform.center = V2::right() * delta;
+        let diff = V2::right() * delta;
+        transform.center = &transform.center + &diff;
         let left = transform.center.x - transform.size.x / 2.0;
         let right = transform.center.x + transform.size.x / 2.0;
         if left < 0.0 {

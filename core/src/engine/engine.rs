@@ -68,8 +68,6 @@ impl Engine {
                 if let Some(render) = self.world.get_render(actor_id)
                     && let Some(transform) = self.world.get_transform(actor_id)
                 {
-                    // println!("rendering actor: {}", actor_id);
-                    // println!("{}", render);
                     screen.write(
                         render,
                         &transform.center,
