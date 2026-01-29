@@ -7,3 +7,4 @@ pub mod threading_provider;
 pub mod actor;
 pub mod scene;
 pub mod input;
+pub mod components;

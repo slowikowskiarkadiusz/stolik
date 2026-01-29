@@ -1,9 +1,8 @@
-use crate::engine::{actor::actor::TActor, engine::EngineView};
+use crate::engine::{components::world::World, input::input::Input};
 
 pub trait Scene {
-    fn get_actors(&self) -> &[Box<dyn TActor>];
-    fn init(&mut self);
-    fn update(&self, engine: &EngineView);
+    fn init(&mut self, world: &mut World);
+    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32);
 }
 
 pub struct EmptyScene;
@@ -15,15 +14,11 @@ impl EmptyScene {
 }
 
 impl Scene for EmptyScene {
-    fn get_actors(&self) -> &[Box<dyn TActor>] {
+    fn init(&mut self, world: &mut World) {
         todo!()
     }
 
-    fn init(&mut self) {
-        todo!()
-    }
-
-    fn update(&self, _: &EngineView) {
+    fn tick(&mut self, _input: &Box<dyn Input>, _world: &mut World, _delta_time: f32) {
         todo!()
     }
 }

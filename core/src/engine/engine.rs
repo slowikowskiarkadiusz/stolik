@@ -2,9 +2,9 @@
 
 use crate::{
     engine::{
-        actor::{actor::TActor, rectangle_actor::RectangleActor},
         color::Color,
         color_matrix::ColorMatrix,
+        components::world::World,
         input::input::Input,
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
@@ -12,8 +12,6 @@ use crate::{
     scenes::pong::pong_scene::PongScene,
 };
 use std::{
-    cell::RefCell,
-    collections::HashMap,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -22,84 +20,36 @@ pub static SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
 pub type ActorId = u16;
 
-pub struct CommandBuffer {
-    next_temp_spawn_id: TempActorId,
-    to_spawn: Vec<(TempActorId, Box<dyn TActor>)>,
-    pub spawn_map: HashMap<TempActorId, ActorId>,
-}
-
-impl CommandBuffer {
-    pub fn new() -> Self {
-        Self {
-            next_temp_spawn_id: 0,
-            to_spawn: Vec::new(),
-            spawn_map: HashMap::new(),
-        }
-    }
-
-    pub fn spawn(&mut self, mut new_actor: Box<dyn TActor>) -> TempActorId {
-        let temp_id = self.next_temp_spawn_id;
-        //TODO handle overflow
-        self.next_temp_spawn_id += 1;
-        new_actor.as_mut().set_id(temp_id, true);
-        self.to_spawn.push((temp_id, new_actor));
-        temp_id
-    }
-
-    pub fn something<T: TActor>(actor: Box<T>, action: )
-}
-
-pub struct EngineView<'a> {
-    pub delta_time: f32,
-    pub command_buffer: &'a mut CommandBuffer,
-    pub input: &'a dyn Input,
-}
-
 pub struct Engine {
-    command_buffer: CommandBuffer,
     last_timestamp: u128,
     pub delta_time: f32,
     is_blue: bool,
-    pub actor_map: RefCell<HashMap<ActorId, Box<dyn TActor>>>,
-    current_scene: RefCell<Box<dyn Scene>>,
-    pub input: RefCell<Box<dyn Input>>,
+    world: World,
+    current_scene: Box<dyn Scene>,
+    pub input: Box<dyn Input>,
 }
 
 impl Engine {
     pub fn new(input: Box<dyn Input>) -> Self {
         let mut engine = Self {
-            command_buffer: CommandBuffer::new(),
             delta_time: 0.0,
             last_timestamp: 0,
             is_blue: false,
-            actor_map: RefCell::new(HashMap::new()),
-            current_scene: RefCell::new(Box::new(EmptyScene::new())),
-            input: RefCell::new(input),
+            world: World::new(),
+            current_scene: Box::new(EmptyScene::new()),
+            input: input,
         };
 
         engine.close_scene();
-        let input = engine.input.borrow();
-        let view = EngineView {
-            delta_time: 0.0,
-            command_buffer: &mut engine.command_buffer,
-            input: input.as_ref(),
-        };
-        let pong_scene = PongScene::new(&view);
-        drop(input);
+        let pong_scene = PongScene::new();
         engine.open_scene(Box::new(pong_scene));
 
         engine
     }
 
-    pub fn run<T: Thread>(
-        &mut self,
-        on_frame_finished: Arc<dyn Fn(ColorMatrix) + Send + Sync + 'static>,
-    ) {
+    pub fn run<T: Thread>(&mut self, on_frame_finished: Arc<dyn Fn(ColorMatrix) + Send + Sync + 'static>) {
         loop {
-            let mut now_ms = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis();
+            let mut now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
             self.delta_time = (now_ms - self.last_timestamp) as f32 / 1000.0;
             self.last_timestamp = now_ms;
             self.is_blue = !self.is_blue;
@@ -107,30 +57,24 @@ impl Engine {
             let delta_time = self.delta_time;
             let last_timestamp = self.last_timestamp;
 
-            self.input.borrow_mut().update(delta_time);
+            let mut_scene = self.current_scene.as_mut();
 
-            let input = self.input.borrow();
-            let view = EngineView {
-                delta_time,
-                command_buffer: &mut self.command_buffer,
-                input: input.as_ref(),
-            };
+            self.input.as_mut().update(delta_time);
 
-            self.current_scene.get_mut().update(&view);
+            mut_scene.tick(&self.input, &mut self.world, delta_time);
 
             let mut screen = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
-
-            for (_key, actor) in self.actor_map.get_mut() {
-                actor.update(&view);
-            }
-
-            for (_key, actor) in self.actor_map.borrow().iter() {
-                if let Some(actor_color_matrix) = actor.get_render_color_matrix() {
+            for actor_id in self.world.get_all_actors() {
+                if let Some(render) = self.world.get_render(actor_id)
+                    && let Some(transform) = self.world.get_transform(actor_id)
+                {
+                    // println!("rendering actor: {}", actor_id);
+                    // println!("{}", render);
                     screen.write(
-                        actor_color_matrix,
-                        actor.get_center(),
-                        Some(actor.get_rotation().clone()),
-                        Some(actor.get_anchor_offset().clone()),
+                        render,
+                        &transform.center,
+                        Some(transform.rotation.clone()),
+                        Some(transform.anchor_offset.clone()),
                         Some(true),
                     );
                 }
@@ -138,67 +82,20 @@ impl Engine {
 
             on_frame_finished(screen);
 
-            self.input.borrow_mut().late_update(delta_time);
+            self.input.as_mut().late_update(delta_time);
 
-            now_ms = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis();
+            now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
 
             T::sleep_for(33 - (now_ms as u64 - last_timestamp as u64));
         }
     }
 
     pub fn open_scene(&mut self, obj: Box<dyn Scene>) {
-        *self.current_scene.get_mut() = obj;
-        self.current_scene.get_mut().init();
+        self.current_scene = obj;
+        self.current_scene.as_mut().init(&mut self.world);
     }
 
     pub fn close_scene(&mut self) {
-        self.actor_map.get_mut().clear();
-    }
-
-    pub fn register_actor(&mut self, mut actor: Box<dyn TActor>) -> ActorId {
-        let map = self.actor_map.borrow();
-        let iter = map.iter();
-
-        let iter_max = map.iter().map(|x| x.0).max();
-        let mut actor_id: ActorId = 0;
-        if let Some(max_id) = iter_max {
-            actor_id = max_id.clone();
-
-            if actor_id == u16::MAX {
-                let mut found = false;
-                for (k, _v) in iter {
-                    if k - actor_id > 1 {
-                        actor_id = k.clone();
-                        found = true;
-                        break;
-                    }
-
-                    actor_id = k.clone();
-                }
-
-                if !found {
-                    actor_id += 1;
-                }
-            } else {
-                actor_id += 1;
-            }
-        }
-
-        drop(map);
-
-        actor.set_id(actor_id as ActorId);
-        self.actor_map
-            .borrow_mut()
-            .insert(actor_id as ActorId, actor);
-
-        actor_id
-    }
-
-    pub fn unregister_actor(&mut self, actor: &Box<dyn TActor>) {
-        let map = self.actor_map.get_mut();
-        map.remove(&actor.get_id());
+        // self.actor_map.get_mut().clear();
     }
 }
