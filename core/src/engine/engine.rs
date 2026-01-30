@@ -63,6 +63,8 @@ impl Engine {
 
             mut_scene.tick(&self.input, &mut self.world, delta_time);
 
+
+
             let mut screen = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
             for actor_id in self.world.get_all_actors() {
                 if let Some(render) = self.world.get_render(actor_id)

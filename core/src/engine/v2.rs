@@ -160,6 +160,17 @@ impl Div<f32> for &V2 {
     }
 }
 
+impl Div<f32> for V2 {
+    type Output = V2;
+
+    fn div(self, rhs: f32) -> Self::Output {
+        V2 {
+            x: self.x / rhs,
+            y: self.y / rhs,
+        }
+    }
+}
+
 impl Mul<&V2> for &V2 {
     type Output = V2;
 

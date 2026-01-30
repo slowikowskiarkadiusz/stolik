@@ -32,7 +32,7 @@ impl PongScene {
             paddle: (None, None),
             score_zone: (None, None),
             ball: None,
-            paddle_speed: 3.0,
+            paddle_speed: 15.0,
             // max_bounce_speed: 0.03,
             // original_ball_speed: 0.007,
             // ball_speed: V2::one(),
@@ -62,19 +62,20 @@ impl PongScene {
 
 impl Scene for PongScene {
     fn init(&mut self, world: &mut World) {
-        let size_factor = SCREEN_SIZE as f32 / 32.0;
+        let screen_size = SCREEN_SIZE as f32;
+        let size_factor = screen_size / 32.0;
         self.paddle = (
             Some(create_rectangle_actor(
                 world,
-                V2::new(SCREEN_SIZE as f32 / 2.0, 3.0 * size_factor),
-                V2::new(7.0, 1.0),
+                V2::new(screen_size / 2.0, 3.0 * size_factor),
+                V2::new(7.0, 1.0) * size_factor,
                 Color::white(),
                 Some(String::from("paddle1")),
             )),
             Some(create_rectangle_actor(
                 world,
-                V2::new(SCREEN_SIZE as f32 / 2.0, SCREEN_SIZE as f32 - 4.0 * size_factor),
-                V2::new(7.0, 1.0),
+                V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
+                V2::new(7.0, 1.0) * size_factor,
                 Color::white(),
                 Some(String::from("paddle2")),
             )),
@@ -82,20 +83,26 @@ impl Scene for PongScene {
         self.score_zone = (
             Some(create_rectangle_actor(
                 world,
-                V2::zero(),
-                V2::one(),
-                Color::white(),
+                V2::new(screen_size / 2.0, -4.0 * size_factor),
+                V2::new(screen_size, 10.0),
+                Color::none(),
                 Some(String::from("score_zone1")),
             )),
             Some(create_rectangle_actor(
                 world,
-                V2::zero(),
-                V2::one(),
-                Color::white(),
+                V2::new(screen_size / 2.0, screen_size + 4.0 * size_factor),
+                V2::new(screen_size, 10.0),
+                Color::none(),
                 Some(String::from("score_zone2")),
             )),
         );
-        self.ball = Some(create_rectangle_actor(world, V2::zero(), V2::one(), Color::white(), Some(String::from("ball"))));
+        self.ball = Some(create_rectangle_actor(
+            world,
+            V2::one() * screen_size / 2.0,
+            V2::one() * 2.0 * size_factor,
+            Color::white(),
+            Some(String::from("ball")),
+        ));
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
