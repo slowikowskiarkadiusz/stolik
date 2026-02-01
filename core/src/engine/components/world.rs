@@ -93,8 +93,9 @@ impl World {
         physics: Option<Physics>,
         render: Option<ColorMatrix>,
     ) -> ActorId {
-        let new_actor_id = 0;
-        for new_actor_id in 0..=u16::MAX {
+        let mut new_actor_id = 0;
+        for i in 0..=u16::MAX {
+            new_actor_id = i;
             if !self.all_actors.contains(&new_actor_id) {
                 break;
             }

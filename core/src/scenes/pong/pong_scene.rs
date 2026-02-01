@@ -1,9 +1,10 @@
+use rand::Rng;
 use std::collections::HashMap;
 
 use crate::engine::{
     actor::rectangle_actor::create_rectangle_actor,
     color::Color,
-    components::world::World,
+    components::{collider::ColliderType, world::World},
     engine::{ActorId, SCREEN_SIZE},
     input::{input::Input, key::Key},
     scene::Scene,
@@ -36,7 +37,7 @@ impl PongScene {
             ball: None,
             paddle_speed: 15.0,
             max_bounce_speed: 0.03,
-            original_ball_speed: 0.007,
+            original_ball_speed: 7.0,
             ball_speed: V2::one(),
             ball_speed_multiplier: 1.0,
             size_factor: SCREEN_SIZE as f32 / 32.0,
@@ -132,6 +133,45 @@ impl PongScene {
             self.paddle.iter().for_each(|f| world.remove_actor(&f.unwrap()));
         }
     }
+
+    fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, delta_time: f32) {
+        if input.is_key_press(Key::P1Left) ^ input.is_key_press(Key::P1Right) {
+            if let Some(paddle_p1_id) = self.paddle[0] {
+                PongScene::move_paddle(
+                    &paddle_p1_id,
+                    world,
+                    if input.is_key_press(Key::P1Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
+                );
+            }
+        }
+
+        if input.is_key_press(Key::P2Left) ^ input.is_key_press(Key::P2Right) {
+            if let Some(paddle_p2_id) = self.paddle[1] {
+                PongScene::move_paddle(
+                    &paddle_p2_id,
+                    world,
+                    if input.is_key_press(Key::P2Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
+                );
+            }
+        }
+    }
+
+    fn reset_ball(&mut self, world: &mut World) {
+        //print_score
+        self.can_score = true;
+        self.can_bounce = true;
+        self.can_collide[0] = true;
+        self.can_collide[1] = true;
+        world.get_mut_transform(&self.ball.unwrap()).unwrap().center = V2::one() * (SCREEN_SIZE / 2) as f32;
+        self.ball_speed = V2::new(
+            rand::thread_rng().gen_range(0.0..1.0) * 2.0 * self.original_ball_speed - self.original_ball_speed,
+            if rand::thread_rng().gen_range(0.0..1.0) > 0.5 {
+                self.original_ball_speed
+            } else {
+                -self.original_ball_speed
+            },
+        );
+    }
 }
 
 impl Scene for PongScene {
@@ -144,6 +184,7 @@ impl Scene for PongScene {
                 V2::new(screen_size / 2.0, 3.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
                 Color::white(),
+                Some(ColliderType::Overlapping),
                 Some(String::from("paddle1")),
             )),
             Some(create_rectangle_actor(
@@ -151,6 +192,7 @@ impl Scene for PongScene {
                 V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
                 Color::white(),
+                Some(ColliderType::Overlapping),
                 Some(String::from("paddle2")),
             )),
         ];
@@ -160,6 +202,7 @@ impl Scene for PongScene {
                 V2::new(screen_size / 2.0, -4.0 * size_factor),
                 V2::new(screen_size, 10.0),
                 Color::none(),
+                Some(ColliderType::Overlapping),
                 Some(String::from("score_zone1")),
             )),
             Some(create_rectangle_actor(
@@ -167,6 +210,7 @@ impl Scene for PongScene {
                 V2::new(screen_size / 2.0, screen_size + 4.0 * size_factor),
                 V2::new(screen_size, 10.0),
                 Color::none(),
+                Some(ColliderType::Overlapping),
                 Some(String::from("score_zone2")),
             )),
         ];
@@ -175,37 +219,23 @@ impl Scene for PongScene {
             V2::one() * screen_size / 2.0,
             V2::one() * 2.0 * size_factor,
             Color::white(),
+            Some(ColliderType::Overlapping),
             Some(String::from("ball")),
         ));
+
+        self.reset_ball(world);
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
-        if let Some(_) = self.ball {
-            if input.is_key_press(Key::P1Left) ^ input.is_key_press(Key::P1Right) {
-                if let Some(paddle_p1_id) = self.paddle[0] {
-                    PongScene::move_paddle(
-                        &paddle_p1_id,
-                        world,
-                        if input.is_key_press(Key::P1Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
-                    );
-                }
-            }
-
-            if input.is_key_press(Key::P2Left) ^ input.is_key_press(Key::P2Right) {
-                if let Some(paddle_p2_id) = self.paddle[1] {
-                    PongScene::move_paddle(
-                        &paddle_p2_id,
-                        world,
-                        if input.is_key_press(Key::P2Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
-                    );
-                }
-            }
-
+        if let Some(ball) = self.ball {
+            world.get_mut_transform(&ball).unwrap().center += &self.ball_speed * delta_time;
+            self.handle_input(input, world, delta_time);
             self.bounce_off_wall(world);
         }
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {
         self.bounce_off_paddle(overlaps, world);
+        self.check_scoring(overlaps, world);
     }
 }

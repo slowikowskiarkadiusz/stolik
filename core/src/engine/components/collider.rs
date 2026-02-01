@@ -9,6 +9,12 @@ use crate::engine::{
 pub type CollisionMask = u8;
 pub type CollisionMaskId = u8;
 
+#[derive(PartialEq, Eq)]
+pub enum ColliderType {
+    Blocking,
+    Overlapping,
+}
+
 pub struct ColliderPart {
     pub offset: V2,
     pub extend: V2,
@@ -33,14 +39,13 @@ impl Collider {
         for first_actor in &world.all_actors {
             for i in (first_actor.clone() as usize + 1)..world.all_actors.len() {
                 let second_actor = &world.all_actors[i];
-                if first_actor == second_actor || dict[first_actor].contains(second_actor) {
-                    continue;
-                }
 
-                if let Some(first_collider) = world.get_collider(first_actor)
+                if first_actor != second_actor
+                    && let Some(first_collider) = world.get_collider(first_actor)
                     && let Some(first_transform) = world.get_transform(first_actor)
                     && let Some(second_collider) = world.get_collider(second_actor)
                     && let Some(second_transform) = world.get_transform(second_actor)
+                    && (!dict.contains_key(first_actor) || !dict[first_actor].contains(second_actor))
                 {
                     if (world.get_collision_matrix(first_collider.mask_id) & 1 << second_collider.mask_id) == 1
                         && Collider::is_overlapping((first_collider, first_transform), (second_collider, second_transform))

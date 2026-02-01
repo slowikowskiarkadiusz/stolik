@@ -105,6 +105,13 @@ impl Add for &V2 {
     }
 }
 
+impl AddAssign for V2 {
+    fn add_assign(&mut self, rhs: Self) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+    }
+}
+
 impl Sub for &V2 {
     type Output = V2;
 
@@ -113,6 +120,13 @@ impl Sub for &V2 {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
         }
+    }
+}
+
+impl SubAssign for V2 {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.x -= rhs.x;
+        self.y -= rhs.y;
     }
 }
 
@@ -194,6 +208,7 @@ impl Div<&V2> for &V2 {
 }
 
 use core::fmt;
+use std::ops::{AddAssign, SubAssign};
 
 impl fmt::Display for &V2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

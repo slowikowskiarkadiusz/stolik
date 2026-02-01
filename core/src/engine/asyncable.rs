@@ -89,9 +89,10 @@ impl AsyncableStorage {
 
 pub fn add_asyncable(function: AsyncableFunction, ms: f32, asyncable_type: AsyncableType) -> AsyncableId {
     let lock = get_taken_ids().read().unwrap();
-    let free_id = 0;
-    for free_id in 0..=u16::MAX {
+    let mut free_id = 0;
+    for i in 0..=u16::MAX {
         // TODO optimize this shit
+        free_id = i;
         if !lock.contains(&free_id) {
             break;
         }

@@ -6,6 +6,6 @@ edition = "2024"
 [features]
 default = ["std"]
 std = []
-# esp32 = []
 
 [dependencies]
+rand = "0.8"
