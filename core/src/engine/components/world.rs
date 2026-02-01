@@ -2,17 +2,23 @@ use std::collections::HashMap;
 
 use crate::engine::{
     color_matrix::ColorMatrix,
-    components::{collider::Collider, physics::Physics, transform::Transform},
+    components::{
+        collider::{Collider, CollisionMask, CollisionMaskId},
+        physics::Physics,
+        transform::Transform,
+    },
     engine::ActorId,
 };
 
 pub struct World {
-    all_actors: Vec<ActorId>,
+    pub all_actors: Vec<ActorId>,
     names: HashMap<ActorId, Option<String>>,
     transforms: HashMap<ActorId, Option<Transform>>,
     colliders: HashMap<ActorId, Option<Collider>>,
     physics: HashMap<ActorId, Option<Physics>>,
     renders: HashMap<ActorId, Option<ColorMatrix>>,
+
+    collision_matrix: [CollisionMask; CollisionMaskId::MAX as usize],
 }
 
 impl World {
@@ -24,11 +30,19 @@ impl World {
             colliders: HashMap::new(),
             physics: HashMap::new(),
             renders: HashMap::new(),
+
+            collision_matrix: [CollisionMask::MAX; CollisionMaskId::MAX as usize],
         }
     }
 
-    pub fn get_all_actors(&self) -> &[ActorId] {
-        &self.all_actors
+    pub fn get_collision_matrix(&self, index: CollisionMaskId) -> CollisionMask {
+        self.collision_matrix[index as usize]
+    }
+
+    pub fn set_collisions_on(&mut self, first: CollisionMaskId, second: CollisionMaskId, on: bool) {
+        let new_value = if on { 1 } else { 0 };
+        self.collision_matrix[first as usize] |= new_value << second;
+        self.collision_matrix[second as usize] |= new_value << first;
     }
 
     pub fn get_name(&self, actor_id: &ActorId) -> Option<&String> {
@@ -79,15 +93,20 @@ impl World {
         physics: Option<Physics>,
         render: Option<ColorMatrix>,
     ) -> ActorId {
-        let new_actor_id = self.get_free_id();
+        let new_actor_id = 0;
+        for new_actor_id in 0..=u16::MAX {
+            if !self.all_actors.contains(&new_actor_id) {
+                break;
+            }
+        }
 
         self.all_actors.push(new_actor_id);
+        self.all_actors.sort();
         self.names.insert(new_actor_id, name);
         self.transforms.insert(new_actor_id, transform);
         self.colliders.insert(new_actor_id, collider);
         self.physics.insert(new_actor_id, physics);
         self.renders.insert(new_actor_id, render);
-
         new_actor_id
     }
 
@@ -99,35 +118,11 @@ impl World {
         self.renders.remove(actor_id);
     }
 
-    fn get_free_id(&self) -> ActorId {
-        let map = &self.transforms;
-        let iter = map.iter();
-
-        let iter_max = map.iter().map(|x| x.0).max();
-        let mut actor_id: ActorId = 0;
-        if let Some(max_id) = iter_max {
-            actor_id = max_id.clone();
-
-            if actor_id == u16::MAX {
-                let mut found = false;
-                for (k, _v) in iter {
-                    if k - actor_id > 1 {
-                        actor_id = k.clone();
-                        found = true;
-                        break;
-                    }
-
-                    actor_id = k.clone();
-                }
-
-                if !found {
-                    actor_id += 1;
-                }
-            } else {
-                actor_id += 1;
-            }
-        }
-
-        actor_id
+    pub fn clear_all(&mut self) {
+        self.names.clear();
+        self.transforms.clear();
+        self.colliders.clear();
+        self.physics.clear();
+        self.renders.clear();
     }
 }

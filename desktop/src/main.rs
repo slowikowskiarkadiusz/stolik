@@ -6,6 +6,7 @@ use core::engine::{color::Color, color_matrix::ColorMatrix, engine::Engine};
 use minifb::{Key, Window, WindowOptions};
 use std::{
     collections::HashMap,
+    panic,
     sync::{Arc, Mutex},
 };
 
@@ -21,6 +22,9 @@ struct Shared {
 pub type InputState = HashMap<Key, (bool, bool)>;
 
 fn main() {
+    panic::set_hook(Box::new(|info| {
+        eprintln!("PANIC: {}", info);
+    }));
     let mut window = Window::new("Circle", SCREEN_WIDTH, SCREEN_HEIGHT, WindowOptions::default()).unwrap();
 
     let mut buffer = vec![0u32; SCREEN_WIDTH * SCREEN_HEIGHT];
