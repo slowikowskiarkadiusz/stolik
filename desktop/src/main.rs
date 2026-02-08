@@ -24,6 +24,7 @@ pub type InputState = HashMap<Key, (bool, bool)>;
 fn main() {
     panic::set_hook(Box::new(|info| {
         eprintln!("PANIC: {}", info);
+        eprintln!("Backtrace:\n{:?}", std::backtrace::Backtrace::force_capture());
     }));
     let mut window = Window::new("Circle", SCREEN_WIDTH, SCREEN_HEIGHT, WindowOptions::default()).unwrap();
 

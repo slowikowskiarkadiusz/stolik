@@ -46,48 +46,84 @@ impl World {
     }
 
     pub fn get_name(&self, actor_id: &ActorId) -> Option<&String> {
-        self.names.get(actor_id).unwrap().as_ref()
+        if let Some(r) = self.names.get(actor_id) { r.as_ref() } else { None }
     }
 
     pub fn get_mut_name(&mut self, actor_id: &ActorId) -> Option<&mut String> {
-        self.names.get_mut(actor_id).unwrap().as_mut()
+        if let Some(r) = self.names.get_mut(actor_id) {
+            r.as_mut()
+        } else {
+            None
+        }
     }
 
     pub fn get_transform(&self, actor_id: &ActorId) -> Option<&Transform> {
-        self.transforms.get(actor_id).unwrap().as_ref()
+        if let Some(r) = self.transforms.get(actor_id) {
+            r.as_ref()
+        } else {
+            None
+        }
     }
 
     pub fn get_mut_transform(&mut self, actor_id: &ActorId) -> Option<&mut Transform> {
-        self.transforms.get_mut(actor_id).unwrap().as_mut()
+        if let Some(r) = self.transforms.get_mut(actor_id) {
+            r.as_mut()
+        } else {
+            None
+        }
     }
 
     pub fn get_collider(&self, actor_id: &ActorId) -> Option<&Collider> {
-        self.colliders.get(actor_id).unwrap().as_ref()
+        if let Some(r) = self.colliders.get(actor_id) {
+            r.as_ref()
+        } else {
+            None
+        }
     }
 
     pub fn get_mut_collider(&mut self, actor_id: &ActorId) -> Option<&mut Collider> {
-        self.colliders.get_mut(actor_id).unwrap().as_mut()
+        if let Some(r) = self.colliders.get_mut(actor_id) {
+            r.as_mut()
+        } else {
+            None
+        }
     }
 
     pub fn get_physics(&self, actor_id: &ActorId) -> Option<&Physics> {
-        self.physics.get(actor_id).unwrap().as_ref()
+        if let Some(r) = self.physics.get(actor_id) {
+            r.as_ref()
+        } else {
+            None
+        }
     }
 
     pub fn get_mut_physics(&mut self, actor_id: &ActorId) -> Option<&mut Physics> {
-        self.physics.get_mut(actor_id).unwrap().as_mut()
+        if let Some(r) = self.physics.get_mut(actor_id) {
+            r.as_mut()
+        } else {
+            None
+        }
     }
 
     pub fn get_render(&self, actor_id: &ActorId) -> Option<&ColorMatrix> {
-        self.renders.get(actor_id).unwrap().as_ref()
+        if let Some(r) = self.renders.get(actor_id) {
+            r.as_ref()
+        } else {
+            None
+        }
     }
 
     pub fn get_mut_render(&mut self, actor_id: &ActorId) -> Option<&mut ColorMatrix> {
-        self.renders.get_mut(actor_id).unwrap().as_mut()
+        if let Some(r) = self.renders.get_mut(actor_id) {
+            r.as_mut()
+        } else {
+            None
+        }
     }
 
     pub fn add_new_actor(
         &mut self,
-        name: Option<String>,
+        name: Option<&str>,
         transform: Option<Transform>,
         collider: Option<Collider>,
         physics: Option<Physics>,
@@ -103,7 +139,14 @@ impl World {
 
         self.all_actors.push(new_actor_id);
         self.all_actors.sort();
-        self.names.insert(new_actor_id, name);
+        self.names.insert(
+            new_actor_id,
+            if let Some(name_string) = name {
+                Some(String::from(name_string))
+            } else {
+                None
+            },
+        );
         self.transforms.insert(new_actor_id, transform);
         self.colliders.insert(new_actor_id, collider);
         self.physics.insert(new_actor_id, physics);
@@ -120,6 +163,7 @@ impl World {
     }
 
     pub fn clear_all(&mut self) {
+        self.all_actors.clear();
         self.names.clear();
         self.transforms.clear();
         self.colliders.clear();

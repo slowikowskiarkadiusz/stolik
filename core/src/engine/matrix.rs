@@ -26,11 +26,14 @@ impl<T: Clone> Matrix<T> {
         &self.data[(y as usize * self.width as usize + x as usize) as usize]
     }
 
-    pub fn set(&mut self, x: u8, y: u8, to: T) -> &mut Self {
+    pub fn set(&mut self, x: u8, y: u8, to: T) {
         if x < self.width && y < self.height {
             self.data[(y as u16 * self.width as u16 + x as u16) as usize] = to;
         }
-        self
+    }
+
+    pub fn get_size(&self) -> V2 {
+        V2::new(self.width as f32, self.height as f32)
     }
 
     pub fn data(&self) -> &Vec<T> {
@@ -49,8 +52,8 @@ impl<T: Clone> Matrix<T> {
 
         let old_width = self.width as f32;
         let old_height = self.height as f32;
-        let new_width = (old_width * cos_abs + old_width * sin_abs).ceil();
-        let new_height = (old_height * cos_abs + old_height * sin_abs).ceil();
+        let new_width = (old_width * cos_abs + old_width * sin_abs).ceil() + 1.0;
+        let new_height = (old_height * cos_abs + old_height * sin_abs).ceil() + 1.0;
 
         let mut rotated = Matrix::<T>::new(new_width as u8, new_height as u8, background);
 
@@ -63,17 +66,18 @@ impl<T: Clone> Matrix<T> {
             for y in 0..(old_height as u8) {
                 let dx = x as f32 - old_cx;
                 let dy = y as f32 - old_cy;
-
-                let rx = (rad.cos() * dx - rad.sin() * dx + new_cx).round();
-                let ry = (rad.cos() * dy - rad.sin() * dy + new_cy).round();
+                let rx = (rad.cos() * dx - rad.sin() * dy + new_cx).round();
+                let ry = (rad.sin() * dx + rad.cos() * dy + new_cy).round();
 
                 if rx >= 0.0 && rx < new_width && ry >= 0.0 && ry < new_height {
-                    rotated.set(x, y, self.get(x, y).clone());
+                    rotated.set(rx as u8, ry as u8, self.get(x, y).clone());
                 }
             }
         }
 
         self.data = rotated.data;
+        self.width = new_width as u8;
+        self.height = new_height as u8;
     }
 
     // TODO: do in-place. start writing from right bottom corner if the non-scaled is in left-top corner
@@ -98,6 +102,18 @@ impl<T: Clone> Matrix<T> {
 
         self.data = scaled.data
     }
+
+    pub fn snippet(&self, from: &V2, to: &V2) -> Matrix<T> {
+        let mut result = Matrix::new((to.x - from.x) as u8, (to.y - from.y) as u8, self.data.get(0).unwrap().clone());
+        for x in from.x as u8..to.x as u8 {
+            for y in from.y as u8..to.y as u8 {
+                let t: T = self.get(x, y).clone();
+                result.set(x - from.x as u8, y - to.x as u8, t);
+            }
+        }
+
+        result
+    }
 }
 
 impl<T: Default + Clone> Matrix<T> {
@@ -110,8 +126,10 @@ impl<T: Default + Clone> Matrix<T> {
     }
 }
 
-use core::fmt::{self, Display, Write};
 use core::f32::consts::PI;
+use core::fmt::{self, Display, Write};
+
+use crate::engine::v2::V2;
 
 impl<T: Default + Clone + PartialEq + Display> fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

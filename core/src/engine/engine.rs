@@ -13,13 +13,21 @@ use crate::{
     scenes::pong::pong_scene::PongScene,
 };
 use std::{
-    sync::Arc,
+    sync::{
+        Arc, Mutex, OnceLock,
+        mpsc::{Receiver, Sender, channel},
+    },
     time::{Duration, Instant},
 };
 
 pub static SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
 pub type ActorId = u16;
+
+type SceneFactory = Box<dyn Fn() -> Box<dyn Scene> + Send>;
+
+static SCENE_SENDER: OnceLock<Sender<SceneFactory>> = OnceLock::new();
+static SCENE_RECEIVER: OnceLock<Mutex<Receiver<SceneFactory>>> = OnceLock::new();
 
 pub struct Engine {
     pub delta_time: f32,
@@ -33,6 +41,10 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(input: Box<dyn Input>) -> Self {
+        let (s, r) = channel::<SceneFactory>();
+        SCENE_SENDER.set(s).unwrap();
+        SCENE_RECEIVER.set(Mutex::new(r)).unwrap();
+
         Self {
             delta_time: 0.0,
             is_blue: false,
@@ -48,6 +60,11 @@ impl Engine {
         let mut last = Instant::now();
         let target_frame = Duration::from_millis(33);
 
+        if !self.is_any_scene {
+            self.open_scene(|| Box::new(PongScene::new()));
+            self.is_any_scene = true;
+        }
+
         loop {
             let frame_start = Instant::now();
             let dt = frame_start.duration_since(last);
@@ -57,9 +74,10 @@ impl Engine {
             self.delta_time = delta_time;
             self.is_blue = !self.is_blue;
 
-            if !self.is_any_scene {
-                self.open_scene(|| Box::new(PongScene::new()));
-                self.is_any_scene = true;
+            if let Ok(receiver) = SCENE_RECEIVER.get().unwrap().try_lock() {
+                if let Ok(factory) = receiver.try_recv() {
+                    open_scene(factory);
+                }
             }
 
             {
@@ -113,4 +131,11 @@ impl Engine {
         self.current_scene = obj;
         self.current_scene.as_mut().init(&mut self.world);
     }
+}
+
+pub fn open_scene<F>(factory: F)
+where
+    F: Fn() -> Box<dyn Scene> + Send + 'static,
+{
+    SCENE_SENDER.get().unwrap().send(Box::new(factory)).unwrap();
 }
