@@ -14,7 +14,7 @@ pub enum AsyncableType {
     Timeout,
     Interval,
 }
-pub enum AsyncableActionType {
+enum AsyncableActionType {
     Add,
     Remove,
 }
@@ -25,13 +25,13 @@ fn get_taken_ids() -> &'static RwLock<Vec<AsyncableId>> {
     TAKEN_IDS.get_or_init(|| RwLock::new(Vec::new()))
 }
 
-pub struct EnqueuedAsyncableJob {
+struct EnqueuedAsyncableJob {
     pub id_to_affect: AsyncableId,
     pub action_type: AsyncableActionType,
     pub asyncable: Option<AsyncableInProgress>,
 }
 
-pub struct AsyncableInProgress {
+struct AsyncableInProgress {
     pub id: AsyncableId,
     pub function: AsyncableFunction,
     pub async_type: AsyncableType,

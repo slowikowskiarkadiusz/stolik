@@ -210,7 +210,7 @@ impl Div<&V2> for &V2 {
 use core::fmt;
 use std::ops::{AddAssign, SubAssign};
 
-impl fmt::Display for &V2 {
+impl fmt::Display for V2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "v2({}, {})", self.x, self.y)
     }

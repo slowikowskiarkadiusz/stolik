@@ -9,7 +9,7 @@ use crate::engine::{
     v2::V2,
 };
 
-const MAX_LETTER_WIDTH: u8 = 3;
+// const MAX_LETTER_WIDTH: u8 = 3;
 const LETTER_HEIGHT: u8 = 5;
 
 pub struct TextActorOptions {
@@ -46,12 +46,15 @@ pub fn create_text_actor(
     let bottom_right = &top_left + &container_size;
     let center = (&top_left + &bottom_right) / 2.0;
 
+    let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
+
     world.add_new_actor(
         name.or_else(|| Some("text")),
         Some(Transform::new(center, container_size.clone())),
         None,
         None,
-        Some(generate_word_matrix(&text, container_size.x as u8, &color, reverse).0),
+        None,
+        Some(generated),
     )
 }
 
@@ -67,11 +70,12 @@ pub fn create_text_actor_at_center(
     if let Some(opt) = options {
         reverse = opt.reverse;
     }
-    let generated = generate_word_matrix(&text.to_uppercase(), u8::MAX, &color, reverse).0;
+    let generated = generate_word_matrix(&text, u8::MAX, &color, reverse).0;
 
     world.add_new_actor(
         name.or_else(|| Some("text")),
         Some(Transform::new(center, generated.get_size())),
+        None,
         None,
         None,
         Some(generated),
@@ -85,7 +89,7 @@ fn generate_word_matrix(text: &String, max_width: u8, color: &Color, reverse: bo
         word_render_length += 1;
     }
     word_render_length -= 1;
-    let mut full_word_matrix = ColorMatrix::new(word_render_length, LETTER_HEIGHT, Color::none());
+    let mut full_word_matrix = ColorMatrix::new(u8::max(max_width, word_render_length), LETTER_HEIGHT, Color::none());
     let color_none = Color::none();
 
     let mut current_position: u8 = 0;
@@ -114,7 +118,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
     let mut foreground = Matrix::<bool>::new(get_letter_width(&letter), LETTER_HEIGHT, false);
 
     match letter {
-        'A' => {
+        'a' | 'A' => {
             foreground.set(1, 0, true);
             foreground.set(0, 1, true);
             foreground.set(2, 1, true);
@@ -126,7 +130,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(2, 4, true);
         }
-        'B' => {
+        'b' | 'B' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(0, 1, true);
@@ -138,7 +142,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(1, 4, true);
         }
-        'C' => {
+        'c' | 'C' => {
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
             foreground.set(0, 1, true);
@@ -147,7 +151,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(1, 4, true);
             foreground.set(2, 4, true);
         }
-        'D' => {
+        'd' | 'D' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(0, 1, true);
@@ -159,7 +163,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(1, 4, true);
         }
-        'E' => {
+        'e' | 'E' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
@@ -171,7 +175,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(1, 4, true);
             foreground.set(2, 4, true);
         }
-        'F' => {
+        'f' | 'F' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
@@ -181,7 +185,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 3, true);
             foreground.set(0, 4, true);
         }
-        'G' => {
+        'g' | 'G' => {
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
             foreground.set(0, 1, true);
@@ -192,7 +196,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(1, 4, true);
             foreground.set(2, 4, true);
         }
-        'H' => {
+        'h' | 'H' => {
             foreground.set(0, 0, true);
             foreground.set(2, 0, true);
             foreground.set(0, 1, true);
@@ -205,7 +209,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(2, 4, true);
         }
-        'I' => {
+        'i' | 'I' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
@@ -216,7 +220,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(1, 4, true);
             foreground.set(2, 4, true);
         }
-        'J' => {
+        'j' | 'J' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
@@ -226,7 +230,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(2, 3, true);
             foreground.set(1, 4, true);
         }
-        'K' => {
+        'k' | 'K' => {
             foreground.set(0, 0, true);
             foreground.set(2, 0, true);
             foreground.set(0, 1, true);
@@ -238,7 +242,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(2, 4, true);
         }
-        'L' => {
+        'l' | 'L' => {
             foreground.set(0, 0, true);
             foreground.set(0, 1, true);
             foreground.set(0, 2, true);
@@ -247,7 +251,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(1, 4, true);
             foreground.set(2, 4, true);
         }
-        'M' => {
+        'm' | 'M' => {
             foreground.set(0, 0, true);
             foreground.set(2, 0, true);
             foreground.set(0, 1, true);
@@ -260,7 +264,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(2, 4, true);
         }
-        'N' => {
+        'n' | 'N' => {
             // set!(0, 0);
             foreground.set(0, 1, true);
             foreground.set(0, 2, true);
@@ -275,7 +279,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(2, 3, true);
             foreground.set(2, 4, true);
         }
-        'O' => {
+        'o' | 'O' => {
             foreground.set(1, 0, true);
             foreground.set(0, 1, true);
             foreground.set(2, 1, true);
@@ -285,7 +289,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(2, 3, true);
             foreground.set(1, 4, true);
         }
-        'P' => {
+        'p' | 'P' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(0, 1, true);
@@ -295,7 +299,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 3, true);
             foreground.set(0, 4, true);
         }
-        'Q' => {
+        'q' | 'Q' => {
             foreground.set(1, 0, true);
             foreground.set(0, 1, true);
             foreground.set(2, 1, true);
@@ -304,7 +308,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(1, 3, true);
             foreground.set(2, 4, true);
         }
-        'R' => {
+        'r' | 'R' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(0, 1, true);
@@ -316,7 +320,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(2, 4, true);
         }
-        'S' => {
+        's' | 'S' => {
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
             foreground.set(0, 1, true);
@@ -325,7 +329,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(1, 4, true);
         }
-        'T' => {
+        't' | 'T' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
@@ -334,7 +338,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(1, 3, true);
             foreground.set(1, 4, true);
         }
-        'U' => {
+        'u' | 'U' => {
             foreground.set(0, 0, true);
             foreground.set(0, 1, true);
             foreground.set(0, 2, true);
@@ -347,7 +351,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(2, 3, true);
             foreground.set(2, 4, true);
         }
-        'V' => {
+        'v' | 'V' => {
             foreground.set(0, 0, true);
             foreground.set(0, 1, true);
             foreground.set(0, 2, true);
@@ -359,7 +363,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(2, 2, true);
             foreground.set(2, 3, true);
         }
-        'W' => {
+        'w' | 'W' => {
             foreground.set(0, 0, true);
             foreground.set(2, 0, true);
             foreground.set(0, 1, true);
@@ -372,7 +376,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(2, 4, true);
         }
-        'X' => {
+        'x' | 'X' => {
             foreground.set(0, 0, true);
             foreground.set(2, 0, true);
             foreground.set(1, 1, true);
@@ -381,7 +385,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(0, 4, true);
             foreground.set(2, 4, true);
         }
-        'Y' => {
+        'y' | 'Y' => {
             foreground.set(0, 0, true);
             foreground.set(2, 0, true);
             foreground.set(0, 1, true);
@@ -390,7 +394,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
             foreground.set(1, 3, true);
             foreground.set(1, 4, true);
         }
-        'Z' => {
+        'z' | 'Z' => {
             foreground.set(0, 0, true);
             foreground.set(1, 0, true);
             foreground.set(2, 0, true);
@@ -552,7 +556,7 @@ fn generate_letter(into: &mut ColorMatrix, at_x: &mut u8, letter: char, color: &
 
 fn get_letter_width(letter: &char) -> u8 {
     match letter {
-        'A'..='Z' | '0'..='9' => 3,
+        'a'..='z' | 'A'..='Z' | '0'..='9' => 3,
         '.' => 1,
         '-' => 2,
         '+' => 3,

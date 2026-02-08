@@ -5,12 +5,16 @@ use crate::{
         asyncable::AsyncableStorage,
         color::Color,
         color_matrix::ColorMatrix,
-        components::{collider::Collider, world::World},
+        components::{
+            blinker::Blinker,
+            collider::Collider,
+            world::{self, World},
+        },
         input::input::Input,
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
     },
-    scenes::pong::pong_scene::PongScene,
+    scenes::{menu::menu_scene::MenuScene, pong::pong_scene::PongScene},
 };
 use std::{
     sync::{
@@ -24,7 +28,7 @@ pub static SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
 pub type ActorId = u16;
 
-type SceneFactory = Box<dyn Fn() -> Box<dyn Scene> + Send>;
+pub type SceneFactory = Box<dyn Fn() -> Box<dyn Scene> + Send + Sync>;
 
 static SCENE_SENDER: OnceLock<Sender<SceneFactory>> = OnceLock::new();
 static SCENE_RECEIVER: OnceLock<Mutex<Receiver<SceneFactory>>> = OnceLock::new();
@@ -61,7 +65,7 @@ impl Engine {
         let target_frame = Duration::from_millis(33);
 
         if !self.is_any_scene {
-            self.open_scene(|| Box::new(PongScene::new()));
+            self.open_scene(|| Box::new(MenuScene::new()));
             self.is_any_scene = true;
         }
 
@@ -89,6 +93,7 @@ impl Engine {
 
             {
                 let overlaps = Collider::detect_overlaps(&self.world);
+                Blinker::tick(&mut self.world, delta_time);
                 let mut_scene = self.current_scene.as_mut();
                 mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
 
@@ -110,13 +115,20 @@ impl Engine {
             if let Some(render) = self.world.get_render(actor_id)
                 && let Some(transform) = self.world.get_transform(actor_id)
             {
-                screen.write(
-                    render,
-                    &transform.center,
-                    Some(transform.rotation.clone()),
-                    Some(transform.anchor_offset.clone()),
-                    Some(true),
-                );
+                let mut do_render = true;
+                if let Some(blinker) = self.world.get_blinker(actor_id) {
+                    do_render = blinker.is_on;
+                }
+
+                if do_render {
+                    screen.write(
+                        render,
+                        &transform.center,
+                        Some(transform.rotation.clone()),
+                        Some(transform.anchor_offset.clone()),
+                        Some(true),
+                    );
+                }
             }
         }
         screen
@@ -135,7 +147,7 @@ impl Engine {
 
 pub fn open_scene<F>(factory: F)
 where
-    F: Fn() -> Box<dyn Scene> + Send + 'static,
+    F: Fn() -> Box<dyn Scene> + Send + Sync + 'static,
 {
     SCENE_SENDER.get().unwrap().send(Box::new(factory)).unwrap();
 }

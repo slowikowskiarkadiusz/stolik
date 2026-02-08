@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::engine::{
     color_matrix::ColorMatrix,
     components::{
+        blinker::Blinker,
         collider::{Collider, CollisionMask, CollisionMaskId},
         physics::Physics,
         transform::Transform,
@@ -16,6 +17,7 @@ pub struct World {
     transforms: HashMap<ActorId, Option<Transform>>,
     colliders: HashMap<ActorId, Option<Collider>>,
     physics: HashMap<ActorId, Option<Physics>>,
+    blinkers: HashMap<ActorId, Option<Blinker>>,
     renders: HashMap<ActorId, Option<ColorMatrix>>,
 
     collision_matrix: [CollisionMask; CollisionMaskId::MAX as usize],
@@ -29,6 +31,7 @@ impl World {
             transforms: HashMap::new(),
             colliders: HashMap::new(),
             physics: HashMap::new(),
+            blinkers: HashMap::new(),
             renders: HashMap::new(),
 
             collision_matrix: [CollisionMask::MAX; CollisionMaskId::MAX as usize],
@@ -105,6 +108,22 @@ impl World {
         }
     }
 
+    pub fn get_blinker(&self, actor_id: &ActorId) -> Option<&Blinker> {
+        if let Some(r) = self.blinkers.get(actor_id) {
+            r.as_ref()
+        } else {
+            None
+        }
+    }
+
+    pub fn get_mut_blinker(&mut self, actor_id: &ActorId) -> Option<&mut Blinker> {
+        if let Some(r) = self.blinkers.get_mut(actor_id) {
+            r.as_mut()
+        } else {
+            None
+        }
+    }
+
     pub fn get_render(&self, actor_id: &ActorId) -> Option<&ColorMatrix> {
         if let Some(r) = self.renders.get(actor_id) {
             r.as_ref()
@@ -127,6 +146,7 @@ impl World {
         transform: Option<Transform>,
         collider: Option<Collider>,
         physics: Option<Physics>,
+        blinker: Option<Blinker>,
         render: Option<ColorMatrix>,
     ) -> ActorId {
         let mut new_actor_id = 0;
@@ -150,6 +170,7 @@ impl World {
         self.transforms.insert(new_actor_id, transform);
         self.colliders.insert(new_actor_id, collider);
         self.physics.insert(new_actor_id, physics);
+        self.blinkers.insert(new_actor_id, blinker);
         self.renders.insert(new_actor_id, render);
         new_actor_id
     }

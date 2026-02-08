@@ -19,6 +19,7 @@ pub fn create_rectangle_actor(world: &mut World, center: V2, size: V2, color: Co
         }
         else {None},
         None,
+        None,
         Some(ColorMatrix::new(size.x as u8, size.y as u8, color)),
     )
 }
