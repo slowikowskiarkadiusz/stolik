@@ -131,7 +131,6 @@ impl Engine {
     where
         F: Fn() -> Box<dyn Scene>,
     {
-        println!("HALO 2");
         self.world.clear_all();
         let obj = new_scene_func();
         self.current_scene = obj;
@@ -143,6 +142,5 @@ pub fn open_scene<F>(factory: F)
 where
     F: Fn() -> Box<dyn Scene> + Send + Sync + 'static,
 {
-    println!("HALO 1");
     SCENE_SENDER.get().unwrap().send(Box::new(factory)).unwrap();
 }

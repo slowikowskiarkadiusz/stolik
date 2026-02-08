@@ -39,7 +39,11 @@ pub struct MenuScene {
 
 impl Scene for MenuScene {
     fn init(&mut self, world: &mut World) {
-        self.options = vec![MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong_scene", "pong", 0)];
+        self.options = vec![
+            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong_scene", "pong", 0),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong_scene", "pong", 0),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong_scene", "pong", 0),
+        ];
 
         for i in 0..self.options.len() {
             self.options[i].text_actor_id = create_text_actor(
@@ -63,20 +67,27 @@ impl Scene for MenuScene {
 
         let mut changed = false;
         if input.is_key_down(Key::P1Up) {
-            println!("A");
-            self.cursor_position = self.cursor_position.saturating_sub(1);
+            if self.cursor_position == 0 {
+                self.cursor_position = self.options.len() as u8 - 1;
+            } else {
+                self.cursor_position -= 1;
+            }
             changed = true;
         }
         if input.is_key_down(Key::P1Down) {
-            println!("A");
-            self.cursor_position = self.cursor_position.saturating_add(1);
+            if self.cursor_position == self.options.len() as u8 - 1 {
+                self.cursor_position = 0;
+            } else {
+                self.cursor_position += 1;
+            }
             changed = true;
         }
 
-        self.cursor_position = self.cursor_position % self.options.len() as u8;
+        if let Some(cursor_transform) = world.get_mut_transform(&self.cursor_actor_id) {
+            cursor_transform.center = V2::new(1.5, 2.5 + self.cursor_position as f32 * 6.0);
+        }
 
         if input.is_key_down(Key::Start) {
-            println!("C");
             let selected = self.options.remove(self.cursor_position as usize);
             open_scene(selected.next_scene_factory);
         }
