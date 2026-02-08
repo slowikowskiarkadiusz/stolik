@@ -1,9 +1,12 @@
 use rand::Rng;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
     engine::{
-        actor::{rectangle_actor::create_rectangle_actor, text::create_text_actor_at_center},
+        actor::{
+            rectangle_actor::create_rectangle_actor,
+            text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, create_text_actor_at_center},
+        },
         asyncable::{AsyncableType, add_asyncable},
         color::Color,
         components::{collider::ColliderType, world::World},
@@ -174,7 +177,8 @@ impl PongScene {
                 // engine::set_timeout([this]() { canBounce = true; }, 1000);
             } else if ball_transform.center.x - ball_transform.size.x / 2.0 <= 0.0 {
                 self.ball_speed.x *= -1.0;
-                ball_transform.center.x = 0.1;
+                self.can_bounce = false;
+                // ball_transform.center.x = 0.1;
                 // TODO timeout
                 // engine::set_timeout([this]() { canBounce = true; }, 1000);
             }
@@ -275,20 +279,21 @@ impl PongScene {
                 world.remove_actor(&score_text_actor);
             }
 
-            let new_actor = create_text_actor_at_center(
+            let score_text_actor = create_text_actor_at_center(
                 world,
                 self.score[i].to_string(),
                 V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 })),
-                Color::white(),
+                V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32),
+                Color::blue().a(127).clone(),
                 None,
-                Some("abc"),
+                Some("score_text"),
             );
 
-            if let Some(a) = world.get_mut_render(&new_actor) {
+            if let Some(a) = world.get_mut_render(&score_text_actor) {
                 a.rotate(-90.0, Color::none());
             }
 
-            self.score_text[i] = Some(new_actor);
+            self.score_text[i] = Some(score_text_actor);
         }
     }
 }

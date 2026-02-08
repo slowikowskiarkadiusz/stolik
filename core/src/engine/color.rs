@@ -46,7 +46,7 @@ impl Color {
     }
 
     pub fn none() -> Color {
-        Color::black()
+        Color::new(0, 0, 0, 0)
     }
 
     pub fn a(&mut self, alpha: u8) -> &Color {

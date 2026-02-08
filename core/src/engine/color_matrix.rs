@@ -43,7 +43,6 @@ impl Matrix<Color> {
         if angle < 0 {
             angle += 360;
         }
-
         let rad = other_rotation * PI / 180.0;
         let cos = rad.cos();
         let sin = rad.sin();
@@ -51,7 +50,9 @@ impl Matrix<Color> {
         for x in 0..other.width {
             for y in 0..other.height {
                 let src = other.get(x, y);
-                if src.is_none() {
+
+                // Pomijaj tylko całkowicie przezroczyste piksele
+                if src.a == 0 {
                     continue;
                 }
 
@@ -85,42 +86,30 @@ impl Matrix<Color> {
                 let final_x = (rx + other_center.x).ceil();
                 let final_y = (ry + other_center.y).ceil();
 
-                if final_x >= 0.0
-                    && final_y >= 0.0
-                    && final_x < self.width as f32
-                    && final_y < self.height as f32
-                {
+                if final_x >= 0.0 && final_y >= 0.0 && final_x < self.width as f32 && final_y < self.height as f32 {
                     let dst = self.get(final_x as u8, final_y as u8).clone();
 
                     if blend_colors {
-                        let out_a: i16 = src.a as i16 + dst.a as i16 + (255 - src.a) as i16;
-                        if out_a < 0 {
-                            self.set(x, y, Color::none());
+                        let dst = self.get(final_x as u8, final_y as u8);
+
+                        let sa = src.a as f32 / 255.0;
+                        let da = dst.a as f32 / 255.0;
+                        let out_a = sa + da * (1.0 - sa);
+
+                        if out_a <= 0.0 {
+                            self.set(final_x as u8, final_y as u8, Color::none());
+                        } else {
+                            let inv_sa = 1.0 - sa;
+                            let r = (src.r as f32 * sa + dst.r as f32 * da * inv_sa) / out_a;
+                            let g = (src.g as f32 * sa + dst.g as f32 * da * inv_sa) / out_a;
+                            let b = (src.b as f32 * sa + dst.b as f32 * da * inv_sa) / out_a;
+
+                            self.set(
+                                final_x as u8,
+                                final_y as u8,
+                                Color::new(r.round() as u8, g.round() as u8, b.round() as u8, (out_a * 255.0).round() as u8),
+                            );
                         }
-
-                        let r = (src.r as u16 * src.a as u16
-                            + dst.r as u16 * dst.a as u16 * (255 - src.a as u16))
-                            as f32
-                            / out_a as f32;
-                        let g = (src.g as u16 * src.a as u16
-                            + dst.g as u16 * dst.a as u16 * (255 - src.a as u16))
-                            as f32
-                            / out_a as f32;
-                        let b = (src.b as u16 * src.a as u16
-                            + dst.b as u16 * dst.a as u16 * (255 - src.a as u16))
-                            as f32
-                            / out_a as f32;
-
-                        self.set(
-                            final_x as u8,
-                            final_y as u8,
-                            Color::new(
-                                r.clamp(0.0, 255.0) as u8,
-                                g.clamp(0.0, 255.0) as u8,
-                                b.clamp(0.0, 255.0) as u8,
-                                out_a.clamp(0, 255) as u8,
-                            ),
-                        );
                     } else {
                         self.set(final_x as u8, final_y as u8, src.clone());
                     }

@@ -19,7 +19,7 @@ pub enum Key {
     Start,
 }
 
-pub static KEYS_LENGTH: u8 = Key::Start as u8;
+pub static KEYS_LENGTH: u8 = Key::Start as u8 + 1;
 
 pub enum KeyState {
     Down,

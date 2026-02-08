@@ -5,16 +5,12 @@ use crate::{
         asyncable::AsyncableStorage,
         color::Color,
         color_matrix::ColorMatrix,
-        components::{
-            blinker::Blinker,
-            collider::Collider,
-            world::{self, World},
-        },
+        components::{blinker::Blinker, collider::Collider, world::World},
         input::input::Input,
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
     },
-    scenes::{menu::menu_scene::MenuScene, pong::pong_scene::PongScene},
+    scenes::menu::menu_scene::MenuScene,
 };
 use std::{
     sync::{
@@ -35,7 +31,6 @@ static SCENE_RECEIVER: OnceLock<Mutex<Receiver<SceneFactory>>> = OnceLock::new()
 
 pub struct Engine {
     pub delta_time: f32,
-    is_blue: bool,
     world: World,
     current_scene: Box<dyn Scene>,
     is_any_scene: bool,
@@ -51,7 +46,6 @@ impl Engine {
 
         Self {
             delta_time: 0.0,
-            is_blue: false,
             world: World::new(),
             current_scene: Box::new(EmptyScene::new()),
             is_any_scene: false,
@@ -65,7 +59,7 @@ impl Engine {
         let target_frame = Duration::from_millis(33);
 
         if !self.is_any_scene {
-            self.open_scene(|| Box::new(MenuScene::new()));
+            self.change_scene(|| Box::new(MenuScene::new()));
             self.is_any_scene = true;
         }
 
@@ -76,11 +70,10 @@ impl Engine {
             let delta_time = dt.as_secs_f32();
 
             self.delta_time = delta_time;
-            self.is_blue = !self.is_blue;
 
             if let Ok(receiver) = SCENE_RECEIVER.get().unwrap().try_lock() {
                 if let Ok(factory) = receiver.try_recv() {
-                    open_scene(factory);
+                    self.change_scene(factory);
                 }
             }
 
@@ -134,10 +127,11 @@ impl Engine {
         screen
     }
 
-    pub fn open_scene<F>(&mut self, new_scene_func: F)
+    pub fn change_scene<F>(&mut self, new_scene_func: F)
     where
         F: Fn() -> Box<dyn Scene>,
     {
+        println!("HALO 2");
         self.world.clear_all();
         let obj = new_scene_func();
         self.current_scene = obj;
@@ -149,5 +143,6 @@ pub fn open_scene<F>(factory: F)
 where
     F: Fn() -> Box<dyn Scene> + Send + Sync + 'static,
 {
+    println!("HALO 1");
     SCENE_SENDER.get().unwrap().send(Box::new(factory)).unwrap();
 }

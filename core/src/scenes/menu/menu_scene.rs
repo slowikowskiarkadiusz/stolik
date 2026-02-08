@@ -56,23 +56,30 @@ impl Scene for MenuScene {
         self.cursor_actor_id = create_arrow_actor(world, V2::new(1.5, 2.5), 5, Color::white(), 0.5, Some("arrow"));
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
+    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, _delta_time: f32) {
+        if self.options.len() == 0 {
+            return;
+        }
+
         let mut changed = false;
         if input.is_key_down(Key::P1Up) {
+            println!("A");
             self.cursor_position = self.cursor_position.saturating_sub(1);
             changed = true;
         }
         if input.is_key_down(Key::P1Down) {
+            println!("A");
             self.cursor_position = self.cursor_position.saturating_add(1);
             changed = true;
         }
 
-        if input.is_key_down(Key::P1Green) {
+        self.cursor_position = self.cursor_position % self.options.len() as u8;
+
+        if input.is_key_down(Key::Start) {
+            println!("C");
             let selected = self.options.remove(self.cursor_position as usize);
             open_scene(selected.next_scene_factory);
         }
-
-        self.cursor_position = self.cursor_position % self.options.len() as u8;
 
         if changed {
             // let i =0;

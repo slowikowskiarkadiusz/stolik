@@ -9,8 +9,8 @@ use crate::engine::{
     v2::V2,
 };
 
-// const MAX_LETTER_WIDTH: u8 = 3;
-const LETTER_HEIGHT: u8 = 5;
+pub const MAX_LETTER_WIDTH: u8 = 3;
+pub const LETTER_HEIGHT: u8 = 5;
 
 pub struct TextActorOptions {
     pub animate_if_outbound: bool,
@@ -62,6 +62,7 @@ pub fn create_text_actor_at_center(
     world: &mut World,
     text: String,
     center: V2,
+    container_size: V2,
     color: Color,
     options: Option<TextActorOptions>,
     name: Option<&str>,
@@ -70,7 +71,7 @@ pub fn create_text_actor_at_center(
     if let Some(opt) = options {
         reverse = opt.reverse;
     }
-    let generated = generate_word_matrix(&text, u8::MAX, &color, reverse).0;
+    let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
 
     world.add_new_actor(
         name.or_else(|| Some("text")),
@@ -104,7 +105,7 @@ fn generate_word_matrix(text: &String, max_width: u8, color: &Color, reverse: bo
         current_position += 1;
     }
 
-    if word_render_length < max_width {
+    if word_render_length <= max_width {
         (full_word_matrix, None)
     } else {
         (
