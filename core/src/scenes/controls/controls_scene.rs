@@ -162,7 +162,7 @@ impl ControlsScene {
             for player_index in 0..2 {
                 let mut current_player_actors = Vec::<ActorId>::new();
                 for i in 0..current_page_length {
-                    let y = SCREEN_SIZE / 2 - (BUTTON_SIZE + 1) * (i as u8 + 1) + if player_index == 0 { 0 } else { SCREEN_SIZE / 2 };
+                    let y = (SCREEN_SIZE / 2) - (BUTTON_SIZE + 1) * (i as u8 + 1) + if player_index == 0 { 0 } else { SCREEN_SIZE / 2 };
                     let mut x = 0;
                     let current_line = &current_page[current_page_length - 1usize - i];
                     for key in &current_line.keys {
