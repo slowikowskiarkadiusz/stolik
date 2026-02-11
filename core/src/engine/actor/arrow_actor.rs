@@ -6,14 +6,14 @@ use crate::engine::{
     v2::V2,
 };
 
-pub fn create_arrow_actor(world: &mut World, center: V2, height: u8, color: Color, delay_s: f32, name: Option<&str>) -> ActorId {
+pub fn create_arrow_actor(world: &mut World, center: V2, height: u8, color: Color, delay_ms: u32, name: Option<&str>) -> ActorId {
     let shape = make_shape(height, color);
     world.add_new_actor(
         name.or_else(|| Some("arrow")),
         Some(Transform::new(center, V2::new(shape.width as f32, shape.height as f32))),
         None,
         None,
-        Some(Blinker::new(delay_s)),
+        Some(Blinker::new(delay_ms)),
         Some(shape),
     )
 }

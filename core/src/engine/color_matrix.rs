@@ -64,9 +64,7 @@ impl Matrix<Color> {
 
                 if (angle % 90) != 0 {
                     rx = dx * cos - dy * sin;
-                    // TODO???
-                    ry = dy * sin + dy * cos;
-                    // ry = dy * cos - dx * sin;
+                    ry = dx * sin + dy * cos;
                 } else {
                     if angle == 90 {
                         rx = -dy;

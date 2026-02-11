@@ -18,4 +18,9 @@ impl Transform {
             rotation: 0.0,
         }
     }
+
+    pub fn rotate_around(&mut self, pivot: &V2, degrees: &f32) {
+        self.rotation += degrees;
+        self.center = self.center.rotate_around(pivot, degrees);
+    }
 }

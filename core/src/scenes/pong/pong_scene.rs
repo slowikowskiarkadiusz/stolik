@@ -208,7 +208,7 @@ impl PongScene {
             print_victory_text(world, if self.score[0] > self.score[1] { 1 } else { 2 });
             add_asyncable(
                 Box::new(|_, _| {
-                    open_scene(|| Box::new(PongScene::new()));
+                    open_scene(Box::new(|| Box::new(PongScene::new())));
                 }),
                 10.0,
                 AsyncableType::Timeout,

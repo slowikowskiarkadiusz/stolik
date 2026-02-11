@@ -10,22 +10,27 @@ use crate::{
         scene::Scene,
         v2::V2,
     },
-    scenes::pong::pong_scene::PongScene,
+    scenes::{controls::controls_scene::ControlsScene, pong::pong_scene::PongScene},
 };
 
 struct MenuOption {
     next_scene_factory: SceneFactory,
-    next_scene_code_name: String,
-    next_scene_print_name: String,
+    next_scene_code_name: &'static str,
+    next_scene_print_name: &'static str,
     text_actor_id: ActorId,
 }
 
 impl MenuOption {
-    pub fn new(next_scene_factory: SceneFactory, next_scene_code_name: &str, next_scene_print_name: &str, text_actor_id: ActorId) -> Self {
+    pub fn new(
+        next_scene_factory: SceneFactory,
+        next_scene_code_name: &'static str,
+        next_scene_print_name: &'static str,
+        text_actor_id: ActorId,
+    ) -> Self {
         Self {
             next_scene_factory,
-            next_scene_code_name: String::from(next_scene_code_name),
-            next_scene_print_name: String::from(next_scene_print_name),
+            next_scene_code_name: next_scene_code_name,
+            next_scene_print_name: next_scene_print_name,
             text_actor_id: text_actor_id,
         }
     }
@@ -40,15 +45,15 @@ pub struct MenuScene {
 impl Scene for MenuScene {
     fn init(&mut self, world: &mut World) {
         self.options = vec![
-            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong_scene", "pong", 0),
-            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong_scene", "pong", 0),
-            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong_scene", "pong", 0),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong", 0),
+            // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "srong", "srong", 0),
+            // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "fong", "fong", 0),
         ];
 
         for i in 0..self.options.len() {
             self.options[i].text_actor_id = create_text_actor(
                 world,
-                self.options[i].next_scene_print_name.clone(),
+                String::from(self.options[i].next_scene_print_name),
                 V2::new(4.0, i as f32 * 6.0),
                 V2::new(SCREEN_SIZE as f32 - 4.0, 5.0),
                 Color::white(),
@@ -57,7 +62,7 @@ impl Scene for MenuScene {
             );
         }
 
-        self.cursor_actor_id = create_arrow_actor(world, V2::new(1.5, 2.5), 5, Color::white(), 0.5, Some("arrow"));
+        self.cursor_actor_id = create_arrow_actor(world, V2::new(1.5, 2.5), 5, Color::white(), 500, Some("arrow"));
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, _delta_time: f32) {
@@ -89,22 +94,18 @@ impl Scene for MenuScene {
 
         if input.is_key_down(Key::Start) {
             let selected = self.options.remove(self.cursor_position as usize);
-            open_scene(selected.next_scene_factory);
+            let name = selected.next_scene_code_name;
+            open_scene(Box::new(|| Box::new(ControlsScene::new(name, selected.next_scene_factory))));
         }
 
         if changed {
-            // let i =0;
-            // for option in &self.options{
-
-            // }
-
             if let Some(cursor_blinker) = world.get_mut_blinker(&self.cursor_actor_id) {
                 cursor_blinker.reset();
             }
         }
     }
 
-    fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, delta_time: f32) {
+    fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {
         // todo!()
     }
 }

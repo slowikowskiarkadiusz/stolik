@@ -35,7 +35,7 @@ struct AsyncableInProgress {
     pub id: AsyncableId,
     pub function: AsyncableFunction,
     pub async_type: AsyncableType,
-    pub ms: f32,
+    pub seconds: f32,
     pub timer: f32,
 }
 
@@ -71,13 +71,13 @@ impl AsyncableStorage {
 
             match asyncable.async_type {
                 AsyncableType::Timeout => {
-                    if asyncable.timer >= asyncable.ms {
+                    if asyncable.timer >= asyncable.seconds {
                         (asyncable.function)(world, delta_time);
                         remove_asyncable(asyncable.id);
                     }
                 }
                 AsyncableType::Interval => {
-                    if asyncable.timer >= asyncable.ms {
+                    if asyncable.timer >= asyncable.seconds {
                         asyncable.timer = 0.0;
                         (asyncable.function)(world, delta_time);
                     }
@@ -105,7 +105,7 @@ pub fn add_asyncable(function: AsyncableFunction, ms: f32, asyncable_type: Async
             id: free_id.clone(),
             function,
             async_type: asyncable_type,
-            ms,
+            seconds: ms,
             timer: 0.0,
         }),
     };

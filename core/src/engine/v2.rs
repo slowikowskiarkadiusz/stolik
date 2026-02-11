@@ -78,15 +78,15 @@ impl V2 {
         self / self.mag()
     }
 
-    pub fn rotate_around(&mut self, pivot: &V2, degrees: &f32) -> Self {
+    pub fn rotate_around(&self, pivot: &V2, degrees: &f32) -> Self {
         let rad = (degrees * PI) / 180.0;
         let dx = self.x - pivot.x;
-        let dy = self.x - pivot.y;
+        let dy = self.y - pivot.y;
         let cos = rad.cos();
         let sin = rad.sin();
 
         let rx = cos * dx - sin * dy + pivot.x;
-        let ry = cos * dy - sin * dy + pivot.y;
+        let ry = sin * dx + cos * dy + pivot.y;
 
         Self { x: rx, y: ry }
     }

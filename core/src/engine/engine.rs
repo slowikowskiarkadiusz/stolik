@@ -24,7 +24,7 @@ pub static SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
 pub type ActorId = u16;
 
-pub type SceneFactory = Box<dyn Fn() -> Box<dyn Scene> + Send + Sync>;
+pub type SceneFactory = Box<dyn FnOnce() -> Box<dyn Scene> + Send + Sync>;
 
 static SCENE_SENDER: OnceLock<Sender<SceneFactory>> = OnceLock::new();
 static SCENE_RECEIVER: OnceLock<Mutex<Receiver<SceneFactory>>> = OnceLock::new();
@@ -129,7 +129,7 @@ impl Engine {
 
     pub fn change_scene<F>(&mut self, new_scene_func: F)
     where
-        F: Fn() -> Box<dyn Scene>,
+        F: FnOnce() -> Box<dyn Scene>,
     {
         self.world.clear_all();
         let obj = new_scene_func();
@@ -138,9 +138,6 @@ impl Engine {
     }
 }
 
-pub fn open_scene<F>(factory: F)
-where
-    F: Fn() -> Box<dyn Scene> + Send + Sync + 'static,
-{
+pub fn open_scene(factory: SceneFactory){
     SCENE_SENDER.get().unwrap().send(Box::new(factory)).unwrap();
 }
