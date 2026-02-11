@@ -82,6 +82,7 @@ impl Scene for ControlsScene {
 
         if self.print_page_timer_seconds > 1.6 {
             self.print_page_timer_seconds = 0.0;
+            self.current_page_index = (self.current_page_index + 1) % self.pages.len() as u8;
             self.print_page(world);
         }
 
@@ -96,7 +97,7 @@ impl Scene for ControlsScene {
 
 impl ControlsScene {
     pub fn new(next_scene_name: &str, next_scene: SceneFactory) -> Self {
-        let lines_per_page = SCREEN_SIZE / 2 - 5 / (BUTTON_SIZE + 1);
+        let lines_per_page = (SCREEN_SIZE / 2 - 5) / (BUTTON_SIZE + 1);
         Self {
             can_proceed: Arc::new(Mutex::new(false)),
             divider_actor_id: 0,
