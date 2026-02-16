@@ -1,0 +1,47 @@
+[package]
+edition      = "2024"
+name         = "esp32_main"
+rust-version = "1.88"
+version      = "0.1.0"
+
+[[bin]]
+name = "esp32_main"
+path = "./src/bin/main.rs"
+
+[dependencies]
+core = { path = "../core" }
+esp-hal = { version = "1.0", features = ["esp32s3", "log-04", "unstable"] }
+esp-backtrace = { version = "0.18", features = ["esp32s3", "panic-handler", "println"] }
+esp-println = { version = "0.16", features = ["esp32s3", "log-04"] }
+esp-alloc = "0.5"
+esp-bootloader-esp-idf = { version = "0.4.0", features = ["esp32s3", "log-04"] }
+
+embassy-executor = "0.9"
+embassy-time = "0.4"
+embassy-sync = "0.7"
+
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+embedded-graphics = "0.8"
+
+heapless = "0.8"
+static_cell = "2.1"
+critical-section = "1.2"
+log = "0.4"
+
+esp-hub75 = { git = "https://github.com/liebman/esp-hub75", branch = "main", features = ["esp32s3"] }
+esp-rtos = { version = "0.2", features = ["esp32s3", "embassy"] }
+getrandom = { version = "0.2", default-features = false }
+
+
+[profile.dev]
+opt-level = "s"
+
+[profile.release]
+codegen-units    = 1
+debug            = 2
+debug-assertions = false
+incremental      = false
+lto              = 'fat'
+opt-level        = 's'
+overflow-checks  = false

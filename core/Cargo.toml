@@ -8,4 +8,4 @@ default = ["std"]
 std = []
 
 [dependencies]
-rand = "0.8"
+rand = { version = "0.8", default-features = false, features = ["small_rng"] }

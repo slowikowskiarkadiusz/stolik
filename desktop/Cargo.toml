@@ -1,8 +1,0 @@
-[package]
-name = "desktop"
-version = "0.0.1"
-edition = "2024"
-
-[dependencies]
-core = { path = "../core", features = ["std"] }
-minifb = "0.28.0"
