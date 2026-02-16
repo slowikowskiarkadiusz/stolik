@@ -9,6 +9,8 @@ use crate::engine::{
     engine::ActorId,
     v2::V2,
 };
+extern crate alloc;
+use alloc::vec;
 
 pub fn create_rectangle_actor(world: &mut World, center: V2, size: V2, color: Color, collider_type: Option<ColliderType>, name: Option<&str>) -> ActorId {
     world.add_new_actor(

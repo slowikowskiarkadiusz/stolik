@@ -1,10 +1,14 @@
-use std::{
-    sync::{
-        OnceLock, RwLock,
-        mpsc::{Receiver, Sender, channel},
-    },
-    u16,
-};
+use core::u16;
+use spin::RwLock;
+
+// TODO HashMap
+
+extern crate alloc;
+use alloc::{boxed::Box, vec::Vec};
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::channel::Channel;
+use embassy_sync::channel::Receiver;
+use embassy_sync::mutex::Mutex;
 
 use crate::engine::components::world::World;
 
@@ -19,8 +23,8 @@ enum AsyncableActionType {
     Remove,
 }
 
-static QUEUE: OnceLock<Sender<EnqueuedAsyncableJob>> = OnceLock::new();
-static TAKEN_IDS: OnceLock<RwLock<Vec<AsyncableId>>> = OnceLock::new();
+static QUEUE: Channel<CriticalSectionRawMutex, EnqueuedAsyncableJob, 64> = Channel::new();
+static TAKEN_IDS: Mutex<CriticalSectionRawMutex, Vec<AsyncableId>> = Mutex::new(Vec::new());
 fn get_taken_ids() -> &'static RwLock<Vec<AsyncableId>> {
     TAKEN_IDS.get_or_init(|| RwLock::new(Vec::new()))
 }
@@ -41,21 +45,19 @@ struct AsyncableInProgress {
 
 pub struct AsyncableStorage {
     asyncables_in_progress: Vec<AsyncableInProgress>,
-    queue_receiver: Receiver<EnqueuedAsyncableJob>,
+    queue_receiver: Receiver<'static, CriticalSectionRawMutex, EnqueuedAsyncableJob, 64>,
 }
 
 impl AsyncableStorage {
     pub fn new() -> Self {
-        let (s, r) = channel();
-        QUEUE.set(s).unwrap();
         Self {
             asyncables_in_progress: Vec::new(),
-            queue_receiver: r,
+            queue_receiver: QUEUE.receiver(),
         }
     }
 
     pub fn update(&mut self, world: &mut World, delta_time: f32) {
-        while let Ok(job) = self.queue_receiver.try_recv() {
+        while let Ok(job) = self.queue_receiver.try_receive() {
             match job.action_type {
                 AsyncableActionType::Add => {
                     self.asyncables_in_progress.push(job.asyncable.unwrap());

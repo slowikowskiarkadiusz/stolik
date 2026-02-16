@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+// TODO HashMap
+
+extern crate alloc;
+use alloc::{string::String, vec::Vec};
 
 use crate::engine::{
     color_matrix::ColorMatrix,

@@ -1,3 +1,6 @@
+extern crate alloc;
+use alloc::boxed::Box;
+
 pub trait Thread {
     fn start(handle: Box<dyn Fn() + Send>) -> Self;
     fn stop(&self);

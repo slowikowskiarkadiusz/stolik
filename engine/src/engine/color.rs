@@ -1,4 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+extern crate alloc;
+use alloc::{vec, vec::Vec};
 
 #[derive(PartialEq, Clone)]
 pub struct Color {

@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use core::f32::consts::PI;
 
 use crate::engine::{color::Color, matrix::Matrix, v2::V2};
 

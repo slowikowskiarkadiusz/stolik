@@ -12,13 +12,13 @@ use crate::{
     },
     scenes::menu::menu_scene::MenuScene,
 };
-use std::{
-    sync::{
-        Arc, Mutex, OnceLock,
-        mpsc::{Receiver, Sender, channel},
-    },
-    time::{Duration, Instant},
-};
+extern crate alloc;
+use alloc::boxed::Box;
+use alloc::sync::Arc;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::channel::Channel;
+use embassy_time::Duration;
+use embassy_time::Instant;
 
 pub static SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
@@ -26,8 +26,7 @@ pub type ActorId = u16;
 
 pub type SceneFactory = Box<dyn FnOnce() -> Box<dyn Scene> + Send + Sync>;
 
-static SCENE_SENDER: OnceLock<Sender<SceneFactory>> = OnceLock::new();
-static SCENE_RECEIVER: OnceLock<Mutex<Receiver<SceneFactory>>> = OnceLock::new();
+static SCENE_CHANNEL: Channel<CriticalSectionRawMutex, SceneFactory, 8> = Channel::new();
 
 pub struct Engine {
     pub delta_time: f32,
@@ -40,10 +39,6 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(input: Box<dyn Input>) -> Self {
-        let (s, r) = channel::<SceneFactory>();
-        SCENE_SENDER.set(s).unwrap();
-        SCENE_RECEIVER.set(Mutex::new(r)).unwrap();
-
         Self {
             delta_time: 0.0,
             world: World::new(),
@@ -71,10 +66,9 @@ impl Engine {
 
             self.delta_time = delta_time;
 
-            if let Ok(receiver) = SCENE_RECEIVER.get().unwrap().try_lock() {
-                if let Ok(factory) = receiver.try_recv() {
-                    self.change_scene(factory);
-                }
+            let receiver = SCENE_CHANNEL.receiver();
+            if let Ok(factory) = receiver.try_receive() {
+                self.change_scene(factory);
             }
 
             {
@@ -138,6 +132,7 @@ impl Engine {
     }
 }
 
-pub fn open_scene(factory: SceneFactory){
-    SCENE_SENDER.get().unwrap().send(Box::new(factory)).unwrap();
+pub fn open_scene(factory: SceneFactory) {
+    let sender = SCENE_CHANNEL.sender();
+    sender.try_send(factory).ok();
 }
