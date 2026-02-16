@@ -1,7 +1,5 @@
-use rand::Rng;
-
 extern crate alloc;
-use alloc::{boxed::Box, vec::Vec, string::ToString};
+use alloc::{boxed::Box, string::ToString, vec::Vec};
 
 use crate::{
     engine::{
@@ -13,6 +11,7 @@ use crate::{
         color::Color,
         components::{collider::ColliderType, world::World},
         engine::{ActorId, SCREEN_SIZE, open_scene},
+        hash_map::HashMap,
         input::{input::Input, key::Key},
         scene::Scene,
         v2::V2,
@@ -39,6 +38,7 @@ pub struct PongScene {
     can_collide: [bool; 2],
     can_bounce: bool,
     do_play: bool,
+    rng: ChaCha8Rng,
 }
 
 impl Scene for PongScene {
@@ -128,6 +128,7 @@ impl PongScene {
             can_collide: [true, true],
             can_bounce: true,
             do_play: true,
+            rng: ChaCha8Rng::seed_from_u64(embassy_time::Instant::now().as_micros()),
         }
     }
 
@@ -262,12 +263,11 @@ impl PongScene {
                 self.ball_speed_multiplier = ORIGINAL_BALL_SPEED_MULTIPLIER;
                 self.ball_speed = V2::new(
                     //TODO
-                    0.5,// rand::thread_rng().gen_range(0.0..1.0) * 2.0 * ORIGINAL_BALL_SPEED - ORIGINAL_BALL_SPEED,
+                    0.5, // rand::thread_rng().gen_range(0.0..1.0) * 2.0 * ORIGINAL_BALL_SPEED - ORIGINAL_BALL_SPEED,
                     // if rand::thread_rng().gen_range(0.0..1.0) > 0.5 {
-                        ORIGINAL_BALL_SPEED
+                    ORIGINAL_BALL_SPEED
                     // } else {
-                        -ORIGINAL_BALL_SPEED
-                    // },
+                        -ORIGINAL_BALL_SPEED, // },
                 );
             } else {
                 self.ball_speed_multiplier = 0.0;

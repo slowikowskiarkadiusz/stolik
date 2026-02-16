@@ -3,7 +3,7 @@
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
-use crate::engine::{components::world::World, engine::ActorId, input::input::Input};
+use crate::engine::{components::world::World, engine::ActorId, hash_map::HashMap, input::input::Input};
 
 pub trait Scene {
     fn init(&mut self, world: &mut World);

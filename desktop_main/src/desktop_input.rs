@@ -1,4 +1,4 @@
-use core::engine::input::{
+use common::engine::input::{
     input::Input,
     key::{KEYS_LENGTH, Key, KeyState},
 };

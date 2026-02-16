@@ -5,9 +5,10 @@ edition = "2024"
 
 [features]
 default = ["std"]
-std = []
+std = ["embassy-time/std", "critical-section/std"]
 
 [dependencies]
+critical-section = { version = "1.2", optional = true }
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 spin = { version = "0.9", default-features = false, features = ["mutex", "rwlock", "spin_mutex"] }
 embassy-sync = "0.7.2"

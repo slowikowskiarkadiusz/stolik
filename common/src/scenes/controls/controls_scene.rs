@@ -1,18 +1,11 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, LazyLock, Mutex},
-};
+extern crate alloc;
+use alloc::{boxed::Box, string::String, sync::Arc, vec, vec::Vec};
+use embassy_sync::lazy_lock::LazyLock;
+use spin::Mutex;
 
 use crate::{
     engine::{
-        actor::{arrow_actor::create_arrow_actor, rectangle_actor::create_rectangle_actor, text::create_text_actor},
-        asyncable::{AsyncableType, add_asyncable},
-        color::Color,
-        components::world::World,
-        engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
-        input::{input::Input, key::Key},
-        scene::Scene,
-        v2::V2,
+        actor::{arrow_actor::create_arrow_actor, rectangle_actor::create_rectangle_actor, text::create_text_actor}, asyncable::{AsyncableType, add_asyncable}, color::Color, components::world::World, engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2
     },
     scenes::{controls::button_icon_actor::create_button_icon_actor, menu::menu_scene::MenuScene},
 };
@@ -66,7 +59,7 @@ impl Scene for ControlsScene {
 
         add_asyncable(
             Box::new(move |world, _| {
-                *can_proceed_arc.lock().unwrap() = true;
+                *can_proceed_arc.lock() = true;
                 ControlsScene::create_arrow(world, true);
                 ControlsScene::create_arrow(world, false);
             }),
@@ -86,7 +79,7 @@ impl Scene for ControlsScene {
             self.print_page(world);
         }
 
-        if self.can_proceed.lock().unwrap().clone() && input.is_any_key_down() {
+        if self.can_proceed.lock().clone() && input.is_any_key_down() {
             let factory = core::mem::replace(&mut self.next_scene, Box::new(|| Box::new(MenuScene::new())));
             open_scene(factory);
         }
@@ -101,7 +94,7 @@ impl ControlsScene {
         Self {
             can_proceed: Arc::new(Mutex::new(false)),
             divider_actor_id: 0,
-            pages: ControlsScene::paginate(POSSIBLE_CONTROL_SETS.get(next_scene_name).unwrap(), lines_per_page.clone() as usize),
+            pages: ControlsScene::paginate(POSSIBLE_CONTROL_SETS.get().get(next_scene_name).unwrap(), lines_per_page.clone() as usize),
             current_page_actors: Vec::new(),
             current_page_index: 0,
             next_scene,

@@ -11,7 +11,7 @@ use crate::engine::{
         physics::Physics,
         transform::Transform,
     },
-    engine::ActorId,
+    engine::ActorId, hash_map::HashMap,
 };
 
 pub struct World {

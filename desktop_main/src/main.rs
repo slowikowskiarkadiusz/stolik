@@ -2,7 +2,7 @@ pub mod desktop_input;
 pub mod desktop_threading_provider;
 
 use crate::{desktop_input::DesktopInput, desktop_threading_provider::DesktopThread};
-use core::engine::{color::Color, color_matrix::ColorMatrix, engine::Engine};
+use common::engine::{color::Color, color_matrix::ColorMatrix, engine::Engine};
 use minifb::{Key, Window, WindowOptions};
 use std::{
     collections::HashMap,
