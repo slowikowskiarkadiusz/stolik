@@ -1,3 +1,5 @@
+use libm::ceilf;
+
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
@@ -19,7 +21,7 @@ pub fn create_arrow_actor(world: &mut World, center: V2, height: u8, color: Colo
 }
 
 fn make_shape(height: u8, color: Color) -> ColorMatrix {
-    let mut matrix = ColorMatrix::new((height as f32 / 2.0).ceil() as u8, height, Color::none());
+    let mut matrix = ColorMatrix::new(ceilf(height as f32 / 2.0) as u8, height, Color::none());
 
     for y in 0..matrix.height / 2 + 1 {
         matrix.set(0, y, color.clone());

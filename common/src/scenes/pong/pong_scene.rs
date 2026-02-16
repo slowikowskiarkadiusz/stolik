@@ -1,5 +1,7 @@
 use rand::Rng;
-use std::collections::HashMap;
+
+extern crate alloc;
+use alloc::{boxed::Box, vec::Vec, string::ToString};
 
 use crate::{
     engine::{
@@ -259,12 +261,13 @@ impl PongScene {
             if self.do_play {
                 self.ball_speed_multiplier = ORIGINAL_BALL_SPEED_MULTIPLIER;
                 self.ball_speed = V2::new(
-                    rand::thread_rng().gen_range(0.0..1.0) * 2.0 * ORIGINAL_BALL_SPEED - ORIGINAL_BALL_SPEED,
-                    if rand::thread_rng().gen_range(0.0..1.0) > 0.5 {
+                    //TODO
+                    0.5,// rand::thread_rng().gen_range(0.0..1.0) * 2.0 * ORIGINAL_BALL_SPEED - ORIGINAL_BALL_SPEED,
+                    // if rand::thread_rng().gen_range(0.0..1.0) > 0.5 {
                         ORIGINAL_BALL_SPEED
-                    } else {
+                    // } else {
                         -ORIGINAL_BALL_SPEED
-                    },
+                    // },
                 );
             } else {
                 self.ball_speed_multiplier = 0.0;

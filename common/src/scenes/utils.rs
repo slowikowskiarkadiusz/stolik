@@ -1,5 +1,8 @@
 use crate::engine::{actor::text::create_text_actor_at_center, color::Color, components::world::World, engine::SCREEN_SIZE, v2::V2};
 
+extern crate alloc;
+use alloc::format;
+
 pub fn print_victory_text(world: &mut World, winner: u8) {
     let text = format!("P{} WON", winner);
     for x in 0..2 {

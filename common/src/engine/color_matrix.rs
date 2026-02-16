@@ -1,5 +1,7 @@
 use core::f32::consts::PI;
 
+use libm::{ceilf, cosf, roundf, sinf};
+
 use crate::engine::{color::Color, matrix::Matrix, v2::V2};
 
 pub type ColorMatrix = Matrix<Color>;
@@ -44,8 +46,8 @@ impl Matrix<Color> {
             angle += 360;
         }
         let rad = other_rotation * PI / 180.0;
-        let cos = rad.cos();
-        let sin = rad.sin();
+        let cos = cosf(rad);
+        let sin = sinf(rad);
 
         for x in 0..other.width {
             for y in 0..other.height {
@@ -81,12 +83,10 @@ impl Matrix<Color> {
                     }
                 }
 
-                let final_x = (rx + other_center.x).ceil();
-                let final_y = (ry + other_center.y).ceil();
+                let final_x = ceilf(rx + other_center.x);
+                let final_y = ceilf(ry + other_center.y);
 
                 if final_x >= 0.0 && final_y >= 0.0 && final_x < self.width as f32 && final_y < self.height as f32 {
-                    let dst = self.get(final_x as u8, final_y as u8).clone();
-
                     if blend_colors {
                         let dst = self.get(final_x as u8, final_y as u8);
 
@@ -105,7 +105,7 @@ impl Matrix<Color> {
                             self.set(
                                 final_x as u8,
                                 final_y as u8,
-                                Color::new(r.round() as u8, g.round() as u8, b.round() as u8, (out_a * 255.0).round() as u8),
+                                Color::new(roundf(r) as u8, roundf(g) as u8, roundf(b) as u8, roundf(out_a * 255.0) as u8),
                             );
                         }
                     } else {

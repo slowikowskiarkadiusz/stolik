@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
-use alloc::vec::Vec;
-
 use core::f32::consts::PI;
+use core::ops::{AddAssign, SubAssign};
+use libm::{ceilf, cosf, floorf, powf, roundf, sinf, sqrtf};
 
 #[derive(PartialEq, Default, Clone)]
 pub struct V2 {
@@ -48,31 +48,31 @@ impl V2 {
     }
 
     pub fn distance(&self, to: &V2) -> f32 {
-        ((&self.x - to.x).powi(2) + (&self.y - to.y).powi(2)).sqrt()
+        sqrtf(powf(&self.x - to.x, 2.0) + powf(&self.y - to.y, 2.0))
     }
 
     pub fn mag(&self) -> f32 {
-        (&self.x.powi(2) + self.y.powi(2)).sqrt()
+        sqrtf(powf(self.x, 2.0) + powf(self.y, 2.0))
     }
 
     pub fn floor(&self) -> Self {
         Self {
-            x: self.x.floor(),
-            y: self.y.floor(),
+            x: floorf(self.x),
+            y: floorf(self.y),
         }
     }
 
     pub fn round(&self) -> Self {
         Self {
-            x: self.x.round(),
-            y: self.y.round(),
+            x: roundf(self.x),
+            y: roundf(self.y),
         }
     }
 
     pub fn ceil(&self) -> Self {
         Self {
-            x: self.x.ceil(),
-            y: self.y.ceil(),
+            x: ceilf(self.x),
+            y: ceilf(self.y),
         }
     }
 
@@ -84,8 +84,8 @@ impl V2 {
         let rad = (degrees * PI) / 180.0;
         let dx = self.x - pivot.x;
         let dy = self.y - pivot.y;
-        let cos = rad.cos();
-        let sin = rad.sin();
+        let cos = cosf(rad);
+        let sin = sinf(rad);
 
         let rx = cos * dx - sin * dy + pivot.x;
         let ry = sin * dx + cos * dy + pivot.y;
@@ -210,7 +210,6 @@ impl Div<&V2> for &V2 {
 }
 
 use core::fmt;
-use std::ops::{AddAssign, SubAssign};
 
 impl fmt::Display for V2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

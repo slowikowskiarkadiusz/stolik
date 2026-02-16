@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
 use alloc::{vec, vec::Vec};
+use libm::roundf;
 
 #[derive(PartialEq, Clone)]
 pub struct Color {
@@ -85,9 +86,9 @@ impl Color {
         let mut b: u16 = 0;
         let mut a: u16 = 0;
         for c in colors {
-            r += ((c.r as f32) * (c.a as f32) / 255.0).round() as u16;
-            g += ((c.g as f32) * (c.a as f32) / 255.0).round() as u16;
-            b += ((c.b as f32) * (c.a as f32) / 255.0).round() as u16;
+            r += ((c.r as f32) * roundf(c.a as f32) / 255.0) as u16;
+            g += ((c.g as f32) * roundf(c.a as f32) / 255.0) as u16;
+            b += ((c.b as f32) * roundf(c.a as f32) / 255.0) as u16;
             a += c.a as u16;
         }
 

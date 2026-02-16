@@ -62,7 +62,7 @@ impl Engine {
             let frame_start = Instant::now();
             let dt = frame_start.duration_since(last);
             last = frame_start;
-            let delta_time = dt.as_secs_f32();
+            let delta_time = dt.as_millis() as f32 / 1000.0;
 
             self.delta_time = delta_time;
 

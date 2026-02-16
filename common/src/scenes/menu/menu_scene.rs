@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+extern crate alloc;
+use alloc::{boxed::Box, string::String, vec, vec::Vec};
 
 use crate::{
     engine::{

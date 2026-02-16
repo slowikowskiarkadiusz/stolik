@@ -1,6 +1,4 @@
 use core::u16;
-use spin::RwLock;
-
 // TODO HashMap
 
 extern crate alloc;
@@ -8,7 +6,7 @@ use alloc::{boxed::Box, vec::Vec};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::channel::Receiver;
-use embassy_sync::mutex::Mutex;
+use spin::RwLock;
 
 use crate::engine::components::world::World;
 
@@ -24,10 +22,7 @@ enum AsyncableActionType {
 }
 
 static QUEUE: Channel<CriticalSectionRawMutex, EnqueuedAsyncableJob, 64> = Channel::new();
-static TAKEN_IDS: Mutex<CriticalSectionRawMutex, Vec<AsyncableId>> = Mutex::new(Vec::new());
-fn get_taken_ids() -> &'static RwLock<Vec<AsyncableId>> {
-    TAKEN_IDS.get_or_init(|| RwLock::new(Vec::new()))
-}
+static TAKEN_IDS: RwLock< Vec<AsyncableId>> = RwLock::new(Vec::new());
 
 struct EnqueuedAsyncableJob {
     pub id_to_affect: AsyncableId,
@@ -90,7 +85,7 @@ impl AsyncableStorage {
 }
 
 pub fn add_asyncable(function: AsyncableFunction, ms: f32, asyncable_type: AsyncableType) -> AsyncableId {
-    let lock = get_taken_ids().read().unwrap();
+    let lock = TAKEN_IDS.read();
     let mut free_id = 0;
     for i in 0..=u16::MAX {
         // TODO optimize this shit
@@ -114,9 +109,9 @@ pub fn add_asyncable(function: AsyncableFunction, ms: f32, asyncable_type: Async
 
     drop(lock);
 
-    get_taken_ids().write().unwrap().push(free_id.clone());
-    get_taken_ids().write().unwrap().sort();
-    QUEUE.get().unwrap().send(job).unwrap();
+    TAKEN_IDS.write().push(free_id.clone());
+    TAKEN_IDS.write().sort();
+    QUEUE.sender().try_send(job).ok();
 
     free_id
 }
@@ -128,6 +123,6 @@ pub fn remove_asyncable(id: AsyncableId) {
         asyncable: None,
     };
 
-    get_taken_ids().write().unwrap().retain_mut(|f| f != &id);
-    QUEUE.get().unwrap().send(job).unwrap();
+    TAKEN_IDS.write().retain_mut(|f| f != &id);
+    QUEUE.sender().try_send(job).ok();
 }
