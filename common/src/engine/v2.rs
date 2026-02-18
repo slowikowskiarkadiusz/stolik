@@ -1,4 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
 use core::f32::consts::PI;
 use core::ops::{AddAssign, SubAssign};

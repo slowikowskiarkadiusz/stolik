@@ -27,7 +27,7 @@ embedded-graphics = "0.8"
 
 heapless = "0.8"
 static_cell = "2.1"
-# critical-section = "1.2"
+critical-section = { version = "1.2.0" }
 log = "0.4"
 
 esp-hub75 = { git = "https://github.com/liebman/esp-hub75", branch = "main", features = ["esp32s3"] }

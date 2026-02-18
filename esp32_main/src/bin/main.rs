@@ -182,13 +182,8 @@ async fn hub75_task(
             fb = new_fb;
         }
 
-        let mut xfer = hub75
-            .render(fb)
-            .map_err(|(e, _hub75)| e)
-            .expect("failed to start render!");
-        xfer.wait_for_done()
-            .await
-            .expect("rendering wait_for_done failed!");
+        let mut xfer = hub75.render(fb).map_err(|(e, _hub75)| e).expect("failed to start render!");
+        xfer.wait_for_done().await.expect("rendering wait_for_done failed!");
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
         result.expect("transfer failed");
@@ -204,11 +199,7 @@ async fn hub75_task(
 }
 
 #[task]
-async fn display_task(
-    rx: &'static FrameBufferExchange,
-    tx: &'static FrameBufferExchange,
-    mut fb: &'static mut TiledFBType,
-) {
+async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBufferExchange, mut fb: &'static mut TiledFBType) {
     // info!("display_task: starting!");
     let fps_style = MonoTextStyleBuilder::new()
         .font(&FONT_5X7)
@@ -238,11 +229,7 @@ async fn display_task(
 
         let mut buffer: String<64> = String::new();
 
-        fmt::write(
-            &mut buffer,
-            format_args!("Refresh: {:4}", REFRESH_RATE.load(Ordering::Relaxed)),
-        )
-        .unwrap();
+        fmt::write(&mut buffer, format_args!("Refresh: {:4}", REFRESH_RATE.load(Ordering::Relaxed))).unwrap();
         Text::with_alignment(
             buffer.as_str(),
             Point::new(VIRTUAL_COLS as i32 / 2, VIRTUAL_ROWS as i32 / 2),
@@ -253,11 +240,7 @@ async fn display_task(
         .unwrap();
 
         buffer.clear();
-        fmt::write(
-            &mut buffer,
-            format_args!("Render: {:5}", RENDER_RATE.load(Ordering::Relaxed)),
-        )
-        .unwrap();
+        fmt::write(&mut buffer, format_args!("Render: {:5}", RENDER_RATE.load(Ordering::Relaxed))).unwrap();
 
         Text::with_alignment(
             buffer.as_str(),
@@ -269,11 +252,7 @@ async fn display_task(
         .unwrap();
 
         buffer.clear();
-        fmt::write(
-            &mut buffer,
-            format_args!("Simple: {:5}", SIMPLE_COUNTER.load(Ordering::Relaxed)),
-        )
-        .unwrap();
+        fmt::write(&mut buffer, format_args!("Simple: {:5}", SIMPLE_COUNTER.load(Ordering::Relaxed))).unwrap();
         Text::with_alignment(
             buffer.as_str(),
             Point::new(VIRTUAL_COLS as i32 / 2, VIRTUAL_ROWS as i32 - 20),
@@ -362,16 +341,11 @@ async fn main(_s: embassy_executor::Spawner) {
 
     let cpu1_fnctn = {
         move || {
-            let hp_executor = mk_static!(
-                InterruptExecutor<2>,
-                InterruptExecutor::new(software_interrupt)
-            );
+            let hp_executor = mk_static!(InterruptExecutor<2>, InterruptExecutor::new(software_interrupt));
             let high_pri_spawner = hp_executor.start(Priority::Priority3);
 
             // hub75 runs as high priority task
-            high_pri_spawner
-                .spawn(hub75_task(hub75_per, &RX, &TX, fb1))
-                .ok();
+            high_pri_spawner.spawn(hub75_task(hub75_per, &RX, &TX, fb1)).ok();
 
             let lp_executor = mk_static!(Executor, Executor::new());
             // display task runs as low priority task

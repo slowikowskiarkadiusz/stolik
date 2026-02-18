@@ -1,5 +1,6 @@
 extern crate alloc;
 use alloc::{boxed::Box, string::ToString, vec::Vec};
+use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use crate::{
     engine::{
@@ -38,7 +39,7 @@ pub struct PongScene {
     can_collide: [bool; 2],
     can_bounce: bool,
     do_play: bool,
-    rng: ChaCha8Rng,
+    rng: SmallRng,
 }
 
 impl Scene for PongScene {
@@ -128,7 +129,7 @@ impl PongScene {
             can_collide: [true, true],
             can_bounce: true,
             do_play: true,
-            rng: ChaCha8Rng::seed_from_u64(embassy_time::Instant::now().as_micros()),
+            rng: SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()),
         }
     }
 
@@ -263,11 +264,13 @@ impl PongScene {
                 self.ball_speed_multiplier = ORIGINAL_BALL_SPEED_MULTIPLIER;
                 self.ball_speed = V2::new(
                     //TODO
-                    0.5, // rand::thread_rng().gen_range(0.0..1.0) * 2.0 * ORIGINAL_BALL_SPEED - ORIGINAL_BALL_SPEED,
-                    // if rand::thread_rng().gen_range(0.0..1.0) > 0.5 {
-                    ORIGINAL_BALL_SPEED
-                    // } else {
-                        -ORIGINAL_BALL_SPEED, // },
+                    // 0.5,
+                    self.rng.gen_range(0.0..1.0) * 2.0 * ORIGINAL_BALL_SPEED - ORIGINAL_BALL_SPEED,
+                    if self.rng.gen_range(0.0..1.0) > 0.5 {
+                        ORIGINAL_BALL_SPEED
+                    } else {
+                        -ORIGINAL_BALL_SPEED
+                    },
                 );
             } else {
                 self.ball_speed_multiplier = 0.0;

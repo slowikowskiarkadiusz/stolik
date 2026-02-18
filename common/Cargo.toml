@@ -4,13 +4,13 @@ version = "0.0.1"
 edition = "2024"
 
 [features]
-default = ["std"]
-std = ["embassy-time/std", "critical-section/std"]
+default = []
+std = ["embassy-time/std", "critical-section/std", "rand/std"]
 
 [dependencies]
-critical-section = { version = "1.2", optional = true }
+critical-section = { version = "1.2.0" }
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 spin = { version = "0.9", default-features = false, features = ["mutex", "rwlock", "spin_mutex"] }
-embassy-sync = "0.7.2"
-embassy-time = "0.5.0"
-libm = "0.2.16"
+embassy-sync = { version = "0.7.2", default-features = false }
+embassy-time = { version = "0.5.0", default-features = false }
+libm = { version = "0.2.16", default-features = false }

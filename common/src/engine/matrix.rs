@@ -1,4 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
 use alloc::{string::String, string::ToString, vec, vec::Vec};
 use libm::{ceilf, cosf, floorf, roundf, sinf};
