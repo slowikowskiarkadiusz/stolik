@@ -56,7 +56,7 @@ impl Gestures {
             last_action_timestamps: array::from_fn(|_| {
                 let mut hash_map = HashMap::<State, MaxHeap>::new();
                 for state in STATES {
-                    hash_map[&state] = MaxHeap::new(3);
+                    hash_map.insert(state, MaxHeap::new(3));
                 }
                 hash_map
             }),
@@ -103,7 +103,7 @@ impl Gestures {
 
             for (state, pred) in &self.states {
                 if pred(key) {
-                    // tu moze jednak powinienem uzywac u64
+                    // TODO tu moze jednak powinienem uzywac u64
                     self.last_action_timestamps[k as usize][state].insert(now as u32);
 
                     for g in Gesture::Trice as u8..Gesture::Once as u8 {

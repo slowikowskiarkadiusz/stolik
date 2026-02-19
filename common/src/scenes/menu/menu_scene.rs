@@ -3,9 +3,16 @@ use alloc::{boxed::Box, string::String, vec, vec::Vec};
 
 use crate::{
     engine::{
-        actor::{arrow_actor::create_arrow_actor, text::create_text_actor}, color::Color, components::world::World, engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2
+        actor::{arrow_actor::create_arrow_actor, text::create_text_actor},
+        color::Color,
+        components::world::World,
+        engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
+        hash_map::HashMap,
+        input::{input::Input, key::Key},
+        scene::Scene,
+        v2::V2,
     },
-    scenes::{controls::controls_scene::ControlsScene, pong::pong_scene::PongScene},
+    scenes::{controls::controls_scene::ControlsScene, pong::pong_scene::PongScene, tetris::tetris_scene::TetrisScene},
 };
 
 struct MenuOption {
@@ -41,7 +48,7 @@ impl Scene for MenuScene {
     fn init(&mut self, world: &mut World) {
         self.options = vec![
             MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong", 0),
-            // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "srong", "srong", 0),
+            MenuOption::new(Box::new(|| Box::new(TetrisScene::new())), "srong", "srong", 0),
             // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "fong", "fong", 0),
         ];
 

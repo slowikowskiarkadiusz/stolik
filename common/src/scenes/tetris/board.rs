@@ -5,11 +5,13 @@ use rand::RngCore;
 use rand::seq::SliceRandom;
 use rand::{SeedableRng, rngs::SmallRng};
 
-use crate::engine::engine::SCREEN_SIZE;
+use crate::engine::components::transform::Transform;
+use crate::engine::components::world::World;
+use crate::engine::engine::{ActorId, SCREEN_SIZE};
 use crate::engine::input::gesture::{Gesture, State};
 use crate::engine::input::input::Input;
 use crate::engine::input::key::Key;
-use crate::scenes::tetris::board;
+use crate::scenes::tetris::world::TetrisWorld;
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2},
     scenes::tetris::{
@@ -39,7 +41,7 @@ pub const BLOCKS_COLORS: &[Color; 7] = &[
 
 pub struct Board {
     is_cell_taken: Matrix<bool>,
-    current_block_index: u32,
+    // current_block_index: u32,
     current_agent: Option<Block>,
     current_agent_shadow: Option<Block>,
     garbage_bar: GarbageBar,
@@ -54,30 +56,23 @@ pub struct Board {
     already_switched_pieces: bool,
     spawn_bag: Vec<Shape>,
     do_play: bool,
+    pub is_dead: bool,
     opacity: u8,
-    center: V2,
-    size: V2,
+    // center: V2,
+    pub size: V2,
     seed: u32,
     is_p1: bool,
-    on_deal_damage: Arc<dyn Fn(u8, bool) + 'static>,
-    on_death: Arc<dyn Fn(bool) + 'static>,
 }
 
 impl Board {
-    pub fn new(
-        center: V2,
-        seed: u32,
-        is_p1: bool,
-        on_deal_damage: Arc<dyn Fn(u8, bool) + 'static>,
-        on_death: Arc<dyn Fn(bool) + 'static>,
-    ) -> Self {
+    pub fn new(seed: u32, is_p1: bool) -> Self {
         let size = V2::new(
             (1 + BOARD_WIDTH + 1 + 1 + 1) as f32,
             (1 + BOARD_HEIGHT + 1 + HoldLogic::SIZE.y as u8 + 1) as f32,
         );
         let obj = Self {
             is_cell_taken: Matrix::new(BOARD_WIDTH, BOARD_HEIGHT, false),
-            current_block_index: 0,
+            // current_block_index: 0,
             current_agent: None,
             current_agent_shadow: None,
             garbage_bar: GarbageBar::new(
@@ -96,21 +91,20 @@ impl Board {
             already_switched_pieces: false,
             spawn_bag: Vec::new(),
             do_play: true,
+            is_dead: true,
             opacity: 255,
-            center,
+            // center,
             size,
             seed,
             is_p1,
-            on_deal_damage: on_deal_damage.clone(),
-            on_death: on_death.clone(),
         };
 
         obj
     }
 
-    pub fn tick(&mut self, input: &Box<dyn Input>, delta_time: f32) {
+    pub fn tick(&mut self, input: &Box<dyn Input>, delta_time: f32) -> u8 {
         if !self.do_play {
-            return;
+            return 0;
         }
 
         self.garbage_bar.tick(delta_time);
@@ -186,9 +180,14 @@ impl Board {
                     self.rotate_block(-1);
                 }
 
-                self.fall(delta_time);
+                let damage_to_deal = self.fall(delta_time);
+                return self.garbage_bar.decrease_and_get_left(damage_to_deal);
             }
+
+            return 0;
         }
+
+        return 0;
     }
 
     pub fn render(&mut self) -> ColorMatrix {
@@ -297,13 +296,6 @@ impl Board {
         }
     }
 
-    fn deal_damage(&mut self, count: u8) {
-        let left = self.garbage_bar.decrease_and_get_left(count);
-        if left > 0 {
-            self.on_deal_damage.as_ref()(left, self.is_p1);
-        }
-    }
-
     pub fn take_damage(&mut self, count: u8) {
         self.garbage_bar.add_lines(count);
     }
@@ -354,7 +346,8 @@ impl Board {
         a || b || c || d
     }
 
-    fn fall(&mut self, delta_time: f32) {
+    fn fall(&mut self, delta_time: f32) -> u8 {
+        let mut damage_to_deal = 0;
         if let Some(current_agent) = self.current_agent.as_mut()
             && self.continue_dropping
             && self.lock_delay_timer > 0.0
@@ -367,7 +360,7 @@ impl Board {
             {
                 self.lock_delay_timer += delta_time;
                 if self.lock_delay_timer > LOCK_DELAY as f32 {
-                    self.drop();
+                    damage_to_deal = self.drop();
                     self.lock_delay_timer = 0.0;
                     dropped = true;
                 }
@@ -386,9 +379,11 @@ impl Board {
                 self.continue_dropping = true;
             }
         }
+
+        return damage_to_deal;
     }
 
-    fn drop(&mut self) {
+    fn drop(&mut self) -> u8 {
         if let Some(current_agent) = self.current_agent.as_mut()
             && let Some(current_agent_shadow) = self.current_agent_shadow.as_mut()
             && self.can_drop
@@ -404,19 +399,25 @@ impl Board {
                 );
 
                 if spot.y <= 0.0 {
-                    self.on_death.as_ref()(self.is_p1);
+                    self.is_dead = true;
+                    self.do_play = false;
+                    return 0;
                 }
             }
 
             self.can_drop = false;
 
             // TODO animation
-            self.clear_lines();
+            let damage_to_deal = self.clear_lines();
             self.pop_garbage_lines();
+
+            return damage_to_deal;
         }
+
+        return 0;
     }
 
-    fn clear_lines(&mut self) {
+    fn clear_lines(&mut self) -> u8 {
         let mut lines = Vec::<u8>::new();
         for y in 0..self.is_cell_taken.height {
             let mut is_whole_line_taken = false;
@@ -434,8 +435,6 @@ impl Board {
         }
 
         if !lines.is_empty() {
-            self.deal_damage(lines.len() as u8);
-
             for line in &lines {
                 for x in 0..self.is_cell_taken.width {
                     self.dropped_blocks_matrix.set(x, line.clone(), Color::none());
@@ -443,6 +442,8 @@ impl Board {
                     // wait
                 }
             }
+
+            let lines_length = lines.len();
 
             for line in lines {
                 for y in line..0 {
@@ -455,7 +456,11 @@ impl Board {
                     }
                 }
             }
+
+            return lines_length as u8;
         }
+
+        return 0;
     }
 
     fn pop_garbage_lines(&mut self) {
@@ -487,4 +492,36 @@ impl Board {
             // wait
         }
     }
+
+    pub fn stop(&mut self) {
+        self.do_play = false;
+    }
+}
+
+pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_p1: bool, seed: u32) -> ActorId {
+    let board = Board::new(seed, is_p1);
+
+    let center = if is_p1 {
+        V2::new(board.size.x, SCREEN_SIZE as f32 - board.size.y)
+    } else {
+        V2::new(SCREEN_SIZE as f32 - board.size.x, board.size.y)
+    };
+
+    let mut transform = Transform::new(center, board.size.clone());
+    if !is_p1 {
+        transform.rotation = 180.0;
+    }
+
+    let actor_id = world.add_new_actor(
+        Some("board actor"),
+        Some(transform),
+        None,
+        None,
+        None,
+        Some(ColorMatrix::new(board.size.x as u8, board.size.y as u8, Color::none())),
+    );
+
+    tetris_world.add_new_actor(actor_id, Some(board));
+
+    actor_id
 }
