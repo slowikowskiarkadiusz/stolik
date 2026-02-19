@@ -1,3 +1,4 @@
 [workspace]
-members = ["common", "desktop_main", "esp32_main"]
+members = ["desktop_main", "common"]
+exclude = ["esp32_main"]
 resolver = "2"
