@@ -1,7 +1,7 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-use crate::{engine::v2::V2, scenes::tetris::shape::Shape};
+use crate::{engine::{color_matrix::ColorMatrix, v2::V2}, scenes::tetris::shape::Shape};
 
 pub struct Block {
     pub center: V2,
@@ -33,6 +33,10 @@ impl Block {
     }
 
     pub fn reset(&self) {
+        todo!()
+    }
+
+    pub fn render(&self) -> ColorMatrix {
         todo!()
     }
 }

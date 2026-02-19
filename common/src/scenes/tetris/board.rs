@@ -1,10 +1,15 @@
 extern crate alloc;
 
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use rand::RngCore;
 use rand::seq::SliceRandom;
 use rand::{SeedableRng, rngs::SmallRng};
 
+use crate::engine::engine::SCREEN_SIZE;
+use crate::engine::input::gesture::{Gesture, State};
+use crate::engine::input::input::Input;
+use crate::engine::input::key::Key;
+use crate::scenes::tetris::board;
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2},
     scenes::tetris::{
@@ -19,8 +24,8 @@ const BOARD_WIDTH: u8 = 10;
 const BOARD_HEIGHT: u8 = 20;
 const AFTER_DROP_DELAY: u32 = 250;
 const LINE_CLEARING_ANIMATION_FACTOR: u32 = 75;
-const DROPPING_DELAY: u32 = 1000;
-const FASTER_DROPPING_DELAY: u32 = 100;
+const DROPPING_DELAY: f32 = 1000.0;
+const FASTER_DROPPING_DELAY: f32 = 100.0;
 const LOCK_DELAY: u32 = 1000;
 const BLOCKS_COLORS: &[Color; 7] = &[
     Color::new(0, 255, 255, 0), // Cyan
@@ -42,7 +47,6 @@ pub struct Board {
     can_drop: bool,
     dropped_blocks_matrix: ColorMatrix,
     border_matrix: ColorMatrix,
-    render_matrix: ColorMatrix,
     continue_dropping: bool,
     drop_timer: f32,
     lock_delay_timer: f32,
@@ -50,8 +54,9 @@ pub struct Board {
     already_switched_pieces: bool,
     spawn_bag: Vec<Shape>,
     do_play: bool,
-    opacity: f32,
+    opacity: u8,
     center: V2,
+    size: V2,
     seed: u32,
     is_p1: bool,
     on_deal_damage: Arc<dyn Fn(u8, bool) + 'static>,
@@ -84,16 +89,16 @@ impl Board {
             can_drop: false,
             dropped_blocks_matrix: ColorMatrix::new(BOARD_WIDTH, BOARD_HEIGHT, Color::none()),
             border_matrix: ColorMatrix::new(size.x as u8, size.y as u8, Color::none()),
-            render_matrix: ColorMatrix::new(size.x as u8, size.y as u8, Color::none()),
             continue_dropping: true,
             drop_timer: 0.0,
             lock_delay_timer: 0.0,
-            dropping_delay_value: DROPPING_DELAY as f32,
+            dropping_delay_value: DROPPING_DELAY,
             already_switched_pieces: false,
             spawn_bag: Vec::new(),
             do_play: true,
-            opacity: 1.0,
+            opacity: 255,
             center,
+            size,
             seed,
             is_p1,
             on_deal_damage: on_deal_damage.clone(),
@@ -103,7 +108,7 @@ impl Board {
         obj
     }
 
-    pub fn tick(&mut self, delta_time: f32) {
+    pub fn tick(&mut self, input: &Box<dyn Input>, delta_time: f32) {
         if !self.do_play {
             return;
         }
@@ -111,7 +116,119 @@ impl Board {
         self.garbage_bar.tick(delta_time);
 
         if let Some(current_agent) = self.current_agent.as_mut() {
+            if input.gestures().is(
+                if self.is_p1 { Key::P1Blue } else { Key::P2Blue },
+                State::Press,
+                Gesture::Prolonged,
+                None,
+            ) && !self.already_switched_pieces
+            {
+                let held_shape = self.hold_logic.swap(current_agent.shape.clone());
+                let center = current_agent.center.clone();
+                self.spawn(Some(center), held_shape);
+                self.already_switched_pieces = true;
+            } else if input.gestures().is(
+                if self.is_p1 { Key::P1Down } else { Key::P2Down },
+                State::Press,
+                Gesture::Once,
+                None,
+            ) {
+                self.dropping_delay_value = FASTER_DROPPING_DELAY;
+            } else {
+                self.dropping_delay_value = DROPPING_DELAY;
+                if input
+                    .gestures()
+                    .is(if self.is_p1 { Key::P1Left } else { Key::P2Left }, State::Down, Gesture::Once, None)
+                    || input.gestures().is(
+                        if self.is_p1 { Key::P1Left } else { Key::P2Left },
+                        State::Press,
+                        Gesture::Repeating,
+                        None,
+                    )
+                {
+                    self.move_block_by(V2::left());
+                }
+
+                if input.gestures().is(
+                    if self.is_p1 { Key::P1Right } else { Key::P2Right },
+                    State::Down,
+                    Gesture::Once,
+                    None,
+                ) || input.gestures().is(
+                    if self.is_p1 { Key::P1Right } else { Key::P2Right },
+                    State::Press,
+                    Gesture::Repeating,
+                    None,
+                ) {
+                    self.move_block_by(V2::right());
+                }
+
+                if input
+                    .gestures()
+                    .is(if self.is_p1 { Key::P1Up } else { Key::P2Up }, State::Down, Gesture::Once, None)
+                {
+                    self.drop();
+                }
+
+                if input
+                    .gestures()
+                    .is(if self.is_p1 { Key::P1Blue } else { Key::P2Blue }, State::Down, Gesture::Once, None)
+                {
+                    self.rotate_block(1);
+                }
+
+                if input.gestures().is(
+                    if self.is_p1 { Key::P1Green } else { Key::P2Green },
+                    State::Down,
+                    Gesture::Once,
+                    None,
+                ) {
+                    self.rotate_block(-1);
+                }
+
+                self.fall(delta_time);
+            }
         }
+    }
+
+    pub fn render(&mut self) -> ColorMatrix {
+        let mut render_matrix = ColorMatrix::new(self.size.x as u8, self.size.y as u8, Color::none());
+
+        render_matrix.write_at_origin(&self.border_matrix, &V2::zero());
+        render_matrix.write(&self.garbage_bar.render(), &self.garbage_bar.center, None, None, None);
+        render_matrix.write(&self.hold_logic.render(), &self.hold_logic.center, None, None, None);
+
+        // matrix boardMatrix(board_width + 1, board_height);
+        // if (current_agent_shadow)
+        //   boardMatrix.write(current_agent_shadow->render(),
+        //                     current_agent_shadow->center, 0);
+        // if (current_agent) {
+        //   boardMatrix.write(current_agent->render(), current_agent->center, 0);
+        // }
+
+        if let Some(current_agent_shadow) = &self.current_agent_shadow {
+            render_matrix.write(&current_agent_shadow.render(), &current_agent_shadow.center, None, None, None);
+        }
+
+        if let Some(current_agent) = &self.current_agent {
+            render_matrix.write(&current_agent.render(), &current_agent.center, None, None, None);
+        }
+
+        let board_offset = V2::new(
+            (1 + BOARD_WIDTH / 2) as f32,
+            self.size.y - 1 as f32 - (BOARD_HEIGHT + BOARD_HEIGHT) as f32 / 2.0,
+        );
+
+        render_matrix.write(&self.dropped_blocks_matrix, &board_offset, None, None, None);
+
+        render_matrix.scale((SCREEN_SIZE / 32) as f32, Color::none());
+        render_matrix.dim(self.opacity as u8);
+
+        render_matrix
+    }
+
+    pub fn dim(&mut self, opacity: u8) {
+        self.opacity = opacity;
     }
 
     fn spawn(&mut self, center: Option<V2>, shape: Option<Shape>) {

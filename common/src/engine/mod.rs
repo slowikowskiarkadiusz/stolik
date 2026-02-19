@@ -10,3 +10,4 @@ pub mod input;
 pub mod components;
 pub mod asyncable;
 pub mod hash_map;
+pub mod max_heap;

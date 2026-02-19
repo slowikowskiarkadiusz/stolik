@@ -1,6 +1,5 @@
 use common::engine::input::{
-    input::Input,
-    key::{KEYS_LENGTH, Key, KeyState},
+    gesture::Gestures, input::Input, key::{KEYS_LENGTH, Key, KeyState}
 };
 use std::{
     cell::RefCell,
@@ -15,6 +14,7 @@ thread_local! {
 }
 
 pub struct DesktopInput {
+    gestures: Gestures,
     input_state: Arc<Mutex<InputState>>,
     keys_down: [bool; KEYS_LENGTH as usize],
     keys_up: [bool; KEYS_LENGTH as usize],
@@ -40,6 +40,7 @@ impl DesktopInput {
         });
 
         Self {
+            gestures: Gestures::new(),
             input_state: input_state.clone(),
             keys_down: [false; KEYS_LENGTH as usize],
             keys_up: [false; KEYS_LENGTH as usize],
@@ -107,6 +108,10 @@ impl DesktopInput {
 }
 
 impl Input for DesktopInput {
+    fn gestures(&self) -> &Gestures {
+        &self.gestures
+    }
+
     fn update(&mut self, _: f32) {
         let snapshot = {
             let mut guard = self.input_state.lock().unwrap();

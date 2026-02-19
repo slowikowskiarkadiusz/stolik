@@ -1,6 +1,7 @@
-use crate::engine::input::key::Key;
+use crate::engine::input::{gesture::Gestures, key::Key};
 
 pub trait Input {
+    fn gestures(&self) -> &Gestures;
     fn update(&mut self, delta_time: f32);
     fn late_update(&mut self, delta_time: f32);
     fn is_key_down(&self, key: Key) -> bool;
@@ -21,6 +22,10 @@ impl EmptyInput {
 }
 
 impl Input for EmptyInput {
+    fn gestures(&self) -> &Gestures {
+        todo!()
+    }
+
     fn update(&mut self, _: f32) {
         todo!()
     }

@@ -1,6 +1,8 @@
-use crate::engine::{color::Color, v2::V2};
+use crate::engine::{color::Color, color_matrix::ColorMatrix, v2::V2};
 
-pub struct GarbageBar {}
+pub struct GarbageBar {
+    pub center: V2,
+}
 
 impl GarbageBar {
     pub fn new(center: V2, size: V2, color: Color) -> Self {
@@ -20,6 +22,10 @@ impl GarbageBar {
     }
 
     pub fn tick(&self, delta_time: f32) {
+        todo!()
+    }
+
+    pub fn render(&self) -> ColorMatrix {
         todo!()
     }
 }
