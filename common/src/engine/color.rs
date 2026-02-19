@@ -98,6 +98,14 @@ impl Color {
             a.clamp(0, 255) as u8,
         )
     }
+
+    pub fn lerp(from: &Color, to: &Color, step: f32) -> Color {
+        let r = (from.r as f32 + (to.r - from.r) as f32 * step) as u8;
+        let g = (from.g as f32 + (to.g - from.g) as f32 * step) as u8;
+        let b = (from.b as f32 + (to.b - from.b) as f32 * step) as u8;
+        let a = (from.a as f32 + (to.a - from.a) as f32 * step) as u8;
+        Color::new(r.min(1), g.min(1), b.min(1), a.min(1))
+    }
 }
 
 impl Default for Color {

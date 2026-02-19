@@ -28,7 +28,7 @@ impl Block {
         }
     }
 
-    fn generate_shape(shape: &Shape, rotation: i32, is_shadow: bool) -> ColorMatrix {
+    pub fn generate_shape(shape: &Shape, rotation: i32, is_shadow: bool) -> ColorMatrix {
         let size = match shape {
             Shape::I => V2::new(4.0, 4.0),
             Shape::O => V2::new(4.0, 3.0),

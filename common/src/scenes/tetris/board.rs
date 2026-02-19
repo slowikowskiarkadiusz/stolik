@@ -297,14 +297,14 @@ impl Board {
         }
     }
 
-    fn deal_damage(&self, count: u8) {
+    fn deal_damage(&mut self, count: u8) {
         let left = self.garbage_bar.decrease_and_get_left(count);
         if left > 0 {
             self.on_deal_damage.as_ref()(left, self.is_p1);
         }
     }
 
-    pub fn take_damage(&self, count: u8) {
+    pub fn take_damage(&mut self, count: u8) {
         self.garbage_bar.add_lines(count);
     }
 
