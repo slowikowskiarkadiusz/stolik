@@ -27,7 +27,7 @@ const LINE_CLEARING_ANIMATION_FACTOR: u32 = 75;
 const DROPPING_DELAY: f32 = 1000.0;
 const FASTER_DROPPING_DELAY: f32 = 100.0;
 const LOCK_DELAY: u32 = 1000;
-const BLOCKS_COLORS: &[Color; 7] = &[
+pub const BLOCKS_COLORS: &[Color; 7] = &[
     Color::new(0, 255, 255, 0), // Cyan
     Color::new(255, 255, 0, 0), // Yellow
     Color::new(127, 0, 127, 0), // Purple
@@ -408,8 +408,6 @@ impl Board {
                 }
             }
 
-            current_agent.reset();
-            current_agent_shadow.reset();
             self.can_drop = false;
 
             // TODO animation
