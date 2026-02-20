@@ -48,7 +48,7 @@ impl Scene for MenuScene {
     fn init(&mut self, world: &mut World) {
         self.options = vec![
             MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong", 0),
-            MenuOption::new(Box::new(|| Box::new(TetrisScene::new())), "srong", "srong", 0),
+            MenuOption::new(Box::new(|| Box::new(TetrisScene::new())), "tetris", "tetris", 0),
             // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "fong", "fong", 0),
         ];
 

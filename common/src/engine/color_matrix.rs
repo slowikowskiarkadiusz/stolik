@@ -122,7 +122,7 @@ impl Matrix<Color> {
         for x in 0..self.width {
             for y in 0..self.height {
                 let mut color = self.get(x, y).clone();
-                color.a *= to_opacity;
+                color.a = to_opacity;
                 self.set(x, y, color);
             }
         }

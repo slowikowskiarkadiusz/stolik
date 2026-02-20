@@ -19,8 +19,6 @@ struct Shared {
     color_matrix: Option<ColorMatrix>,
 }
 
-pub type InputState = HashMap<Key, (bool, bool)>;
-
 fn main() {
     panic::set_hook(Box::new(|info| {
         eprintln!("PANIC: {}", info);
@@ -104,7 +102,7 @@ fn make_color(color: &Color) -> u32 {
     return a;
 }
 
-fn init_input_state() -> InputState {
+fn init_input_state() -> HashMap<Key, (bool, bool)> {
     let mut input_state = HashMap::new();
     input_state.insert(Key::Space, (false, false));
     input_state.insert(Key::S, (false, false));
@@ -122,7 +120,7 @@ fn init_input_state() -> InputState {
     input_state
 }
 
-fn update_input_state(input_state: &mut InputState, window: &Window) {
+fn update_input_state(input_state: &mut HashMap<Key, (bool, bool)>, window: &Window) {
     for (k, v) in input_state {
         *v = (
             v.0 || window.is_key_pressed(k.clone(), minifb::KeyRepeat::No),

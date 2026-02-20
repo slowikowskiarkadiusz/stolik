@@ -1,5 +1,7 @@
 use common::engine::input::{
-    gesture::Gestures, input::Input, key::{KEYS_LENGTH, Key, KeyState}
+    gesture::Gestures,
+    input::Input,
+    key::{KEYS_LENGTH, Key, KeyState},
 };
 use std::{
     cell::RefCell,
@@ -7,22 +9,20 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::InputState;
-
 thread_local! {
     static KEY_MAP: RefCell<HashMap<minifb::Key, Key>> = RefCell::new(HashMap::new());
 }
 
 pub struct DesktopInput {
     gestures: Gestures,
-    input_state: Arc<Mutex<InputState>>,
+    input_state: Arc<Mutex<HashMap<minifb::Key, (bool, bool)>>>,
     keys_down: [bool; KEYS_LENGTH as usize],
     keys_up: [bool; KEYS_LENGTH as usize],
     keys_press: [bool; KEYS_LENGTH as usize],
 }
 
 impl DesktopInput {
-    pub fn new(input_state: Arc<Mutex<InputState>>) -> Self {
+    pub fn new(input_state: Arc<Mutex<HashMap<minifb::Key, (bool, bool)>>>) -> Self {
         KEY_MAP.with(|f| {
             f.borrow_mut().insert(minifb::Key::Space, Key::Start);
             f.borrow_mut().insert(minifb::Key::S, Key::P1Down);
@@ -112,7 +112,7 @@ impl Input for DesktopInput {
         &self.gestures
     }
 
-    fn update(&mut self, _: f32) {
+    fn update(&mut self, delta_time: f32) {
         let snapshot = {
             let mut guard = self.input_state.lock().unwrap();
 
@@ -132,11 +132,15 @@ impl Input for DesktopInput {
                 self.on_key_released(k);
             }
         }
+
+        self.gestures.tick(self.get_snapshot(), delta_time);
     }
 
     fn late_update(&mut self, _: f32) {
         self.keys_down = [false; KEYS_LENGTH as usize];
         self.keys_up = [false; KEYS_LENGTH as usize];
+
+        self.gestures.late_tick();
     }
 
     fn is_key_down(&self, key: Key) -> bool {

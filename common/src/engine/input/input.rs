@@ -1,6 +1,41 @@
-use crate::engine::input::{gesture::Gestures, key::Key};
+use crate::engine::{
+    hash_map::HashMap,
+    input::{
+        gesture::Gestures,
+        key::{KEYS_LENGTH, Key, u8_to_key},
+    },
+};
+
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct KeyState {
+    pub is_down: bool,
+    pub is_press: bool,
+    pub is_up: bool,
+}
+pub type InputSnapshot = HashMap<Key, KeyState>;
 
 pub trait Input {
+    fn get_snapshot(&self) -> InputSnapshot {
+        let mut result = InputSnapshot::new();
+
+        for k in 0..KEYS_LENGTH {
+            let key = u8_to_key(k);
+            result.insert(
+                key,
+                KeyState {
+                    is_down: self.is_key_down(key),
+                    is_press: self.is_key_press(key),
+                    is_up: self.is_key_up(key),
+                },
+            );
+        }
+
+        result
+    }
+
     fn gestures(&self) -> &Gestures;
     fn update(&mut self, delta_time: f32);
     fn late_update(&mut self, delta_time: f32);

@@ -11,6 +11,7 @@ use crate::engine::engine::{ActorId, SCREEN_SIZE};
 use crate::engine::input::gesture::{Gesture, State};
 use crate::engine::input::input::Input;
 use crate::engine::input::key::Key;
+use crate::scenes::tetris::garbage_bar;
 use crate::scenes::tetris::world::TetrisWorld;
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2},
@@ -41,7 +42,6 @@ pub const BLOCKS_COLORS: &[Color; 7] = &[
 
 pub struct Board {
     is_cell_taken: Matrix<bool>,
-    // current_block_index: u32,
     current_agent: Option<Block>,
     current_agent_shadow: Option<Block>,
     garbage_bar: GarbageBar,
@@ -58,7 +58,6 @@ pub struct Board {
     do_play: bool,
     pub is_dead: bool,
     opacity: u8,
-    // center: V2,
     pub size: V2,
     seed: u32,
     is_p1: bool,
@@ -70,17 +69,21 @@ impl Board {
             (1 + BOARD_WIDTH + 1 + 1 + 1) as f32,
             (1 + BOARD_HEIGHT + 1 + HoldLogic::SIZE.y as u8 + 1) as f32,
         );
-        let obj = Self {
+
+        let garbage_bar_size = V2::new(1.0, BOARD_HEIGHT as f32);
+        let mut obj = Self {
             is_cell_taken: Matrix::new(BOARD_WIDTH, BOARD_HEIGHT, false),
-            // current_block_index: 0,
             current_agent: None,
             current_agent_shadow: None,
             garbage_bar: GarbageBar::new(
                 V2::new((BOARD_WIDTH + 2) as f32, (size.y as u8 - 1 - BOARD_HEIGHT / 2) as f32),
-                V2::new(1.0, BOARD_HEIGHT as f32),
+                garbage_bar_size.clone(),
                 Color::white().a(127).clone(),
             ),
-            hold_logic: HoldLogic::new(V2::zero()),
+            hold_logic: HoldLogic::new(V2::new(
+                HoldLogic::SIZE.x / 2.0 + 1.0,
+                size.y - 1.0 - BOARD_HEIGHT as f32 - 1.0 - HoldLogic::SIZE.y / 2.0,
+            )),
             can_drop: false,
             dropped_blocks_matrix: ColorMatrix::new(BOARD_WIDTH, BOARD_HEIGHT, Color::none()),
             border_matrix: ColorMatrix::new(size.x as u8, size.y as u8, Color::none()),
@@ -91,13 +94,32 @@ impl Board {
             already_switched_pieces: false,
             spawn_bag: Vec::new(),
             do_play: true,
-            is_dead: true,
+            is_dead: false,
             opacity: 255,
-            // center,
-            size,
+            size: size.clone(),
             seed,
             is_p1,
         };
+
+        obj.write_border(
+            V2::new(0.0, size.y - 1.0),
+            V2::new(BOARD_WIDTH as f32 + 1.0, size.y - 1.0 - BOARD_HEIGHT as f32 - 1.0),
+        );
+
+        obj.write_border(
+            V2::new(BOARD_WIDTH as f32 + 1.0, size.y - 1.0),
+            V2::new(
+                BOARD_WIDTH as f32 + 1.0 + garbage_bar_size.x + 1.0,
+                size.y - 1.0 - BOARD_HEIGHT as f32 - 1.0,
+            ),
+        );
+
+        obj.write_border(
+            V2::new(0.0, size.y - 1.0 - BOARD_HEIGHT as f32 - 1.0 - HoldLogic::SIZE.y - 1.0),
+            V2::new(1.0 + HoldLogic::SIZE.x, size.y - 1.0 - BOARD_HEIGHT as f32 - 1.0),
+        );
+
+        obj.spawn(None, None);
 
         obj
     }
@@ -197,31 +219,34 @@ impl Board {
         render_matrix.write(&self.garbage_bar.render(), &self.garbage_bar.center, None, None, None);
         render_matrix.write(&self.hold_logic.render(), &self.hold_logic.center, None, None, None);
 
-        // matrix boardMatrix(board_width + 1, board_height);
-        // if (current_agent_shadow)
-        //   boardMatrix.write(current_agent_shadow->render(),
-        //                     current_agent_shadow->center, 0);
-        // if (current_agent) {
-        //   boardMatrix.write(current_agent->render(), current_agent->center, 0);
-        // }
-
-        if let Some(current_agent_shadow) = &self.current_agent_shadow {
-            render_matrix.write(&current_agent_shadow.render(), &current_agent_shadow.center, None, None, None);
-        }
-
-        if let Some(current_agent) = &self.current_agent {
-            render_matrix.write(&current_agent.render(), &current_agent.center, None, None, None);
-        }
+        // println!("{}", render_matrix);
 
         let board_offset = V2::new(
             (1 + BOARD_WIDTH / 2) as f32,
-            self.size.y - 1 as f32 - (BOARD_HEIGHT + BOARD_HEIGHT) as f32 / 2.0,
+            self.size.y - 1 as f32 - BOARD_HEIGHT as f32 + BOARD_HEIGHT as f32 / 2.0,
         );
+
+        let mut board_matrix = ColorMatrix::new(BOARD_WIDTH + 1, BOARD_HEIGHT, Color::none());
+
+        if let Some(current_agent_shadow) = &self.current_agent_shadow {
+            board_matrix.write(&current_agent_shadow.render(), &current_agent_shadow.center, None, None, None);
+        }
+        // println!("{}", render_matrix);
+
+        if let Some(current_agent) = &self.current_agent {
+            board_matrix.write(&current_agent.render(), &current_agent.center, None, None, None);
+        }
+        // println!("{}", render_matrix);
+
+        render_matrix.write(&board_matrix, &board_offset, None, None, None);
 
         render_matrix.write(&self.dropped_blocks_matrix, &board_offset, None, None, None);
 
-        render_matrix.scale((SCREEN_SIZE / 32) as f32, Color::none());
-        render_matrix.dim(self.opacity as u8);
+        // println!("{}", render_matrix);
+
+        // render_matrix.scale((SCREEN_SIZE / 32) as f32, Color::none());
+        // render_matrix.dim(self.opacity as u8);
+        // println!("{}", render_matrix);
 
         render_matrix
     }
@@ -233,6 +258,7 @@ impl Board {
     fn spawn(&mut self, center: Option<V2>, shape: Option<Shape>) {
         self.already_switched_pieces = false;
         let new_shape = shape.unwrap_or(self.generate_block(self.seed.clone()));
+        // println!("{}", self.seed as u8);
         let agent_center = center.unwrap_or(V2::new((BOARD_WIDTH / 2) as f32, 0.0));
         let new_agent = Block::new(agent_center, new_shape.clone(), false);
         let drop_pos = V2::new(
@@ -243,13 +269,28 @@ impl Board {
         self.current_agent_shadow = Some(Block::new(drop_pos, new_shape, true));
     }
 
+    // void tetris_board_actor::move_block_by(const v2 &by) {
+    //   if (!current_agent)
+    //     return;
+
+    //   auto spots = current_agent->get_taken_spots();
+
+    //   if (!std::ranges::any_of(spots, [&](const v2 &spot) {
+    //         return is_position_taken(spot.x + by.x, spot.y + by.y);
+    //       })) {
+    //     current_agent->center = current_agent->center.add(by);
+    //     current_agent_shadow->center =
+    //         v2(current_agent->center.x, current_agent->center.y + calc_drop());
+    //   }
+    // }
+
     fn move_block_by(&mut self, by: V2) {
         if let Some(current_agent) = self.current_agent.as_mut() {
             let spots = current_agent.get_taken_spots();
 
             if !spots
                 .iter()
-                .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i8, f.y as i8))
+                .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i8 + by.x as i8, f.y as i8 + by.y as i8))
             {
                 current_agent.center = &current_agent.center + &by;
 
@@ -329,21 +370,24 @@ impl Board {
 
     fn calc_drop(is_cell_taken: &Matrix<bool>, i: u8, agent: &Block) -> u8 {
         let spots = agent.get_taken_spots();
-        if !spots.iter().any(|f| Board::is_position_taken(is_cell_taken, f.x as i8, f.y as i8)) {
+        if !spots
+            .iter()
+            .any(|f| Board::is_position_taken(is_cell_taken, f.x as i8, (f.y + i as f32) as i8))
+        {
             let next = Board::calc_drop(is_cell_taken, i + 1, agent);
             return if next != 0 { next } else { i };
         } else {
-            i - 1
+            (i as i16 - 1 as i16).max(0) as u8
         }
     }
 
     fn is_position_taken(is_cell_taken: &Matrix<bool>, x: i8, y: i8) -> bool {
+        // println!("{}, {}", x, y);
+
         let a = x < 0;
         let b = x >= BOARD_WIDTH as i8;
         let c = y >= BOARD_HEIGHT as i8;
-        let d = a || b || c || is_cell_taken.get(x as u8, y as u8).clone();
-
-        a || b || c || d
+        a || b || c || is_cell_taken.get(x as u8, y as u8).clone()
     }
 
     fn fall(&mut self, delta_time: f32) -> u8 {

@@ -108,7 +108,7 @@ impl TetrisScene {
 
         if let Some(p2_render) = world.get_mut_render(&self.p1_board_actor_id) {
             if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-                p2_render.write_at_origin(&p2_board.render(), &V2::zero());
+                // p2_render.write_at_origin(&p2_board.render(), &V2::zero());
             }
         }
     }

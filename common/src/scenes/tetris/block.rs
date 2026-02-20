@@ -120,9 +120,9 @@ impl Block {
         let start = &self.center.floor() - &V2::new((self.matrix.width / 2) as f32, (self.matrix.height / 2) as f32);
         let mut coords = Vec::<V2>::new();
 
-        for x in start.x as u8..start.x as u8 + self.matrix.width {
-            for y in start.y as u8..start.y as u8 + self.matrix.height {
-                if !self.matrix.get(x - start.x as u8, y - start.y as u8).is_none() {
+        for x in start.x as i16..start.x as i16 + self.matrix.width as i16 {
+            for y in start.y as i16..start.y as i16 + self.matrix.height as i16 {
+                if !self.matrix.get((x - start.x as i16) as u8, (y - start.y as i16) as u8).is_none() {
                     coords.push(V2::new(x as f32, y as f32));
                 }
             }

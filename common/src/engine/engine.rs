@@ -8,7 +8,7 @@ use crate::{
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
     },
-    scenes::menu::menu_scene::MenuScene,
+    scenes::{menu::menu_scene::MenuScene, tetris::tetris_scene::TetrisScene},
 };
 extern crate alloc;
 use alloc::boxed::Box;
@@ -52,7 +52,7 @@ impl Engine {
         let target_frame = Duration::from_millis(33);
 
         if !self.is_any_scene {
-            self.change_scene(|| Box::new(MenuScene::new()));
+            self.change_scene(|| Box::new(TetrisScene::new()));
             self.is_any_scene = true;
         }
 

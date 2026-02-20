@@ -86,8 +86,8 @@ impl<T: Clone> Matrix<T> {
     pub fn scale(&mut self, factor: f32, background: T) {
         let old_width = self.width;
         let old_height = self.height;
-        let new_width = roundf(self.width as f32 * factor) as u8;
-        let new_height = roundf(self.height as f32 * factor) as u8;
+        let new_width = roundf(old_width as f32 * factor) as u8;
+        let new_height = roundf(old_height as f32 * factor) as u8;
 
         let mut scaled = Matrix::<T>::new(new_width, new_height, background);
 

@@ -63,6 +63,8 @@ dependencies = [
  "embassy-time",
  "libm",
  "rand",
+ "serde",
+ "serde_json",
  "spin",
 ]
 
