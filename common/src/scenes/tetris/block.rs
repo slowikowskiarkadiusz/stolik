@@ -137,27 +137,27 @@ impl Block {
             by_value = 360 + by_value;
         }
         self.rotation = (self.rotation + by_value as u16) % 360;
-        self.matrix = if by_value == 90 || by_value == 270 {
-            ColorMatrix::new(self.matrix.height, self.matrix.width, Color::none())
+        let old = &self.matrix;
+        let mut new_matrix = if by_value == 90 || by_value == 270 {
+            ColorMatrix::new(old.height, old.width, Color::none())
         } else {
-            ColorMatrix::new(self.matrix.width, self.matrix.height, Color::none())
+            ColorMatrix::new(old.width, old.height, Color::none())
         };
-
-        for y in 0..self.matrix.height {
-            for x in 0..self.matrix.width {
-                let pixel = self.matrix.get(x, y);
-
+        for y in 0..old.height {
+            for x in 0..old.width {
+                let pixel = old.get(x, y);
                 if by_value == 90 {
-                    self.matrix.set(y, self.matrix.width - 1 - x, pixel.clone());
+                    new_matrix.set(y, old.width - 1 - x, pixel.clone());
                 } else if by_value == 180 {
-                    self.matrix.set(self.matrix.width - 1 - x, self.matrix.width - 1 - y, pixel.clone());
+                    new_matrix.set(old.width - 1 - x, old.height - 1 - y, pixel.clone());
                 } else if by_value == 270 {
-                    self.matrix.set(self.matrix.height - 1 - y, x, pixel.clone());
+                    new_matrix.set(old.height - 1 - y, x, pixel.clone());
                 } else {
-                    self.matrix.set(x, y, pixel.clone());
+                    new_matrix.set(x, y, pixel.clone());
                 }
             }
         }
+        self.matrix = new_matrix;
     }
 
     pub fn render(&self) -> &ColorMatrix {

@@ -16,7 +16,6 @@ use crate::{
 };
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
-use embassy_time::Instant;
 use rand::{RngCore, SeedableRng, rngs::SmallRng};
 
 pub struct TetrisScene {
@@ -47,10 +46,10 @@ impl Scene for TetrisScene {
             is_p1_dead = p1_board.is_dead;
         }
 
-        if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-            damage_for_p1 = p2_board.tick(input, delta_time);
-            is_p2_dead = p2_board.is_dead;
-        }
+        // if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
+        //     damage_for_p1 = p2_board.tick(input, delta_time);
+        //     is_p2_dead = p2_board.is_dead;
+        // }
 
         if is_p1_dead || is_p2_dead {
             self.on_players_death(world, is_p1_dead);
@@ -60,9 +59,9 @@ impl Scene for TetrisScene {
             p1_board.take_damage(damage_for_p2);
         }
 
-        if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-            p2_board.take_damage(damage_for_p1);
-        }
+        // if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
+        //     p2_board.take_damage(damage_for_p1);
+        // }
 
         self.render(world);
     }

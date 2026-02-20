@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 use rand::RngCore;
 use rand::seq::SliceRandom;
 use rand::{SeedableRng, rngs::SmallRng};
@@ -11,7 +11,6 @@ use crate::engine::engine::{ActorId, SCREEN_SIZE};
 use crate::engine::input::gesture::{Gesture, State};
 use crate::engine::input::input::Input;
 use crate::engine::input::key::Key;
-use crate::scenes::tetris::garbage_bar;
 use crate::scenes::tetris::world::TetrisWorld;
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2},
@@ -25,19 +24,19 @@ use crate::{
 
 const BOARD_WIDTH: u8 = 10;
 const BOARD_HEIGHT: u8 = 20;
-const AFTER_DROP_DELAY: u32 = 250;
-const LINE_CLEARING_ANIMATION_FACTOR: u32 = 75;
-const DROPPING_DELAY: f32 = 1000.0;
-const FASTER_DROPPING_DELAY: f32 = 100.0;
-const LOCK_DELAY: u32 = 1000;
+const AFTER_DROP_DELAY_SEC: f32 = 0.250;
+const LINE_CLEARING_ANIMATION_FACTOR_SEC: f32 = 0.075;
+const DROPPING_DELAY_SEC: f32 = 1.0;
+const FASTER_DROPPING_DELAY_SEC: f32 = 0.1;
+const LOCK_DELAY_SEC: f32 = 1.0;
 pub const BLOCKS_COLORS: &[Color; 7] = &[
-    Color::new(0, 255, 255, 0), // Cyan
-    Color::new(255, 255, 0, 0), // Yellow
-    Color::new(127, 0, 127, 0), // Purple
-    Color::new(0, 255, 0, 0),   // Green
-    Color::new(255, 0, 0, 0),   // Red
-    Color::new(0, 0, 255, 0),   // Blue
-    Color::new(255, 163, 0, 0), // Orange
+    Color::new(0, 255, 255, 255), // Cyan
+    Color::new(255, 255, 0, 255), // Yellow
+    Color::new(127, 0, 127, 255), // Purple
+    Color::new(0, 255, 0, 255),   // Green
+    Color::new(255, 0, 0, 255),   // Red
+    Color::new(0, 0, 255, 255),   // Blue
+    Color::new(255, 163, 0, 255), // Orange
 ];
 
 pub struct Board {
@@ -57,7 +56,7 @@ pub struct Board {
     spawn_bag: Vec<Shape>,
     do_play: bool,
     pub is_dead: bool,
-    opacity: u8,
+    opacity: i16,
     pub size: V2,
     seed: u32,
     is_p1: bool,
@@ -84,13 +83,13 @@ impl Board {
                 HoldLogic::SIZE.x / 2.0 + 1.0,
                 size.y - 1.0 - BOARD_HEIGHT as f32 - 1.0 - HoldLogic::SIZE.y / 2.0,
             )),
-            can_drop: false,
+            can_drop: true,
             dropped_blocks_matrix: ColorMatrix::new(BOARD_WIDTH, BOARD_HEIGHT, Color::none()),
             border_matrix: ColorMatrix::new(size.x as u8, size.y as u8, Color::none()),
             continue_dropping: true,
             drop_timer: 0.0,
             lock_delay_timer: 0.0,
-            dropping_delay_value: DROPPING_DELAY,
+            dropping_delay_value: DROPPING_DELAY_SEC,
             already_switched_pieces: false,
             spawn_bag: Vec::new(),
             do_play: true,
@@ -149,9 +148,9 @@ impl Board {
                 Gesture::Once,
                 None,
             ) {
-                self.dropping_delay_value = FASTER_DROPPING_DELAY;
+                self.dropping_delay_value = FASTER_DROPPING_DELAY_SEC;
             } else {
-                self.dropping_delay_value = DROPPING_DELAY;
+                self.dropping_delay_value = DROPPING_DELAY_SEC;
                 if input
                     .gestures()
                     .is(if self.is_p1 { Key::P1Left } else { Key::P2Left }, State::Down, Gesture::Once, None)
@@ -178,35 +177,33 @@ impl Board {
                 ) {
                     self.move_block_by(V2::right());
                 }
-
-                if input
-                    .gestures()
-                    .is(if self.is_p1 { Key::P1Up } else { Key::P2Up }, State::Down, Gesture::Once, None)
-                {
-                    self.drop();
-                }
-
-                if input
-                    .gestures()
-                    .is(if self.is_p1 { Key::P1Blue } else { Key::P2Blue }, State::Down, Gesture::Once, None)
-                {
-                    self.rotate_block(1);
-                }
-
-                if input.gestures().is(
-                    if self.is_p1 { Key::P1Green } else { Key::P2Green },
-                    State::Down,
-                    Gesture::Once,
-                    None,
-                ) {
-                    self.rotate_block(-1);
-                }
-
-                let damage_to_deal = self.fall(delta_time);
-                return self.garbage_bar.decrease_and_get_left(damage_to_deal);
             }
 
-            return 0;
+            if input
+                .gestures()
+                .is(if self.is_p1 { Key::P1Up } else { Key::P2Up }, State::Down, Gesture::Once, None)
+            {
+                self.drop();
+            }
+
+            if input
+                .gestures()
+                .is(if self.is_p1 { Key::P1Blue } else { Key::P2Blue }, State::Down, Gesture::Once, None)
+            {
+                self.rotate_block(1);
+            }
+
+            if input.gestures().is(
+                if self.is_p1 { Key::P1Green } else { Key::P2Green },
+                State::Down,
+                Gesture::Once,
+                None,
+            ) {
+                self.rotate_block(-1);
+            }
+
+            let damage_to_deal = self.fall(delta_time);
+            return self.garbage_bar.decrease_and_get_left(damage_to_deal);
         }
 
         return 0;
@@ -219,8 +216,6 @@ impl Board {
         render_matrix.write(&self.garbage_bar.render(), &self.garbage_bar.center, None, None, None);
         render_matrix.write(&self.hold_logic.render(), &self.hold_logic.center, None, None, None);
 
-        // println!("{}", render_matrix);
-
         let board_offset = V2::new(
             (1 + BOARD_WIDTH / 2) as f32,
             self.size.y - 1 as f32 - BOARD_HEIGHT as f32 + BOARD_HEIGHT as f32 / 2.0,
@@ -231,58 +226,37 @@ impl Board {
         if let Some(current_agent_shadow) = &self.current_agent_shadow {
             board_matrix.write(&current_agent_shadow.render(), &current_agent_shadow.center, None, None, None);
         }
-        // println!("{}", render_matrix);
 
         if let Some(current_agent) = &self.current_agent {
             board_matrix.write(&current_agent.render(), &current_agent.center, None, None, None);
         }
-        // println!("{}", render_matrix);
 
         render_matrix.write(&board_matrix, &board_offset, None, None, None);
 
         render_matrix.write(&self.dropped_blocks_matrix, &board_offset, None, None, None);
 
-        // println!("{}", render_matrix);
-
         // render_matrix.scale((SCREEN_SIZE / 32) as f32, Color::none());
-        // render_matrix.dim(self.opacity as u8);
-        // println!("{}", render_matrix);
+        // render_matrix.dim(self.opacity as i16);
 
         render_matrix
     }
 
-    pub fn dim(&mut self, opacity: u8) {
+    pub fn dim(&mut self, opacity: i16) {
         self.opacity = opacity;
     }
 
     fn spawn(&mut self, center: Option<V2>, shape: Option<Shape>) {
         self.already_switched_pieces = false;
         let new_shape = shape.unwrap_or(self.generate_block(self.seed.clone()));
-        // println!("{}", self.seed as u8);
         let agent_center = center.unwrap_or(V2::new((BOARD_WIDTH / 2) as f32, 0.0));
         let new_agent = Block::new(agent_center, new_shape.clone(), false);
         let drop_pos = V2::new(
             new_agent.center.x,
-            new_agent.center.y + Board::calc_drop(&self.is_cell_taken, 0, &new_agent) as f32,
+            new_agent.center.y + Board::calc_drop(&self.is_cell_taken, 1, &new_agent) as f32,
         );
         self.current_agent = Some(new_agent);
         self.current_agent_shadow = Some(Block::new(drop_pos, new_shape, true));
     }
-
-    // void tetris_board_actor::move_block_by(const v2 &by) {
-    //   if (!current_agent)
-    //     return;
-
-    //   auto spots = current_agent->get_taken_spots();
-
-    //   if (!std::ranges::any_of(spots, [&](const v2 &spot) {
-    //         return is_position_taken(spot.x + by.x, spot.y + by.y);
-    //       })) {
-    //     current_agent->center = current_agent->center.add(by);
-    //     current_agent_shadow->center =
-    //         v2(current_agent->center.x, current_agent->center.y + calc_drop());
-    //   }
-    // }
 
     fn move_block_by(&mut self, by: V2) {
         if let Some(current_agent) = self.current_agent.as_mut() {
@@ -290,7 +264,7 @@ impl Board {
 
             if !spots
                 .iter()
-                .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i8 + by.x as i8, f.y as i8 + by.y as i8))
+                .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i16 + by.x as i16, f.y as i16 + by.y as i16))
             {
                 current_agent.center = &current_agent.center + &by;
 
@@ -307,9 +281,9 @@ impl Board {
             && let Some(current_agent_shadow) = self.current_agent_shadow.as_mut()
         {
             let rotation = current_agent.rotation;
-            let kicks = current_agent.get_kicks(rotation as i32 + 90i32 * dir);
+            let kicks = current_agent.get_kicks(rotation as i32 + 90 * dir);
             let pre_transform_center = current_agent.center.clone();
-            current_agent.rotate_block(0i32);
+            current_agent.rotate_block(90 * dir);
             let post_transform_center = current_agent.center.clone();
             let mut did_kick = false;
             for kick in kicks {
@@ -317,15 +291,14 @@ impl Board {
                 let spots = current_agent.get_taken_spots();
                 if !spots
                     .iter()
-                    .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i8, f.y as i8))
+                    .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i16, f.y as i16))
                 {
                     did_kick = true;
                     break;
                 }
             }
-
             if !did_kick {
-                current_agent.rotate_block(90);
+                current_agent.rotate_block(-90 * dir);
                 current_agent.center = pre_transform_center;
             } else {
                 current_agent_shadow.rotate_block(90 * dir);
@@ -368,42 +341,42 @@ impl Board {
         }
     }
 
-    fn calc_drop(is_cell_taken: &Matrix<bool>, i: u8, agent: &Block) -> u8 {
+    fn calc_drop(is_cell_taken: &Matrix<bool>, i: i16, agent: &Block) -> i16 {
         let spots = agent.get_taken_spots();
-        if !spots
-            .iter()
-            .any(|f| Board::is_position_taken(is_cell_taken, f.x as i8, (f.y + i as f32) as i8))
+        if spots.len() > 0
+            && !spots
+                .iter()
+                .any(|f| Board::is_position_taken(is_cell_taken, f.x as i16, (f.y + i as f32) as i16))
         {
             let next = Board::calc_drop(is_cell_taken, i + 1, agent);
             return if next != 0 { next } else { i };
         } else {
-            (i as i16 - 1 as i16).max(0) as u8
+            i - 1
         }
     }
 
-    fn is_position_taken(is_cell_taken: &Matrix<bool>, x: i8, y: i8) -> bool {
-        // println!("{}, {}", x, y);
-
+    fn is_position_taken(is_cell_taken: &Matrix<bool>, x: i16, y: i16) -> bool {
         let a = x < 0;
-        let b = x >= BOARD_WIDTH as i8;
-        let c = y >= BOARD_HEIGHT as i8;
-        a || b || c || is_cell_taken.get(x as u8, y as u8).clone()
+        let b = x >= BOARD_WIDTH as i16;
+        let c = y >= BOARD_HEIGHT as i16;
+        let d = y < 0;
+        a || b || c || d || is_cell_taken.get(x as u8, y as u8).clone()
     }
 
     fn fall(&mut self, delta_time: f32) -> u8 {
         let mut damage_to_deal = 0;
         if let Some(current_agent) = self.current_agent.as_mut()
-            && self.continue_dropping
-            && self.lock_delay_timer > 0.0
+            && (self.continue_dropping || self.lock_delay_timer > 0.0)
         {
             let mut dropped = false;
             let spots = current_agent.get_taken_spots();
-            if !spots
-                .iter()
-                .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i8, f.y as i8))
+            if spots.len() > 0
+                && spots
+                    .iter()
+                    .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i16, f.y as i16 + 1))
             {
                 self.lock_delay_timer += delta_time;
-                if self.lock_delay_timer > LOCK_DELAY as f32 {
+                if self.lock_delay_timer > LOCK_DELAY_SEC as f32 {
                     damage_to_deal = self.drop();
                     self.lock_delay_timer = 0.0;
                     dropped = true;
@@ -443,6 +416,7 @@ impl Board {
                 );
 
                 if spot.y <= 0.0 {
+                    println!("DYING");
                     self.is_dead = true;
                     self.do_play = false;
                     return 0;
@@ -450,6 +424,11 @@ impl Board {
             }
 
             self.can_drop = false;
+
+            self.current_agent = None;
+            self.current_agent_shadow = None;
+            self.spawn(None, None);
+            self.can_drop = true;
 
             // TODO animation
             let damage_to_deal = self.clear_lines();
@@ -490,7 +469,7 @@ impl Board {
             let lines_length = lines.len();
 
             for line in lines {
-                for y in line..0 {
+                for y in (0..line).rev() {
                     for x in 0..self.is_cell_taken.width {
                         self.is_cell_taken.set(x, y, self.is_cell_taken.get(x, y - 1).clone());
                         self.dropped_blocks_matrix
@@ -508,7 +487,7 @@ impl Board {
     }
 
     fn pop_garbage_lines(&mut self) {
-        let hole = (SmallRng::from_seed([(self.seed % 255) as u8; 32]).next_u32() % BOARD_WIDTH as u32) as u8;
+        let hole = (SmallRng::from_seed([(self.seed % 255) as u8; 32]).next_u32() % BOARD_WIDTH as u32) as i16;
 
         while self.garbage_bar.pop() {
             for x in 0..BOARD_WIDTH {
