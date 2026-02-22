@@ -315,7 +315,7 @@ impl Board {
     }
 
     fn generate_block(&mut self, seed: u32) -> Shape {
-        let mut rng = SmallRng::from_seed([(seed % 255) as u8; 32]);
+        let mut rng = SmallRng::from_seed([(seed % 255) as u8; core::mem::size_of::<SmallRng>()]);
         if self.spawn_bag.is_empty() {
             for i in 0..(Shape::L as u8 + 1) {
                 self.spawn_bag.push(get_shape(i));
@@ -416,7 +416,7 @@ impl Board {
                 );
 
                 if spot.y <= 0.0 {
-                    println!("DYING");
+                    // println!("DYING");
                     self.is_dead = true;
                     self.do_play = false;
                     return 0;
@@ -487,7 +487,8 @@ impl Board {
     }
 
     fn pop_garbage_lines(&mut self) {
-        let hole = (SmallRng::from_seed([(self.seed % 255) as u8; 32]).next_u32() % BOARD_WIDTH as u32) as i16;
+        let hole =
+            (SmallRng::from_seed([(self.seed % 255) as u8; core::mem::size_of::<SmallRng>()]).next_u32() % BOARD_WIDTH as u32) as i16;
 
         while self.garbage_bar.pop() {
             for x in 0..BOARD_WIDTH {

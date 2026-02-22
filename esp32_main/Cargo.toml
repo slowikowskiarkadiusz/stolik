@@ -32,6 +32,7 @@ log = "0.4"
 esp-hub75 = { git = "https://github.com/liebman/esp-hub75", branch = "main", features = ["esp32s3"] }
 esp-rtos = { version = "0.2", features = ["esp32s3", "embassy"] }
 getrandom = { version = "0.2", default-features = false, features = ["custom"] }
+mcp230xx = "0.1"
 
 [profile.dev]
 opt-level = "s"

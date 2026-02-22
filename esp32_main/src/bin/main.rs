@@ -41,10 +41,11 @@
 //!
 //! Note that you most likely need level converters 3.3v to 5v for all HUB75
 //! signals
-
+//!
 #![no_std]
 #![no_main]
 #![allow(clippy::uninlined_format_args)]
+use core::prelude::v1::*;
 
 use core::fmt;
 use core::sync::atomic::AtomicU32;
@@ -113,7 +114,7 @@ const TRANSFER_SPEED: Rate = Rate::from_mhz(20);
 const BITS: u8 = 3;
 
 // Panel layout settings
-const TILED_COLS: usize = 2;
+const TILED_COLS: usize = 1;
 const TILED_ROWS: usize = 2;
 const PANEL_ROWS: usize = 32;
 const PANEL_COLS: usize = 64;
