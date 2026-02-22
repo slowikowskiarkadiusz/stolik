@@ -17,6 +17,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Duration;
 use embassy_time::Instant;
+use esp_println::println;
 
 pub static SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;

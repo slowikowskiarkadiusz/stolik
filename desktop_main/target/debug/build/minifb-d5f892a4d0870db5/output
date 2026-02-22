@@ -1,4 +1,4 @@
-OUT_DIR = Some(/Users/ark/Desktop/stolik/desktop/target/debug/build/minifb-d5f892a4d0870db5/out)
+OUT_DIR = Some(/Users/ark/Desktop/stolik/desktop_main/target/debug/build/minifb-d5f892a4d0870db5/out)
 OPT_LEVEL = Some(0)
 TARGET = Some(aarch64-apple-darwin)
 CARGO_ENCODED_RUSTFLAGS = Some()
@@ -47,6 +47,6 @@ ARFLAGS_aarch64_apple_darwin = None
 cargo:rerun-if-env-changed=ARFLAGS_aarch64-apple-darwin
 ARFLAGS_aarch64-apple-darwin = None
 cargo:rustc-link-lib=static=minifb_native
-cargo:rustc-link-search=native=/Users/ark/Desktop/stolik/desktop/target/debug/build/minifb-d5f892a4d0870db5/out
+cargo:rustc-link-search=native=/Users/ark/Desktop/stolik/desktop_main/target/debug/build/minifb-d5f892a4d0870db5/out
 cargo:rustc-link-lib=framework=Metal
 cargo:rustc-link-lib=framework=MetalKit

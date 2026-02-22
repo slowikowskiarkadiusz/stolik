@@ -45,12 +45,16 @@
 #![no_std]
 #![no_main]
 #![allow(clippy::uninlined_format_args)]
-use core::prelude::v1::*;
-
 use core::fmt;
+use core::prelude::v1::*;
 use core::sync::atomic::AtomicU32;
 use core::sync::atomic::Ordering;
+use esp_alloc;
 
+use alloc::boxed::Box;
+use common::engine::color::Color;
+use common::engine::color_matrix::ColorMatrix;
+use common::engine::engine::Engine;
 #[cfg(feature = "defmt")]
 use defmt::info;
 #[cfg(feature = "defmt")]
@@ -75,10 +79,12 @@ use esp_hal::gpio::Pin;
 use esp_hal::interrupt::Priority;
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::peripherals::LCD_CAM;
+use esp_hal::peripherals::Peripherals;
 use esp_hal::time::Rate;
 use esp_hal::timer::systimer::SystemTimer;
-use esp_hal::xtensa_lx_rt::entry;
-use esp_hub75::Color;
+extern crate alloc;
+use alloc::sync::Arc;
+use esp_hub75::Color as Esp32Color;
 use esp_hub75::Hub75;
 use esp_hub75::Hub75Pins16;
 use esp_hub75::framebuffer::FrameBufferOperations;
@@ -88,12 +94,23 @@ use esp_hub75::framebuffer::plain::DmaFrameBuffer;
 use esp_hub75::framebuffer::tiling::ChainTopRightDown;
 use esp_hub75::framebuffer::tiling::TiledFrameBuffer;
 use esp_hub75::framebuffer::tiling::compute_tiled_cols;
+use esp_println::println;
 use esp_rtos::embassy::Executor;
 use esp_rtos::embassy::InterruptExecutor;
+use esp32_main::esp32_input::Esp32Input;
+use esp32_main::esp32_input::Esp32InputPinSetup;
+use esp32_main::esp32_threading_provider::Esp32Thread;
+use spin::Mutex;
 // use esp_rtos::embassy::InterruptExecutor;
 use heapless::String;
 #[cfg(feature = "log")]
 use log::info;
+
+struct Shared {
+    color_matrix: Option<ColorMatrix>,
+}
+
+static SHARED: Mutex<Shared> = Mutex::new(Shared { color_matrix: None });
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
@@ -204,8 +221,8 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
     // info!("display_task: starting!");
     let fps_style = MonoTextStyleBuilder::new()
         .font(&FONT_5X7)
-        .text_color(Color::YELLOW)
-        .background_color(Color::BLACK)
+        .text_color(Esp32Color::YELLOW)
+        .background_color(Esp32Color::BLACK)
         .build();
     let mut count = 0u32;
 
@@ -214,54 +231,27 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
     loop {
         fb.erase();
 
-        const STEP: u8 = (256 / VIRTUAL_COLS) as u8;
-        for x in 0..VIRTUAL_COLS {
-            let brightness = (x as u8) * STEP;
-            for y in 0..8 {
-                fb.set_pixel(Point::new(x as i32, y), Color::new(brightness, 0, 0));
-            }
-            for y in 8..16 {
-                fb.set_pixel(Point::new(x as i32, y), Color::new(0, brightness, 0));
-            }
-            for y in 16..24 {
-                fb.set_pixel(Point::new(x as i32, y), Color::new(0, 0, brightness));
+        let m = {
+            let s = SHARED.lock();
+            let clone = s.color_matrix.clone();
+            // s.color_matrix = None;
+            clone
+        };
+
+        if let Some(matrix) = m {
+            for x in 0..matrix.width {
+                for y in 0..matrix.height {
+                    let color = matrix.get(x, y);
+                    let esp32_color = Esp32Color::new(
+                        (color.r as f32 * (color.a as f32 / 255.0)) as u8,
+                        (color.g as f32 * (color.a as f32 / 255.0)) as u8,
+                        (color.b as f32 * (color.a as f32 / 255.0)) as u8,
+                    );
+                    fb.set_pixel(Point::new(x as i32, y as i32), esp32_color);
+                }
             }
         }
 
-        let mut buffer: String<64> = String::new();
-
-        fmt::write(&mut buffer, format_args!("Refresh: {:4}", REFRESH_RATE.load(Ordering::Relaxed))).unwrap();
-        Text::with_alignment(
-            buffer.as_str(),
-            Point::new(VIRTUAL_COLS as i32 / 2, VIRTUAL_ROWS as i32 / 2),
-            fps_style,
-            Alignment::Center,
-        )
-        .draw(fb)
-        .unwrap();
-
-        buffer.clear();
-        fmt::write(&mut buffer, format_args!("Render: {:5}", RENDER_RATE.load(Ordering::Relaxed))).unwrap();
-
-        Text::with_alignment(
-            buffer.as_str(),
-            Point::new(VIRTUAL_COLS as i32 / 2, VIRTUAL_ROWS as i32 - 8),
-            fps_style,
-            Alignment::Center,
-        )
-        .draw(fb)
-        .unwrap();
-
-        buffer.clear();
-        fmt::write(&mut buffer, format_args!("Simple: {:5}", SIMPLE_COUNTER.load(Ordering::Relaxed))).unwrap();
-        Text::with_alignment(
-            buffer.as_str(),
-            Point::new(VIRTUAL_COLS as i32 / 2, VIRTUAL_ROWS as i32 - 20),
-            fps_style,
-            Alignment::Center,
-        )
-        .draw(fb)
-        .unwrap();
         // send the frame buffer to be rendered
         tx.signal(fb);
 
@@ -279,6 +269,16 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
     }
 }
 
+// fn draw(x: u8, y: u8, color: Color) {
+//     let esp32_color = Esp32Color::new((color.r as f32 * (color.a as f32 / 255.0)) as u8, (color.g as f32 * (color.a as f32 / 255.0)) as u8, (color.b as f32 * (color.a as f32 / 255.0)) as u8);
+
+//   if (y < 32) {
+//     dma_display->drawPixel(x, y, c);
+//   } else {
+//     dma_display->drawPixel(x + 64, y - 32, c);
+//   }
+// }
+
 unsafe extern "C" {
     static _stack_end_cpu0: u32;
     static _stack_start_cpu0: u32;
@@ -286,6 +286,7 @@ unsafe extern "C" {
 
 #[esp_rtos::main]
 async fn main(_s: embassy_executor::Spawner) {
+    esp_alloc::heap_allocator!(64 * 1024);
     #[cfg(feature = "log")]
     esp_println::logger::init_logger_from_env();
     // info!("Main starting!");
@@ -306,6 +307,26 @@ async fn main(_s: embassy_executor::Spawner) {
     esp_rtos::start(timer0.alarm0);
 
     // info!("Embassy initialized!");
+
+    let input_pin_setup = Esp32InputPinSetup {
+        gpio1: peripherals.GPIO1.degrade(),
+        // gpio17: peripherals.GPIO17.degrade(),
+        gpio18: peripherals.GPIO18.degrade(),
+        gpio21: peripherals.GPIO21.degrade(),
+        gpio35: peripherals.GPIO35.degrade(),
+        gpio36: peripherals.GPIO36.degrade(),
+        gpio37: peripherals.GPIO37.degrade(),
+        gpio38: peripherals.GPIO38.degrade(),
+        gpio39: peripherals.GPIO39.degrade(),
+        gpio40: peripherals.GPIO40.degrade(),
+        gpio41: peripherals.GPIO41.degrade(),
+        gpio42: peripherals.GPIO42.degrade(),
+        gpio47: peripherals.GPIO47.degrade(),
+        gpio48: peripherals.GPIO48.degrade(),
+        i2c0: peripherals.I2C0,
+        gpio19: peripherals.GPIO19.degrade(),
+        gpio20: peripherals.GPIO20.degrade(),
+    };
 
     let pins = Hub75Pins16 {
         red1: peripherals.GPIO4.degrade(),
@@ -351,13 +372,14 @@ async fn main(_s: embassy_executor::Spawner) {
             let lp_executor = mk_static!(Executor, Executor::new());
             // display task runs as low priority task
             lp_executor.run(|spawner: Spawner| {
+                spawner.spawn(run_engine(input_pin_setup)).ok();
                 spawner.spawn(display_task(&TX, &RX, fb0)).ok();
             });
         }
     };
 
     use esp_hal::system::Stack;
-    const DISPLAY_STACK_SIZE: usize = 8192;
+    const DISPLAY_STACK_SIZE: usize = 131072;
     let app_core_stack = mk_static!(Stack<DISPLAY_STACK_SIZE>, Stack::new());
 
     esp_rtos::start_second_core(
@@ -376,4 +398,14 @@ async fn main(_s: embassy_executor::Spawner) {
     }
 }
 
-// cargo espflash flash --release --monitor --bin hujek
+#[task]
+async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
+    println!("A");
+    let mut engine = Engine::new(Box::new(Esp32Input::new(input_pin_setup)));
+    let on_frame_func = Arc::new(move |mat: ColorMatrix| {
+        let mut s = SHARED.lock();
+        s.color_matrix = Some(mat);
+    });
+
+    engine.run::<Esp32Thread>(on_frame_func);
+}
