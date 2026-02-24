@@ -103,7 +103,7 @@ pub struct Esp32InputPinSetup<'a> {
 }
 
 impl<'a> Esp32Input<'a> {
-    pub fn new(setup: Esp32InputPinSetup<'a>) -> Self {
+    pub fn new(setup: alloc::boxed::Box<Esp32InputPinSetup<'static>>) -> Self {
         let config = InputConfig::default().with_pull(Pull::Up);
 
         let mut gpio_buttons = HashMap::<IoPin, GpioInput<'a>>::new();
