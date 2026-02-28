@@ -45,11 +45,14 @@
 #![no_std]
 #![no_main]
 #![allow(clippy::uninlined_format_args)]
+use common::engine::input::input::EmptyInput;
 use core::fmt;
 use core::prelude::v1::*;
 use core::sync::atomic::AtomicU32;
 use core::sync::atomic::Ordering;
+use core::u8;
 use esp_alloc;
+use spin::RwLock;
 
 use alloc::boxed::Box;
 use common::engine::color::Color;
@@ -100,17 +103,18 @@ use esp_rtos::embassy::InterruptExecutor;
 use esp32_main::esp32_input::Esp32Input;
 use esp32_main::esp32_input::Esp32InputPinSetup;
 use esp32_main::esp32_threading_provider::Esp32Thread;
+use spin::Lazy;
 use spin::Mutex;
 // use esp_rtos::embassy::InterruptExecutor;
 use heapless::String;
 #[cfg(feature = "log")]
 use log::info;
 
-struct Shared {
-    color_matrix: Option<ColorMatrix>,
-}
+// struct Shared {
+//     color_matrix: Arc<Option<ColorMatrix>>,
+// }
 
-static SHARED: Mutex<Shared> = Mutex::new(Shared { color_matrix: None });
+static SHARED: Mutex<Option<Arc<ColorMatrix>>> = Mutex::new(None);
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
@@ -131,8 +135,8 @@ const TRANSFER_SPEED: Rate = Rate::from_mhz(20);
 const BITS: u8 = 3;
 
 // Panel layout settings
-const TILED_COLS: usize = 1;
-const TILED_ROWS: usize = 2;
+const TILED_COLS: usize = 2;
+const TILED_ROWS: usize = 1;
 const PANEL_ROWS: usize = 32;
 const PANEL_COLS: usize = 64;
 const FB_COLS: usize = compute_tiled_cols(PANEL_COLS, TILED_ROWS, TILED_COLS);
@@ -174,7 +178,7 @@ async fn hub75_task(
     tx: &'static FrameBufferExchange,
     fb: &'static mut TiledFBType,
 ) {
-    // info!("hub75_task: starting!");
+    esp_println::println!("hub75_task: starting!");
 
     let (_, tx_descriptors) = esp_hal::dma_descriptors!(0, FBType::dma_buffer_size_bytes());
 
@@ -220,7 +224,6 @@ async fn hub75_task(
 
 #[task]
 async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBufferExchange, mut fb: &'static mut TiledFBType) {
-    println!("display_task: starting!");
     let fps_style = MonoTextStyleBuilder::new()
         .font(&FONT_5X7)
         .text_color(Esp32Color::YELLOW)
@@ -233,103 +236,75 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
     loop {
         fb.erase();
 
-        // let m = {
-        //     let s = SHARED.lock();
-        //     let clone = s.color_matrix.clone();
-        //     // s.color_matrix = None;
-        //     clone
-        // };
+        let m = {
+            let s = SHARED.lock();
+            s.clone()
+        };
 
-        println!("DUPA");
+        if let Some(matrix) = m {
+            for x in 0..matrix.width {
+                for y in 0..matrix.height {
+                    let color = matrix.get(x, y);
 
-        const STEP: u8 = (256 / VIRTUAL_COLS) as u8;
-        for x in 0..VIRTUAL_COLS {
-            let brightness = (x as u8) * STEP;
-            for y in 0..8 {
-                fb.set_pixel(Point::new(x as i32, y), Esp32Color::new(brightness, 0, 0));
-            }
-            for y in 8..16 {
-                fb.set_pixel(Point::new(x as i32, y), Esp32Color::new(0, brightness, 0));
-            }
-            for y in 16..24 {
-                fb.set_pixel(Point::new(x as i32, y), Esp32Color::new(0, 0, brightness));
+                    let (draw_x, draw_y) = if y < PANEL_ROWS as u8 {
+                        (x as usize, y as usize)
+                    } else {
+                        (x as usize + PANEL_COLS, y as usize - PANEL_ROWS)
+                    };
+                    fb.set_pixel(Point::new(draw_x as i32, draw_y as i32), Esp32Color::new(color.r, color.g, color.b));
+
+                    // let c: Esp32Color = match x {
+                    //     0..=32 => match y {
+                    //         0..=32 => Esp32Color::new(255, 0, 0),
+                    //         33..=64 => Esp32Color::new(0, 255, 0),
+                    //         65..=u8::MAX => Esp32Color::new(255, 255, 255),
+                    //     },
+                    //     33..=64 => match y {
+                    //         0..=32 => Esp32Color::new(0, 0, 255),
+                    //         33..=64 => Esp32Color::new(255, 0, 255),
+                    //         65..=u8::MAX => Esp32Color::new(255, 255, 255),
+                    //     },
+                    //     65..=u8::MAX => Esp32Color::new(255, 255, 255),
+                    // };
+
+                    // fb.set_pixel(Point::new(x as i32, y as i32), c);
+                }
             }
         }
 
-        let mut buffer: String<64> = String::new();
-
-        fmt::write(&mut buffer, format_args!("Refresh: {:4}", REFRESH_RATE.load(Ordering::Relaxed))).unwrap();
-        Text::with_alignment(
-            buffer.as_str(),
-            Point::new(VIRTUAL_COLS as i32 / 2, VIRTUAL_ROWS as i32 / 2),
-            fps_style,
-            Alignment::Center,
-        )
-        .draw(fb)
-        .unwrap();
-
-        buffer.clear();
-        fmt::write(&mut buffer, format_args!("Render: {:5}", RENDER_RATE.load(Ordering::Relaxed))).unwrap();
-
-        Text::with_alignment(
-            buffer.as_str(),
-            Point::new(VIRTUAL_COLS as i32 / 2, VIRTUAL_ROWS as i32 - 8),
-            fps_style,
-            Alignment::Center,
-        )
-        .draw(fb)
-        .unwrap();
-
-        buffer.clear();
-        fmt::write(&mut buffer, format_args!("Simple: {:5}", SIMPLE_COUNTER.load(Ordering::Relaxed))).unwrap();
-        Text::with_alignment(
-            buffer.as_str(),
-            Point::new(VIRTUAL_COLS as i32 / 2, VIRTUAL_ROWS as i32 - 20),
-            fps_style,
-            Alignment::Center,
-        )
-        .draw(fb)
-        .unwrap();
-        // send the frame buffer to be rendered
-        println!("DUPA2");
         tx.signal(fb);
-        println!("DUPA3");
 
         // get the next frame buffer
-        fb = rx.wait().await;
 
-        println!("DUPA4");
+        esp_println::println!("AAA");
+        fb = rx.wait().await;
+        esp_println::println!("BBB");
 
         // count up the rate we are rendering full buffer
         count += 1;
         const FPS_INTERVAL: Duration = Duration::from_secs(1);
 
-        println!("DUPA5");
         if start.elapsed() > FPS_INTERVAL {
-            println!("DUPA6");
             RENDER_RATE.store(count, Ordering::Relaxed);
             count = 0;
             start = Instant::now();
         }
-
-        println!("DUPA7");
     }
 }
 
 #[task]
 async fn run_engine(input_pin_setup: Box<Esp32InputPinSetup<'static>>) {
-    println!("A");
+    // async fn run_engine() {
     let input = Box::new(Esp32Input::new(input_pin_setup));
-    println!("B");
+    // let input = Box::new(EmptyInput::new());
+    //     "sizeof: {}",
+    //     core::mem::size_of::< [common::engine::components::collider::CollisionMask; common::engine::components::collider::CollisionMaskId::MAX as usize]>()
+    // );
     let mut engine = Engine::new(input);
-    println!("C");
-    let on_frame_func = Arc::new(move |mat: ColorMatrix| {
-        let mut s = SHARED.lock();
-        s.color_matrix = Some(mat);
+    let on_frame_func = Arc::new(move |mat: Arc<ColorMatrix>| {
+        *SHARED.lock() = Some(mat);
     });
-    println!("D");
-    engine.run::<Esp32Thread>(on_frame_func);
-    println!("E");
+    engine.run(on_frame_func, |ms| Timer::after(Duration::from_millis(ms))).await;
 }
 
 unsafe extern "C" {
@@ -341,14 +316,6 @@ unsafe extern "C" {
 async fn main(_s: embassy_executor::Spawner) {
     #[cfg(feature = "log")]
     esp_println::logger::init_logger_from_env();
-    println!("Main starting!");
-    println!("main: stack size:  {}", unsafe {
-        core::ptr::addr_of!(_stack_start_cpu0).offset_from(core::ptr::addr_of!(_stack_end_cpu0))
-    });
-    println!("VIRTUAL_ROWS: {}", VIRTUAL_ROWS);
-    println!("VIRTUAL_COLS: {}", VIRTUAL_COLS);
-    println!("BITS: {}", BITS);
-    println!("FRAME_COUNT: {}", FRAME_COUNT);
 
     let config = esp_hal::Config::default()
         .with_cpu_clock(CpuClock::max())
@@ -356,7 +323,7 @@ async fn main(_s: embassy_executor::Spawner) {
     let peripherals = esp_hal::init(config);
 
     let (psram_start, psram_size) = esp_hal::psram::psram_raw_parts(&peripherals.PSRAM);
-    esp_println::println!("PSRAM start: {:p}, size: {}", psram_start, psram_size);
+    esp_alloc::heap_allocator!(size: 64 * 1024);
     unsafe {
         esp_alloc::HEAP.add_region(esp_alloc::HeapRegion::new(
             psram_start,
@@ -364,14 +331,11 @@ async fn main(_s: embassy_executor::Spawner) {
             esp_alloc::MemoryCapability::External.into(),
         ));
     }
-    esp_alloc::heap_allocator!(size: 64 * 1024);
     let sw_ints = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
     let software_interrupt = sw_ints.software_interrupt2;
 
     let timer0 = SystemTimer::new(peripherals.SYSTIMER);
     esp_rtos::start(timer0.alarm0);
-
-    println!("Embassy initialized!");
 
     let input_pin_setup = Esp32InputPinSetup {
         gpio1: peripherals.GPIO1.degrade(),
@@ -416,13 +380,9 @@ async fn main(_s: embassy_executor::Spawner) {
         pins,
     };
 
-    println!("init framebuffers");
     let fb0 = mk_static!(TiledFBType, TiledFrameBuffer::new());
-    println!("fb0: {:?}", fb0);
     let fb1 = mk_static!(TiledFBType, TiledFrameBuffer::new());
-    println!("fb1: {:?}", fb1);
 
-    println!("init framebuffer exchange");
     static TX: FrameBufferExchange = FrameBufferExchange::new();
     static RX: FrameBufferExchange = FrameBufferExchange::new();
 
@@ -438,6 +398,7 @@ async fn main(_s: embassy_executor::Spawner) {
             // display task runs as low priority task
             lp_executor.run(|spawner: Spawner| {
                 spawner.spawn(run_engine(Box::new(input_pin_setup))).ok();
+                // spawner.spawn(run_engine()).ok();
                 spawner.spawn(display_task(&TX, &RX, fb0)).ok();
             });
         }

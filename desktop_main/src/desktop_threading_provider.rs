@@ -22,7 +22,7 @@ impl Thread for DesktopThread {
     }
 
     fn sleep_for(ms: u64) {
-        thread::sleep(Duration::from_millis(ms));
+        // thread::sleep(Duration::from_millis(ms)).await;
     }
 
     fn stop(&self) {

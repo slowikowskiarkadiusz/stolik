@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 common = { path = "../common", features = ["std"] }
 minifb = "0.28.0"
-esp-println = "0.16.1"
+# esp-println = "0.16.1"

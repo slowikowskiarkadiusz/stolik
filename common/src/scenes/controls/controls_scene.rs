@@ -125,7 +125,7 @@ impl ControlsScene {
 
         let mut i = 0;
         while i < items.len() {
-            result.push(vec![]);
+            result.push(Vec::new());
             let last_index = result.len() - 1;
             for ii in 0..lines_per_page {
                 if i + ii < items.len() {
@@ -223,28 +223,28 @@ static POSSIBLE_CONTROL_SETS: LazyLock<HashMap<String, Vec<ControlsData>>> = Laz
     HashMap::from([
         (
             String::from("pong"),
-            vec![
-                ControlsData::new(vec![Key::P1Left], "move left", None),
-                ControlsData::new(vec![Key::P1Right], "move right", None),
+            crate::my_vec![
+                ControlsData::new(crate::my_vec![Key::P1Left], "move left", None),
+                ControlsData::new(crate::my_vec![Key::P1Right], "move right", None),
             ],
         ),
         (
             String::from("tetris"),
-            vec![
-                ControlsData::new(vec![Key::P1Left], "move left", None),
-                ControlsData::new(vec![Key::P1Right], "move right", None),
-                ControlsData::new(vec![Key::P1Down], "fall", None),
-                ControlsData::new(vec![Key::P1Up], "drop", None),
-                ControlsData::new(vec![Key::P1Blue], "rotate left", None),
-                ControlsData::new(vec![Key::P1Green], "rotate right", None),
-                ControlsData::new(vec![Key::P1Blue, Key::P1Green], "swap block", Some("+")),
+            crate::my_vec![
+                ControlsData::new(crate::my_vec![Key::P1Left], "move left", None),
+                ControlsData::new(crate::my_vec![Key::P1Right], "move right", None),
+                ControlsData::new(crate::my_vec![Key::P1Down], "fall", None),
+                ControlsData::new(crate::my_vec![Key::P1Up], "drop", None),
+                ControlsData::new(crate::my_vec![Key::P1Blue], "rotate left", None),
+                ControlsData::new(crate::my_vec![Key::P1Green], "rotate right", None),
+                ControlsData::new(crate::my_vec![Key::P1Blue, Key::P1Green], "swap block", Some("+")),
             ],
         ),
         (
             String::from("tanks"),
-            vec![
-                ControlsData::new(vec![Key::P1AnyDirection], "move", None),
-                ControlsData::new(vec![Key::P1Blue, Key::P1Green], "fire", Some("or")),
+            crate::my_vec![
+                ControlsData::new(crate::my_vec![Key::P1AnyDirection], "move", None),
+                ControlsData::new(crate::my_vec![Key::P1Blue, Key::P1Green], "fire", Some("or")),
             ],
         ),
     ])

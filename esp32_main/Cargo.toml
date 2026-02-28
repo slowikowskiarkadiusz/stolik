@@ -28,7 +28,7 @@ esp-hub75 = { git = "https://github.com/liebman/esp-hub75", branch = "main", fea
 esp-rtos = { version = "0.2", features = ["esp32s3", "embassy"] }
 getrandom = { version = "0.2", default-features = false, features = ["custom"] }
 mcp230xx = "0.1"
-spin = { version = "0.9", default-features = false, features = ["mutex", "rwlock", "spin_mutex"] }
+spin = { version = "0.9", default-features = false, features = ["mutex", "rwlock", "spin_mutex", "lazy"] }
 
 [profile.dev]
 opt-level = "s"
@@ -42,5 +42,5 @@ lto              = 'fat'
 opt-level        = 's'
 overflow-checks  = false
 
-[patch.crates-io]
-byteorder = { version = "1.5", default-features = false }
+# [patch.crates-io]
+# byteorder = { version = "1.5", default-features = false }

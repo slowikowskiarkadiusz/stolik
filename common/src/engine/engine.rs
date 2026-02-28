@@ -17,7 +17,6 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Duration;
 use embassy_time::Instant;
-use esp_println::println;
 
 pub static SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
@@ -48,7 +47,11 @@ impl Engine {
         }
     }
 
-    pub fn run<T: Thread>(&mut self, on_frame_finished: Arc<dyn Fn(ColorMatrix) + Send + Sync + 'static>) {
+    pub async fn run<F, Fut>(&mut self, on_frame_finished: Arc<dyn Fn(Arc<ColorMatrix>) + Send + Sync + 'static>, sleep_fn: F)
+    where
+        F: Fn(u64) -> Fut,
+        Fut: Future<Output = ()>,
+    {
         let mut last = Instant::now();
         let target_frame = Duration::from_millis(33);
 
@@ -69,44 +72,49 @@ impl Engine {
             if let Ok(factory) = receiver.try_receive() {
                 self.change_scene(factory);
             }
-
             {
                 let mut_scene = self.current_scene.as_mut();
                 self.input.as_mut().update(delta_time);
                 mut_scene.tick(&self.input, &mut self.world, delta_time);
                 self.asyncable_storage.update(&mut self.world, delta_time);
             }
-
             {
                 let overlaps = Collider::detect_overlaps(&self.world);
                 Blinker::tick(&mut self.world, delta_time);
                 let mut_scene = self.current_scene.as_mut();
                 mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
-
-                on_frame_finished(self.combine_color_matrixes());
-
+                on_frame_finished(Arc::new(self.combine_color_matrixes()));
                 self.input.as_mut().late_update(delta_time);
             }
 
             let frame_time = frame_start.elapsed();
             if frame_time < target_frame {
-                T::sleep_for((target_frame - frame_time).as_millis() as u64);
+                // T::sleep_for((target_frame - frame_time).as_millis() as u64);
+                sleep_fn((target_frame - frame_time).as_millis()).await;
             }
         }
     }
 
     fn combine_color_matrixes(&mut self) -> super::matrix::Matrix<Color> {
-        let mut screen = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
+        esp_println::println!("0, {}", SCREEN_SIZE);
+        // esp_println::println!("heap: {} KB", esp_alloc::HEAP.free() / 1024);
+        let mut screen = ColorMatrix::new_debug(SCREEN_SIZE, SCREEN_SIZE, Color::none());
+        esp_println::println!("1");
         for actor_id in &self.world.all_actors {
+            esp_println::println!("2");
             if let Some(render) = self.world.get_render(actor_id)
                 && let Some(transform) = self.world.get_transform(actor_id)
             {
+                esp_println::println!("3");
                 let mut do_render = true;
                 if let Some(blinker) = self.world.get_blinker(actor_id) {
+                    esp_println::println!("4");
                     do_render = blinker.is_on;
                 }
+                esp_println::println!("5");
 
                 if do_render {
+                    esp_println::println!("6");
                     screen.write(
                         render,
                         &transform.center,
@@ -115,7 +123,9 @@ impl Engine {
                         Some(true),
                     );
                 }
+                esp_println::println!("7");
             }
+            esp_println::println!("8");
         }
         screen
     }
@@ -134,4 +144,20 @@ impl Engine {
 pub fn open_scene(factory: SceneFactory) {
     let sender = SCENE_CHANNEL.sender();
     sender.try_send(factory).ok();
+}
+
+#[macro_export]
+macro_rules! my_vec {
+    ($val:expr; $n:expr) => {{
+        let mut v = alloc::vec::Vec::with_capacity($n);
+        for _ in 0..$n {
+            v.push($val);
+        }
+        v
+    }};
+    ($($val:expr),* $(,)?) => {{
+        let mut v = alloc::vec::Vec::new();
+        $(v.push($val);)*
+        v
+    }};
 }

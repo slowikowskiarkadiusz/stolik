@@ -11,10 +11,10 @@ pub struct HashMap<K, V> {
 
 impl<K: Hash + Eq, V> HashMap<K, V> {
     pub fn new() -> Self {
-        Self::with_capacity(16)
+        Self::with_capacity(10)
     }
     pub fn with_capacity(capacity: usize) -> Self {
-        let mut buckets = Vec::new();
+        let mut buckets = Vec::with_capacity(capacity);
         for _ in 0..capacity {
             buckets.push(Vec::new());
         }

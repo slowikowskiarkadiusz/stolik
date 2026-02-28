@@ -15,5 +15,7 @@ rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 spin = { version = "0.9", default-features = false, features = ["mutex", "rwlock", "spin_mutex"] }
 embassy-sync = { version = "0.7.2", default-features = false }
 embassy-time = { version = "0.5.0", default-features = false }
-esp-println = "0.16.1"
+log = "0.4"
+esp-println = { version = "0.16", features = ["esp32s3", "log-04"] }
+esp-alloc = "0.9"
 libm = { version = "0.2.16", default-features = false }

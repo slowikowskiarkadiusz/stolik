@@ -14,13 +14,13 @@ use common::engine::{
 };
 
 extern crate alloc;
-use alloc::vec;
 use alloc::vec::Vec;
 
 use esp_hal::{
     gpio::{AnyPin, Input as GpioInput, InputConfig, Pin, Pull},
     peripherals::{I2C0, Peripherals},
 };
+use esp_println::println;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum IoPin {
@@ -108,7 +108,6 @@ impl<'a> Esp32Input<'a> {
 
         let mut gpio_buttons = HashMap::<IoPin, GpioInput<'a>>::new();
         gpio_buttons.insert(IoPin::Gpio1, GpioInput::new(setup.gpio1, config));
-        // gpio_buttons.insert(IoPin::Gpio17, GpioInput::new(setup.gpio17, config));
         gpio_buttons.insert(IoPin::Gpio18, GpioInput::new(setup.gpio18, config));
         gpio_buttons.insert(IoPin::Gpio21, GpioInput::new(setup.gpio21, config));
         gpio_buttons.insert(IoPin::Gpio35, GpioInput::new(setup.gpio35, config));
@@ -121,12 +120,10 @@ impl<'a> Esp32Input<'a> {
         gpio_buttons.insert(IoPin::Gpio42, GpioInput::new(setup.gpio42, config));
         gpio_buttons.insert(IoPin::Gpio47, GpioInput::new(setup.gpio47, config));
         gpio_buttons.insert(IoPin::Gpio48, GpioInput::new(setup.gpio48, config));
-
         let i2c = esp_hal::i2c::master::I2c::new(setup.i2c0, esp_hal::i2c::master::Config::default())
             .unwrap()
             .with_sda(setup.gpio19)
             .with_scl(setup.gpio20);
-
         let obj = Self {
             gestures: Gestures::new(),
             i2c,
@@ -143,12 +140,15 @@ impl<'a> Esp32Input<'a> {
     fn read_expander_data(&mut self) -> u8 {
         let addr: u8 = 0x20;
 
-        self.i2c.write(addr, &[0x00, 0xFF]).unwrap();
-        self.i2c.write(addr, &[0x01, 0xFF]).unwrap();
+        if let Ok(write) = self.i2c.write(addr, &[0x00, 0xFF])
+            && let Ok(write) = self.i2c.write(addr, &[0x01, 0xFF])
+        {
+            let mut buf = [0u8; 1];
+            self.i2c.write_read(addr, &[0x12], &mut buf).unwrap();
+            return buf[0];
+        };
 
-        let mut buf = [0u8; 1];
-        self.i2c.write_read(addr, &[0x12], &mut buf).unwrap();
-        buf[0]
+        u8::MAX
     }
 
     fn is_pin_down(&mut self, expander_state: u8, pin: IoPin) -> bool {
@@ -160,90 +160,55 @@ impl<'a> Esp32Input<'a> {
     }
 
     fn is_key(&self, key: Option<Key>, key_state: KeyState) -> bool {
-        if key == None {
-            return match key_state {
+        let mut result = false;
+        if let Some(key) = key {
+            let pins_for_key = Esp32Input::map_key(key);
+
+            // esp_println::println!("len: {}, key: {}", pins_for_key.len(), key as u8);
+            result = match key_state {
+                KeyState::Down => pins_for_key.iter().any(|f| !self.keys_down.contains(f)),
+                KeyState::Up => pins_for_key.iter().any(|f| !self.keys_up.contains(f)),
+                KeyState::Press => pins_for_key.iter().any(|f| !self.keys_press.contains(f)),
+            };
+        } else {
+            result = match key_state {
                 KeyState::Down => !self.keys_down.is_empty(),
                 KeyState::Up => !self.keys_up.is_empty(),
                 KeyState::Press => !self.keys_press.is_empty(),
             };
-        };
+        }
 
-        // let pins_for_key
-        false
+        // esp_println::println!("aa",);
+
+        return result;
     }
 
-    fn map_key(key: Key) -> Vec<IoPin> {
+    fn map_key(key: Key) -> &'static [IoPin] {
         match key {
-            Key::Start => {
-                return vec![IoPin::Gpio1];
-            }
-            Key::P1Down => {
-                return vec![IoPin::Gpio39];
-            }
-            Key::P1Up => {
-                return vec![IoPin::Gpio36];
-            }
-            Key::P1Left => {
-                return vec![IoPin::Gpio35];
-            }
-            Key::P1Right => {
-                return vec![IoPin::Gpio37];
-            }
-            Key::P1AnyDirection => {
-                let mut keys = Vec::<IoPin>::new();
-                keys.append(&mut Esp32Input::map_key(Key::P1Down));
-                keys.append(&mut Esp32Input::map_key(Key::P1Up));
-                keys.append(&mut Esp32Input::map_key(Key::P1Left));
-                keys.append(&mut Esp32Input::map_key(Key::P1Right));
-                return keys;
-            }
-            Key::P1Blue => {
-                return vec![IoPin::Gpio47];
-            }
-            Key::P1Green => {
-                return vec![IoPin::Gpio48];
-            }
-            Key::P1Any => {
-                let mut keys = Vec::<IoPin>::new();
-                keys.append(&mut Esp32Input::map_key(Key::P1AnyDirection));
-                keys.append(&mut Esp32Input::map_key(Key::P1Blue));
-                keys.append(&mut Esp32Input::map_key(Key::P1Green));
-                return keys;
-            }
-
-            Key::P2Down => {
-                return vec![IoPin::ExpP0];
-            }
-            Key::P2Up => {
-                return vec![IoPin::ExpP1];
-            }
-            Key::P2Left => {
-                return vec![IoPin::ExpP2];
-            }
-            Key::P2Right => {
-                return vec![IoPin::ExpP3];
-            }
-            Key::P2AnyDirection => {
-                let mut keys = Vec::<IoPin>::new();
-                keys.append(&mut Esp32Input::map_key(Key::P2Down));
-                keys.append(&mut Esp32Input::map_key(Key::P2Up));
-                keys.append(&mut Esp32Input::map_key(Key::P2Left));
-                keys.append(&mut Esp32Input::map_key(Key::P2Right));
-                return keys;
-            }
-            Key::P2Blue => {
-                return vec![IoPin::ExpP4];
-            }
-            Key::P2Green => {
-                return vec![IoPin::ExpP5];
-            }
-            Key::P2Any => {
-                let mut keys = Vec::<IoPin>::new();
-                keys.append(&mut Esp32Input::map_key(Key::P2AnyDirection));
-                keys.append(&mut Esp32Input::map_key(Key::P2Blue));
-                keys.append(&mut Esp32Input::map_key(Key::P2Green));
-                return keys;
-            }
+            Key::Start => &[IoPin::Gpio1],
+            Key::P1Down => &[IoPin::Gpio39],
+            Key::P1Up => &[IoPin::Gpio36],
+            Key::P1Left => &[IoPin::Gpio35],
+            Key::P1Right => &[IoPin::Gpio37],
+            Key::P1Blue => &[IoPin::Gpio47],
+            Key::P1Green => &[IoPin::Gpio48],
+            Key::P2Down => &[IoPin::ExpP0],
+            Key::P2Up => &[IoPin::ExpP1],
+            Key::P2Left => &[IoPin::ExpP2],
+            Key::P2Right => &[IoPin::ExpP3],
+            Key::P2Blue => &[IoPin::ExpP4],
+            Key::P2Green => &[IoPin::ExpP5],
+            Key::P1AnyDirection => &[IoPin::Gpio39, IoPin::Gpio36, IoPin::Gpio35, IoPin::Gpio37],
+            Key::P1Any => &[
+                IoPin::Gpio39,
+                IoPin::Gpio36,
+                IoPin::Gpio35,
+                IoPin::Gpio37,
+                IoPin::Gpio47,
+                IoPin::Gpio48,
+            ],
+            Key::P2AnyDirection => &[IoPin::ExpP0, IoPin::ExpP1, IoPin::ExpP2, IoPin::ExpP3],
+            Key::P2Any => &[IoPin::ExpP0, IoPin::ExpP1, IoPin::ExpP2, IoPin::ExpP3, IoPin::ExpP4, IoPin::ExpP5],
         }
     }
 }

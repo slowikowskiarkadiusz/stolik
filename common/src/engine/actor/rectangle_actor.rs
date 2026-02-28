@@ -17,7 +17,7 @@ pub fn create_rectangle_actor(world: &mut World, center: V2, size: V2, color: Co
         name.or_else(|| Some("rectangle")),
         Some(Transform::new(center, size.clone())),
         if let Some(col_type) = collider_type {
-            Some(Collider::new(vec![ColliderPart { offset: V2::zero(), extend: size.clone(), is_overlap: col_type == ColliderType::Blocking }], Some(0)))
+            Some(Collider::new(crate::my_vec![ColliderPart { offset: V2::zero(), extend: size.clone(), is_overlap: col_type == ColliderType::Blocking }], Some(0)))
         }
         else {None},
         None,

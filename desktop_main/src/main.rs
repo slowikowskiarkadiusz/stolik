@@ -26,7 +26,7 @@ fn main() {
     }));
     let mut window = Window::new("Circle", SCREEN_WIDTH, SCREEN_HEIGHT, WindowOptions::default()).unwrap();
 
-    let mut buffer = vec![0u32; SCREEN_WIDTH * SCREEN_HEIGHT];
+    let mut buffer = crate::my_vec![0u32; SCREEN_WIDTH * SCREEN_HEIGHT];
 
     let shared = Arc::new(Mutex::new(Shared { color_matrix: None }));
     let shared_engine_copy = shared.clone();
@@ -41,7 +41,7 @@ fn main() {
             s.color_matrix = Some(mat);
         });
 
-        engine.run::<DesktopThread>(on_frame_func);
+        engine.run(on_frame_func, |ms| tokio::time::sleep(Duration::from_millis(ms))).await;
     });
 
     while window.is_open() && !window.is_key_down(Key::Escape) {

@@ -98,11 +98,11 @@ impl DesktopInput {
             | Key::P2Right
             | Key::P2Blue
             | Key::P2Green
-            | Key::Start => vec![key],
-            Key::P1AnyDirection => vec![Key::P1Up, Key::P1Down, Key::P1Left, Key::P1Right],
-            Key::P1Any => vec![Key::P1Up, Key::P1Down, Key::P1Left, Key::P1Right, Key::P1Blue, Key::P1Green],
-            Key::P2AnyDirection => vec![Key::P2Up, Key::P2Down, Key::P2Left, Key::P2Right],
-            Key::P2Any => vec![Key::P2Up, Key::P2Down, Key::P2Left, Key::P2Right, Key::P2Blue, Key::P2Green],
+            | Key::Start => crate::my_vec![key],
+            Key::P1AnyDirection => crate::my_vec![Key::P1Up, Key::P1Down, Key::P1Left, Key::P1Right],
+            Key::P1Any => crate::my_vec![Key::P1Up, Key::P1Down, Key::P1Left, Key::P1Right, Key::P1Blue, Key::P1Green],
+            Key::P2AnyDirection => crate::my_vec![Key::P2Up, Key::P2Down, Key::P2Left, Key::P2Right],
+            Key::P2Any => crate::my_vec![Key::P2Up, Key::P2Down, Key::P2Left, Key::P2Right, Key::P2Blue, Key::P2Green],
         }
     }
 }

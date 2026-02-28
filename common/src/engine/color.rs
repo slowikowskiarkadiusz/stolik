@@ -1,8 +1,8 @@
 extern crate alloc;
-use alloc::{vec, vec::Vec};
+use alloc::{vec::Vec};
 use libm::roundf;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
@@ -61,7 +61,7 @@ impl Color {
     }
 
     pub fn blend_colors(self, input_colors: &[Color]) -> Color {
-        let mut colors: Vec<Color> = vec![];
+        let mut colors: Vec<Color> = Vec::new();
         for a in input_colors {
             if a.is_none() {
                 colors.push(a.clone().clone());
@@ -115,6 +115,8 @@ impl Default for Color {
 }
 
 use core::fmt::{self};
+
+use crate::{engine::engine::Engine, my_vec};
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

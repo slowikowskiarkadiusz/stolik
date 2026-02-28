@@ -14,7 +14,33 @@ impl<T: Clone> Matrix<T> {
         Self {
             width,
             height,
-            data: vec![init; (width as usize * height as usize) as usize],
+            data: {
+                let mut v = Vec::new();
+                for i in 0..(width as usize * height as usize) {
+                    v.push(init.clone());
+                }
+                v
+            },
+        }
+    }
+
+    pub fn new_debug(width: u8, height: u8, init: T) -> Self {
+        Self {
+            width,
+            height,
+            data: {
+                esp_println::println!("X");
+                esp_println::println!("heap free: {} KB", esp_alloc::HEAP.free() / 1024);
+                let mut v: Vec<T> = Vec::with_capacity(width as usize * height as usize);
+                esp_println::println!("heap free: {} KB", esp_alloc::HEAP.free() / 1024);
+                esp_println::println!("Y");
+                for i in 0..(width as usize * height as usize) {
+                    // esp_println::println!("heap free: {} KB", esp_alloc::HEAP.free() / 1024);
+                    esp_println::println!("Z {}", i);
+                    v.push(init.clone());
+                }
+                v
+            },
         }
     }
 
@@ -43,7 +69,7 @@ impl<T: Clone> Matrix<T> {
     }
 
     pub fn fill(&mut self, to: T) {
-        self.data = vec![to; (self.width * self.height) as usize];
+        self.data = crate::my_vec![to.clone(); (self.width * self.height) as usize];
     }
 
     // TODO: do in-place. swapping pixels

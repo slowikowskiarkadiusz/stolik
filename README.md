@@ -1,5 +1,5 @@
 ```
-cargo run -p desktop
+cargo run -p desktop_main
 ```
 
 ```
