@@ -36,9 +36,9 @@ fn main() {
 
     std::thread::spawn(move || {
         let mut engine = Engine::new(Box::new(DesktopInput::new(cloned_input_state)));
-        let on_frame_func = Arc::new(move |mat: ColorMatrix| {
+        let on_frame_func = Arc::new(move |mat: &ColorMatrix| {
             let mut s = shared_engine_copy.lock().unwrap();
-            s.color_matrix = Some(mat);
+            s.color_matrix = Some(mat.clone());
         });
 
         engine.run::<DesktopThread>(on_frame_func);

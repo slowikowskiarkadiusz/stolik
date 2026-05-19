@@ -17,7 +17,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Duration;
 use embassy_time::Instant;
-use esp_println::println;
+// use esp_println::println;
 
 pub const SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
@@ -54,47 +54,53 @@ impl Engine {
         let mut last = Instant::now();
         let target_frame = Duration::from_millis(33);
 
-        if !self.is_any_scene {
-            self.change_scene(|| Box::new(TetrisScene::new()));
-            self.is_any_scene = true;
-        }
+        self.ensure_scene();
 
         loop {
             let frame_start = Instant::now();
             let dt = frame_start.duration_since(last);
             last = frame_start;
-            let delta_time = dt.as_millis() as f32 / 1000.0;
-
-            self.delta_time = delta_time;
-
-            let receiver = SCENE_CHANNEL.receiver();
-            if let Ok(factory) = receiver.try_receive() {
-                self.change_scene(factory);
-            }
-
-            {
-                let mut_scene = self.current_scene.as_mut();
-                self.input.as_mut().update(delta_time);
-                mut_scene.tick(&self.input, &mut self.world, delta_time);
-                self.asyncable_storage.update(&mut self.world, delta_time);
-            }
-
-            {
-                let overlaps = Collider::detect_overlaps(&self.world);
-                self.world.tick_blinkers(delta_time);
-                let mut_scene = self.current_scene.as_mut();
-                mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
-
-                self.combine_color_matrixes();
-                on_frame_finished(&self.screen);
-
-                self.input.as_mut().late_update(delta_time);
-            }
+            self.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_finished);
 
             let frame_time = frame_start.elapsed();
             if frame_time < target_frame {
                 T::sleep_for((target_frame - frame_time).as_millis() as u64);
             }
+        }
+    }
+
+    pub fn ensure_scene(&mut self) {
+        if !self.is_any_scene {
+            self.change_scene(|| Box::new(TetrisScene::new()));
+            self.is_any_scene = true;
+        }
+    }
+
+    pub fn tick_frame(&mut self, delta_time: f32, on_frame_finished: &Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static>) {
+        self.delta_time = delta_time;
+
+        let receiver = SCENE_CHANNEL.receiver();
+        if let Ok(factory) = receiver.try_receive() {
+            self.change_scene(factory);
+        }
+
+        {
+            let mut_scene = self.current_scene.as_mut();
+            self.input.as_mut().update(delta_time);
+            mut_scene.tick(&self.input, &mut self.world, delta_time);
+            self.asyncable_storage.update(&mut self.world, delta_time);
+        }
+
+        {
+            let overlaps = Collider::detect_overlaps(&self.world);
+            self.world.tick_blinkers(delta_time);
+            let mut_scene = self.current_scene.as_mut();
+            mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
+
+            self.combine_color_matrixes();
+            on_frame_finished(&self.screen);
+
+            self.input.as_mut().late_update(delta_time);
         }
     }
 

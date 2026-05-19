@@ -189,7 +189,8 @@ async fn hub75_task(
 ) {
     // info!("hub75_task: starting!");
 
-    let (_, tx_descriptors) = esp_hal::dma_descriptors!(0, FBType::dma_buffer_size_bytes());
+    let tx_descriptors = esp_hub75::hub75_dma_descriptors!(FBType);
+    println!("hub75: descriptors allocated");
 
     let mut hub75 = Hub75::new_async(
         peripherals.lcd_cam,
@@ -199,13 +200,20 @@ async fn hub75_task(
         TRANSFER_SPEED,
     )
     .expect("failed to create Hub75!");
+    println!("hub75: hub75 created");
 
     let mut count = 0u32;
     let mut start = Instant::now();
 
     let mut fb = fb;
+    let mut iter = 0u32;
 
     loop {
+        iter += 1;
+        if iter <= 5 || iter % 100 == 0 {
+            println!("hub75: loop iter {}", iter);
+        }
+
         // if there is a new buffer available, get it and send the old one
         if rx.signaled() {
             let new_fb = rx.wait().await;
@@ -214,7 +222,9 @@ async fn hub75_task(
         }
 
         let mut xfer = hub75.render(fb).map_err(|(e, _hub75)| e).expect("failed to start render!");
+        if iter <= 5 { println!("hub75: render started iter {}", iter); }
         xfer.wait_for_done().await.expect("rendering wait_for_done failed!");
+        if iter <= 5 { println!("hub75: render done iter {}", iter); }
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
         result.expect("transfer failed");
@@ -363,18 +373,17 @@ async fn main(_s: embassy_executor::Spawner) {
         pins,
     };
 
-    // info!("init framebuffers");
-    let fb0 = mk_static!(TiledFBType, TiledFrameBuffer::new());
-    // info!("fb0: {:?}", fb0);
-    let fb1 = mk_static!(TiledFBType, TiledFrameBuffer::new());
-    // info!("fb1: {:?}", fb1);
-
     // info!("init framebuffer exchange");
     static TX: FrameBufferExchange = FrameBufferExchange::new();
     static RX: FrameBufferExchange = FrameBufferExchange::new();
 
     let cpu1_fnctn = {
         move || {
+            // Framebuffers are created here on CPU1 (128 KB stack) to avoid
+            // overflowing CPU0's stack with the large TiledFrameBuffer temporary.
+            let fb0 = mk_static!(TiledFBType, TiledFrameBuffer::new());
+            let fb1 = mk_static!(TiledFBType, TiledFrameBuffer::new());
+
             let hp_executor = mk_static!(InterruptExecutor<2>, InterruptExecutor::new(software_interrupt));
             let high_pri_spawner = hp_executor.start(Priority::Priority3);
 
@@ -412,13 +421,40 @@ async fn main(_s: embassy_executor::Spawner) {
 
 #[task]
 async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
-    println!("A");
+    println!("engine: creating input");
     let mut engine = Engine::new(Box::new(Esp32Input::new(input_pin_setup)));
-    let on_frame_func = Arc::new(move |mat: &ColorMatrix| {
+    println!("engine: input ok");
+    let on_frame_func: Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static> = Arc::new(move |mat: &ColorMatrix| {
         let mut s = SHARED.lock();
         s.data.copy_from_slice(&mat.data);
         s.valid = true;
     });
 
-    engine.run::<Esp32Thread>(on_frame_func);
+    println!("engine: ensure_scene");
+    engine.ensure_scene();
+    println!("engine: scene ready, entering loop");
+
+    let target_frame = Duration::from_millis(33);
+    let mut last = Instant::now();
+    let mut frame_count = 0u32;
+
+    loop {
+        let frame_start = Instant::now();
+        let dt = frame_start.duration_since(last);
+        last = frame_start;
+
+        engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
+
+        frame_count += 1;
+        if frame_count <= 5 || frame_count % 100 == 0 {
+            println!("engine: frame {}", frame_count);
+        }
+
+        let elapsed = frame_start.elapsed();
+        if elapsed < target_frame {
+            Timer::after(target_frame - elapsed).await;
+        } else {
+            Timer::after(Duration::from_millis(0)).await;
+        }
+    }
 }
