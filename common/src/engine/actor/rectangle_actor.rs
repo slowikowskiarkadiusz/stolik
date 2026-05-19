@@ -14,7 +14,6 @@ use alloc::vec;
 
 pub fn create_rectangle_actor(world: &mut World, center: V2, size: V2, color: Color, collider_type: Option<ColliderType>, name: Option<&str>) -> ActorId {
     world.add_new_actor(
-        name.or_else(|| Some("rectangle")),
         Some(Transform::new(center, size.clone())),
         if let Some(col_type) = collider_type {
             Some(Collider::new(vec![ColliderPart { offset: V2::zero(), extend: size.clone(), is_overlap: col_type == ColliderType::Blocking }], Some(0)))

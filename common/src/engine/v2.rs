@@ -3,7 +3,7 @@ use core::f32::consts::PI;
 use core::ops::{AddAssign, SubAssign};
 use libm::{ceilf, cosf, floorf, powf, roundf, sinf, sqrtf};
 
-#[derive(PartialEq, Default, Clone)]
+#[derive(PartialEq, Default, Clone, Copy)]
 pub struct V2 {
     pub x: f32,
     pub y: f32,

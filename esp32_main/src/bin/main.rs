@@ -54,7 +54,7 @@ use esp_alloc;
 use alloc::boxed::Box;
 use common::engine::color::Color;
 use common::engine::color_matrix::ColorMatrix;
-use common::engine::engine::Engine;
+use common::engine::engine::{Engine, SCREEN_SIZE};
 #[cfg(feature = "defmt")]
 use defmt::info;
 #[cfg(feature = "defmt")]
@@ -106,11 +106,24 @@ use heapless::String;
 #[cfg(feature = "log")]
 use log::info;
 
-struct Shared {
-    color_matrix: Option<ColorMatrix>,
+const SCREEN_PIXELS: usize = 64 * 64;
+
+/// Static frame buffer — no heap allocation for the rendered frame.
+struct SharedFrame {
+    data: [Color; SCREEN_PIXELS],
+    valid: bool,
 }
 
-static SHARED: Mutex<Shared> = Mutex::new(Shared { color_matrix: None });
+impl SharedFrame {
+    const fn new() -> Self {
+        Self {
+            data: [Color::none(); SCREEN_PIXELS],
+            valid: false,
+        }
+    }
+}
+
+static SHARED: Mutex<SharedFrame> = Mutex::new(SharedFrame::new());
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
@@ -231,23 +244,22 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
     loop {
         fb.erase();
 
-        let m = {
+        // Read frame data directly from static buffer — no clone, integer alpha multiply
+        {
             let s = SHARED.lock();
-            let clone = s.color_matrix.clone();
-            // s.color_matrix = None;
-            clone
-        };
-
-        if let Some(matrix) = m {
-            for x in 0..matrix.width {
-                for y in 0..matrix.height {
-                    let color = matrix.get(x, y);
-                    let esp32_color = Esp32Color::new(
-                        (color.r as f32 * (color.a as f32 / 255.0)) as u8,
-                        (color.g as f32 * (color.a as f32 / 255.0)) as u8,
-                        (color.b as f32 * (color.a as f32 / 255.0)) as u8,
-                    );
-                    fb.set_pixel(Point::new(x as i32, y as i32), esp32_color);
+            if s.valid {
+                for y in 0..64u8 {
+                    for x in 0..64u8 {
+                        let color = &s.data[y as usize * 64 + x as usize];
+                        if color.a > 0 {
+                            let esp32_color = Esp32Color::new(
+                                (color.r as u16 * color.a as u16 / 255) as u8,
+                                (color.g as u16 * color.a as u16 / 255) as u8,
+                                (color.b as u16 * color.a as u16 / 255) as u8,
+                            );
+                            fb.set_pixel(Point::new(x as i32, y as i32), esp32_color);
+                        }
+                    }
                 }
             }
         }
@@ -402,9 +414,10 @@ async fn main(_s: embassy_executor::Spawner) {
 async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     println!("A");
     let mut engine = Engine::new(Box::new(Esp32Input::new(input_pin_setup)));
-    let on_frame_func = Arc::new(move |mat: ColorMatrix| {
+    let on_frame_func = Arc::new(move |mat: &ColorMatrix| {
         let mut s = SHARED.lock();
-        s.color_matrix = Some(mat);
+        s.data.copy_from_slice(&mat.data);
+        s.valid = true;
     });
 
     engine.run::<Esp32Thread>(on_frame_func);

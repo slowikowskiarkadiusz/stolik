@@ -1,5 +1,5 @@
 extern crate alloc;
-use alloc::{format, vec::Vec};
+use alloc::vec::Vec;
 
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, v2::V2},
@@ -40,51 +40,51 @@ impl Block {
         let color = if is_shadow {
             Color::white().a(204).clone()
         } else {
-            BLOCKS_COLORS[shape.clone() as usize].clone()
+            BLOCKS_COLORS[*shape as usize]
         };
 
         match shape {
             Shape::I => {
                 for i in 0..size.x as u8 {
-                    result.set(i, 1, color.clone());
+                    result.set(i, 1, color);
                 }
             }
             Shape::O => {
                 for x in 0..2 {
                     for y in 0..2 {
-                        result.set(x + 1, y, color.clone());
+                        result.set(x + 1, y, color);
                     }
                 }
             }
             Shape::T => {
-                result.set(0, 1, color.clone());
-                result.set(1, 1, color.clone());
-                result.set(2, 1, color.clone());
-                result.set(1, 0, color.clone());
+                result.set(0, 1, color);
+                result.set(1, 1, color);
+                result.set(2, 1, color);
+                result.set(1, 0, color);
             }
             Shape::S => {
-                result.set(0, 1, color.clone());
-                result.set(1, 1, color.clone());
-                result.set(1, 0, color.clone());
-                result.set(2, 0, color.clone());
+                result.set(0, 1, color);
+                result.set(1, 1, color);
+                result.set(1, 0, color);
+                result.set(2, 0, color);
             }
             Shape::Z => {
-                result.set(0, 0, color.clone());
-                result.set(1, 0, color.clone());
-                result.set(1, 1, color.clone());
-                result.set(2, 1, color.clone());
+                result.set(0, 0, color);
+                result.set(1, 0, color);
+                result.set(1, 1, color);
+                result.set(2, 1, color);
             }
             Shape::J => {
                 for i in 0..3 {
-                    result.set(i, 1, color.clone());
+                    result.set(i, 1, color);
                 }
-                result.set(0, 0, color.clone());
+                result.set(0, 0, color);
             }
             Shape::L => {
                 for i in 0..3 {
-                    result.set(i, 1, color.clone());
+                    result.set(i, 1, color);
                 }
-                result.set(2, 0, color.clone());
+                result.set(2, 0, color);
             }
         }
 
@@ -92,43 +92,56 @@ impl Block {
         result
     }
 
-    pub fn get_kicks(&self, to: i32) -> Vec<V2> {
-        let mut to_value = to;
-        if to_value < 0 {
-            to_value = 360 - to_value;
-        }
-
-        let mut kick_key = format!("{}->{}", to_value % 360, self.rotation % 360);
-
-        if self.shape == Shape::O {
-            return Vec::new();
-        }
-
-        let piece_key = if self.shape == Shape::I { "I" } else { "Others" };
-        let mut result = Vec::<V2>::new();
-
-        if let Some(raw) = get_kicks(piece_key, &kick_key) {
-            for v2 in raw {
-                result.push(v2.clone());
-            }
-        }
-
-        result
-    }
-
-    pub fn get_taken_spots(&self) -> Vec<V2> {
+    /// Returns the 4 world-space positions occupied by this block.
+    /// A tetromino always has exactly 4 cells so the array is always full.
+    pub fn get_taken_spots(&self) -> [V2; 4] {
         let start = &self.center.floor() - &V2::new((self.matrix.width / 2) as f32, (self.matrix.height / 2) as f32);
-        let mut coords = Vec::<V2>::new();
+        let mut coords = [V2::zero(); 4];
+        let mut count = 0usize;
 
-        for x in start.x as i16..start.x as i16 + self.matrix.width as i16 {
+        'outer: for x in start.x as i16..start.x as i16 + self.matrix.width as i16 {
             for y in start.y as i16..start.y as i16 + self.matrix.height as i16 {
                 if !self.matrix.get((x - start.x as i16) as u8, (y - start.y as i16) as u8).is_none() {
-                    coords.push(V2::new(x as f32, y as f32));
+                    coords[count] = V2::new(x as f32, y as f32);
+                    count += 1;
+                    if count == 4 {
+                        break 'outer;
+                    }
                 }
             }
         }
 
         coords
+    }
+
+    /// Returns wall-kick offsets for the given rotation transition.
+    /// Returns a static slice so no heap allocation is needed.
+    pub fn get_kicks(&self, to: i32) -> &'static [V2] {
+        let mut to_value = to;
+        if to_value < 0 {
+            to_value = 360 - to_value;
+        }
+
+        if self.shape == Shape::O {
+            return &[];
+        }
+
+        let piece_key = if self.shape == Shape::I { "I" } else { "Others" };
+        let transition = (to_value as u16 % 360, self.rotation % 360);
+
+        let kick_key: &str = match transition {
+            (0, 90)   => "0->90",
+            (90, 0)   => "90->0",
+            (90, 180) => "90->180",
+            (180, 90) => "180->90",
+            (180, 270) => "180->270",
+            (270, 180) => "270->180",
+            (270, 0)  => "270->0",
+            (0, 270)  => "0->270",
+            _ => return &[],
+        };
+
+        get_kicks_static(piece_key, kick_key).unwrap_or(&[])
     }
 
     pub fn rotate_block(&mut self, by: i32) {
@@ -147,13 +160,13 @@ impl Block {
             for x in 0..old.width {
                 let pixel = old.get(x, y);
                 if by_value == 90 {
-                    new_matrix.set(y, old.width - 1 - x, pixel.clone());
+                    new_matrix.set(y, old.width - 1 - x, *pixel);
                 } else if by_value == 180 {
-                    new_matrix.set(old.width - 1 - x, old.height - 1 - y, pixel.clone());
+                    new_matrix.set(old.width - 1 - x, old.height - 1 - y, *pixel);
                 } else if by_value == 270 {
-                    new_matrix.set(old.height - 1 - y, x, pixel.clone());
+                    new_matrix.set(old.height - 1 - y, x, *pixel);
                 } else {
-                    new_matrix.set(x, y, pixel.clone());
+                    new_matrix.set(x, y, *pixel);
                 }
             }
         }
@@ -338,7 +351,7 @@ const KICKS: &[(&str, &[(&str, &[V2])])] = &[
     ),
 ];
 
-fn get_kicks(piece: &str, transition: &str) -> Option<&'static [V2]> {
+fn get_kicks_static(piece: &str, transition: &str) -> Option<&'static [V2]> {
     KICKS
         .iter()
         .find(|(p, _)| *p == piece)

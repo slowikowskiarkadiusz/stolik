@@ -37,9 +37,10 @@ impl Collider {
 
     pub fn detect_overlaps(world: &World) -> HashMap<u16, Vec<u16>> {
         let mut dict = HashMap::<ActorId, Vec<ActorId>>::new();
-        for first_actor in &world.all_actors {
-            for i in (first_actor.clone() as usize + 1)..world.all_actors.len() {
-                let second_actor = &world.all_actors[i];
+        let actors = world.actors();
+        for (ai, first_actor) in actors.iter().enumerate() {
+            for second_actor in &actors[ai + 1..] {
+                
 
                 if first_actor != second_actor
                     && let Some(first_collider) = world.get_collider(first_actor)

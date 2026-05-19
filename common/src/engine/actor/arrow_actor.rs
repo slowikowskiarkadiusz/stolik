@@ -11,7 +11,6 @@ use crate::engine::{
 pub fn create_arrow_actor(world: &mut World, center: V2, height: u8, color: Color, delay_ms: u32, name: Option<&str>) -> ActorId {
     let shape = make_shape(height, color);
     world.add_new_actor(
-        name.or_else(|| Some("arrow")),
         Some(Transform::new(center, V2::new(shape.width as f32, shape.height as f32))),
         None,
         None,

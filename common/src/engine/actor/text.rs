@@ -50,7 +50,6 @@ pub fn create_text_actor(
     let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
 
     world.add_new_actor(
-        name.or_else(|| Some("text")),
         Some(Transform::new(center, container_size.clone())),
         None,
         None,
@@ -75,7 +74,6 @@ pub fn create_text_actor_at_center(
     let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
 
     world.add_new_actor(
-        name.or_else(|| Some("text")),
         Some(Transform::new(center, generated.get_size())),
         None,
         None,

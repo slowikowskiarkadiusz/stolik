@@ -3,7 +3,7 @@ use crate::{
         asyncable::AsyncableStorage,
         color::Color,
         color_matrix::ColorMatrix,
-        components::{blinker::Blinker, collider::Collider, world::World},
+        components::{collider::Collider, world::World},
         input::input::Input,
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
@@ -19,13 +19,13 @@ use embassy_time::Duration;
 use embassy_time::Instant;
 use esp_println::println;
 
-pub static SCREEN_SIZE: u8 = 64;
+pub const SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
 pub type ActorId = u16;
 
 pub type SceneFactory = Box<dyn FnOnce() -> Box<dyn Scene> + Send + Sync>;
 
-static SCENE_CHANNEL: Channel<CriticalSectionRawMutex, SceneFactory, 8> = Channel::new();
+static SCENE_CHANNEL: Channel<CriticalSectionRawMutex, SceneFactory, 1> = Channel::new();
 
 pub struct Engine {
     pub delta_time: f32,
@@ -34,6 +34,7 @@ pub struct Engine {
     is_any_scene: bool,
     pub input: Box<dyn Input>,
     asyncable_storage: AsyncableStorage,
+    screen: ColorMatrix,
 }
 
 impl Engine {
@@ -45,10 +46,11 @@ impl Engine {
             is_any_scene: false,
             input: input,
             asyncable_storage: AsyncableStorage::new(),
+            screen: ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none()),
         }
     }
 
-    pub fn run<T: Thread>(&mut self, on_frame_finished: Arc<dyn Fn(ColorMatrix) + Send + Sync + 'static>) {
+    pub fn run<T: Thread>(&mut self, on_frame_finished: Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static>) {
         let mut last = Instant::now();
         let target_frame = Duration::from_millis(33);
 
@@ -79,11 +81,12 @@ impl Engine {
 
             {
                 let overlaps = Collider::detect_overlaps(&self.world);
-                Blinker::tick(&mut self.world, delta_time);
+                self.world.tick_blinkers(delta_time);
                 let mut_scene = self.current_scene.as_mut();
                 mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
 
-                on_frame_finished(self.combine_color_matrixes());
+                self.combine_color_matrixes();
+                on_frame_finished(&self.screen);
 
                 self.input.as_mut().late_update(delta_time);
             }
@@ -95,29 +98,32 @@ impl Engine {
         }
     }
 
-    fn combine_color_matrixes(&mut self) -> super::matrix::Matrix<Color> {
-        let mut screen = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
-        for actor_id in &self.world.all_actors {
-            if let Some(render) = self.world.get_render(actor_id)
-                && let Some(transform) = self.world.get_transform(actor_id)
+    fn combine_color_matrixes(&mut self) {
+        self.screen.fill(Color::none());
+        for i in 0..self.world.actor_count {
+            let actor_id = self.world.all_actors[i];
+            if let Some(render) = self.world.get_render(&actor_id)
+                && let Some(transform) = self.world.get_transform(&actor_id)
             {
                 let mut do_render = true;
-                if let Some(blinker) = self.world.get_blinker(actor_id) {
+                if let Some(blinker) = self.world.get_blinker(&actor_id) {
                     do_render = blinker.is_on;
                 }
 
                 if do_render {
-                    screen.write(
+                    let center = transform.center.clone();
+                    let rotation = transform.rotation;
+                    let anchor = transform.anchor_offset.clone();
+                    self.screen.write(
                         render,
-                        &transform.center,
-                        Some(transform.rotation.clone()),
-                        Some(transform.anchor_offset.clone()),
+                        &center,
+                        Some(rotation),
+                        Some(anchor),
                         Some(true),
                     );
                 }
             }
         }
-        screen
     }
 
     pub fn change_scene<F>(&mut self, new_scene_func: F)

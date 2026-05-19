@@ -1,8 +1,7 @@
 extern crate alloc;
 use alloc::{vec, vec::Vec};
-use libm::roundf;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
@@ -47,7 +46,7 @@ impl Color {
         Color::new(0, 0, 0, 255)
     }
 
-    pub fn none() -> Color {
+    pub const fn none() -> Color {
         Color::new(0, 0, 0, 0)
     }
 
@@ -64,7 +63,7 @@ impl Color {
         let mut colors: Vec<Color> = vec![];
         for a in input_colors {
             if a.is_none() {
-                colors.push(a.clone().clone());
+                colors.push(*a);
             }
         }
 
@@ -73,7 +72,7 @@ impl Color {
         }
 
         if colors.len() == 1 {
-            return colors.first().unwrap().clone();
+            return *colors.first().unwrap();
         }
 
         Color::additive_blending(&colors)
@@ -85,9 +84,9 @@ impl Color {
         let mut b: u16 = 0;
         let mut a: u16 = 0;
         for c in colors {
-            r += ((c.r as f32) * roundf(c.a as f32) / 255.0) as u16;
-            g += ((c.g as f32) * roundf(c.a as f32) / 255.0) as u16;
-            b += ((c.b as f32) * roundf(c.a as f32) / 255.0) as u16;
+            r += (c.r as u16 * c.a as u16) / 255;
+            g += (c.g as u16 * c.a as u16) / 255;
+            b += (c.b as u16 * c.a as u16) / 255;
             a += c.a as u16;
         }
 

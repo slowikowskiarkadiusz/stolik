@@ -29,6 +29,13 @@ const LINE_CLEARING_ANIMATION_FACTOR_SEC: f32 = 0.075;
 const DROPPING_DELAY_SEC: f32 = 1.0;
 const FASTER_DROPPING_DELAY_SEC: f32 = 0.1;
 const LOCK_DELAY_SEC: f32 = 1.0;
+
+// Board render dimensions (derived from BOARD_WIDTH, BOARD_HEIGHT, HoldLogic::SIZE)
+// size.x = 1 + BOARD_WIDTH + 1 + 1 + 1 = 14
+// size.y = 1 + BOARD_HEIGHT + 1 + 4 + 1 = 27
+const BOARD_RENDER_W: u8 = 14;
+const BOARD_RENDER_H: u8 = 27;
+
 pub const BLOCKS_COLORS: &[Color; 7] = &[
     Color::new(0, 255, 255, 255), // Cyan
     Color::new(255, 255, 0, 255), // Yellow
@@ -48,12 +55,18 @@ pub struct Board {
     can_drop: bool,
     dropped_blocks_matrix: ColorMatrix,
     border_matrix: ColorMatrix,
+    /// Pre-allocated full render buffer (reused every frame)
+    render_buf: ColorMatrix,
+    /// Pre-allocated board area buffer (reused every frame)
+    board_buf: ColorMatrix,
     continue_dropping: bool,
     drop_timer: f32,
     lock_delay_timer: f32,
     dropping_delay_value: f32,
     already_switched_pieces: bool,
-    spawn_bag: Vec<Shape>,
+    /// Fixed-size bag — no heap allocation
+    spawn_bag: [Shape; 7],
+    spawn_bag_len: usize,
     do_play: bool,
     pub is_dead: bool,
     opacity: i16,
@@ -86,12 +99,15 @@ impl Board {
             can_drop: true,
             dropped_blocks_matrix: ColorMatrix::new(BOARD_WIDTH, BOARD_HEIGHT, Color::none()),
             border_matrix: ColorMatrix::new(size.x as u8, size.y as u8, Color::none()),
+            render_buf: ColorMatrix::new(BOARD_RENDER_W, BOARD_RENDER_H, Color::none()),
+            board_buf: ColorMatrix::new(BOARD_WIDTH + 1, BOARD_HEIGHT, Color::none()),
             continue_dropping: true,
             drop_timer: 0.0,
             lock_delay_timer: 0.0,
             dropping_delay_value: DROPPING_DELAY_SEC,
             already_switched_pieces: false,
-            spawn_bag: Vec::new(),
+            spawn_bag: [Shape::I; 7],
+            spawn_bag_len: 0,
             do_play: true,
             is_dead: false,
             opacity: 255,
@@ -209,36 +225,45 @@ impl Board {
         return 0;
     }
 
-    pub fn render(&mut self) -> ColorMatrix {
-        let mut render_matrix = ColorMatrix::new(self.size.x as u8, self.size.y as u8, Color::none());
+    /// Renders the board into a pre-allocated buffer and returns a reference to it.
+    pub fn render(&mut self) -> &ColorMatrix {
+        // Split borrows to avoid borrow checker conflict between render_buf and other fields
+        let Board {
+            render_buf,
+            board_buf,
+            border_matrix,
+            garbage_bar,
+            hold_logic,
+            dropped_blocks_matrix,
+            current_agent,
+            current_agent_shadow,
+            size,
+            ..
+        } = self;
 
-        render_matrix.write_at_origin(&self.border_matrix, &V2::zero());
-        render_matrix.write(&self.garbage_bar.render(), &self.garbage_bar.center, None, None, None);
-        render_matrix.write(&self.hold_logic.render(), &self.hold_logic.center, None, None, None);
+        render_buf.fill(Color::none());
+        render_buf.write_at_origin(border_matrix, &V2::zero());
+        render_buf.write(garbage_bar.render(), &garbage_bar.center, None, None, None);
+        render_buf.write(hold_logic.render(), &hold_logic.center, None, None, None);
 
         let board_offset = V2::new(
             (1 + BOARD_WIDTH / 2) as f32,
-            self.size.y - 1 as f32 - BOARD_HEIGHT as f32 + BOARD_HEIGHT as f32 / 2.0,
+            size.y - 1.0 - BOARD_HEIGHT as f32 + BOARD_HEIGHT as f32 / 2.0,
         );
 
-        let mut board_matrix = ColorMatrix::new(BOARD_WIDTH + 1, BOARD_HEIGHT, Color::none());
+        board_buf.fill(Color::none());
 
-        if let Some(current_agent_shadow) = &self.current_agent_shadow {
-            board_matrix.write(&current_agent_shadow.render(), &current_agent_shadow.center, None, None, None);
+        if let Some(shadow) = current_agent_shadow {
+            board_buf.write(shadow.render(), &shadow.center, None, None, None);
+        }
+        if let Some(agent) = current_agent {
+            board_buf.write(agent.render(), &agent.center, None, None, None);
         }
 
-        if let Some(current_agent) = &self.current_agent {
-            board_matrix.write(&current_agent.render(), &current_agent.center, None, None, None);
-        }
+        render_buf.write(board_buf, &board_offset, None, None, None);
+        render_buf.write(dropped_blocks_matrix, &board_offset, None, None, None);
 
-        render_matrix.write(&board_matrix, &board_offset, None, None, None);
-
-        render_matrix.write(&self.dropped_blocks_matrix, &board_offset, None, None, None);
-
-        // render_matrix.scale((SCREEN_SIZE / 32) as f32, Color::none());
-        // render_matrix.dim(self.opacity as i16);
-
-        render_matrix
+        render_buf
     }
 
     pub fn dim(&mut self, opacity: i16) {
@@ -247,7 +272,7 @@ impl Board {
 
     fn spawn(&mut self, center: Option<V2>, shape: Option<Shape>) {
         self.already_switched_pieces = false;
-        let new_shape = shape.unwrap_or(self.generate_block(self.seed.clone()));
+        let new_shape = shape.unwrap_or_else(|| self.generate_block());
         let agent_center = center.unwrap_or(V2::new((BOARD_WIDTH / 2) as f32, 0.0));
         let new_agent = Block::new(agent_center, new_shape.clone(), false);
         let drop_pos = V2::new(
@@ -287,7 +312,7 @@ impl Board {
             let post_transform_center = current_agent.center.clone();
             let mut did_kick = false;
             for kick in kicks {
-                current_agent.center = &post_transform_center + &kick;
+                current_agent.center = &post_transform_center + kick;
                 let spots = current_agent.get_taken_spots();
                 if !spots
                     .iter()
@@ -314,17 +339,22 @@ impl Board {
         self.garbage_bar.add_lines(count);
     }
 
-    fn generate_block(&mut self, seed: u32) -> Shape {
+    fn generate_block(&mut self) -> Shape {
+        let seed = self.seed;
         let mut rng = SmallRng::from_seed([(seed % 255) as u8; core::mem::size_of::<SmallRng>()]);
-        if self.spawn_bag.is_empty() {
-            for i in 0..(Shape::L as u8 + 1) {
-                self.spawn_bag.push(get_shape(i));
-            }
 
-            self.spawn_bag.shuffle(&mut rng);
+        if self.spawn_bag_len == 0 {
+            self.spawn_bag = [Shape::I, Shape::O, Shape::T, Shape::S, Shape::Z, Shape::J, Shape::L];
+            self.spawn_bag_len = 7;
+            // Fisher-Yates shuffle
+            for i in (1..7usize).rev() {
+                let j = (rng.next_u32() as usize) % (i + 1);
+                self.spawn_bag.swap(i, j);
+            }
         }
 
-        self.spawn_bag.pop().unwrap()
+        self.spawn_bag_len -= 1;
+        self.spawn_bag[self.spawn_bag_len]
     }
 
     fn write_border(&mut self, from: V2, to: V2) {
@@ -341,17 +371,18 @@ impl Board {
         }
     }
 
-    fn calc_drop(is_cell_taken: &Matrix<bool>, i: i16, agent: &Block) -> i16 {
+    /// Iterative drop calculation — avoids stack overflow risk of the recursive version.
+    fn calc_drop(is_cell_taken: &Matrix<bool>, start: i16, agent: &Block) -> i16 {
         let spots = agent.get_taken_spots();
-        if spots.len() > 0
-            && !spots
-                .iter()
-                .any(|f| Board::is_position_taken(is_cell_taken, f.x as i16, (f.y + i as f32) as i16))
-        {
-            let next = Board::calc_drop(is_cell_taken, i + 1, agent);
-            return if next != 0 { next } else { i };
-        } else {
-            i - 1
+        let mut i = start;
+        loop {
+            if spots.iter().any(|f| Board::is_position_taken(is_cell_taken, f.x as i16, (f.y + i as f32) as i16)) {
+                return i - 1;
+            }
+            i += 1;
+            if i > BOARD_HEIGHT as i16 + BOARD_WIDTH as i16 {
+                return i - 1;
+            }
         }
     }
 
@@ -360,7 +391,7 @@ impl Board {
         let b = x >= BOARD_WIDTH as i16;
         let c = y >= BOARD_HEIGHT as i16;
         let d = y < 0;
-        a || b || c || d || is_cell_taken.get(x as u8, y as u8).clone()
+        a || b || c || d || *is_cell_taken.get(x as u8, y as u8)
     }
 
     fn fall(&mut self, delta_time: f32) -> u8 {
@@ -370,10 +401,9 @@ impl Board {
         {
             let mut dropped = false;
             let spots = current_agent.get_taken_spots();
-            if spots.len() > 0
-                && spots
-                    .iter()
-                    .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i16, f.y as i16 + 1))
+            if spots
+                .iter()
+                .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i16, f.y as i16 + 1))
             {
                 self.lock_delay_timer += delta_time;
                 if self.lock_delay_timer > LOCK_DELAY_SEC as f32 {
@@ -412,11 +442,10 @@ impl Board {
                 self.dropped_blocks_matrix.set(
                     spot.x as u8,
                     spot.y as u8,
-                    BLOCKS_COLORS[current_agent.shape.clone() as usize].clone(),
+                    BLOCKS_COLORS[current_agent.shape as usize],
                 );
 
                 if spot.y <= 0.0 {
-                    // println!("DYING");
                     self.is_dead = true;
                     self.do_play = false;
                     return 0;
@@ -430,7 +459,6 @@ impl Board {
             self.spawn(None, None);
             self.can_drop = true;
 
-            // TODO animation
             let damage_to_deal = self.clear_lines();
             self.pop_garbage_lines();
 
@@ -441,46 +469,45 @@ impl Board {
     }
 
     fn clear_lines(&mut self) -> u8 {
-        let mut lines = Vec::<u8>::new();
+        // Fixed-size buffer — no heap allocation
+        let mut lines = [0u8; BOARD_HEIGHT as usize];
+        let mut line_count = 0usize;
+
         for y in 0..self.is_cell_taken.height {
             let mut is_whole_line_taken = false;
 
             for x in 0..self.is_cell_taken.width {
-                is_whole_line_taken = self.is_cell_taken.get(x, y).clone();
+                is_whole_line_taken = *self.is_cell_taken.get(x, y);
                 if !is_whole_line_taken {
                     break;
                 }
             }
 
             if is_whole_line_taken {
-                lines.push(y);
+                lines[line_count] = y;
+                line_count += 1;
             }
         }
 
-        if !lines.is_empty() {
-            for line in &lines {
+        if line_count > 0 {
+            for &line in &lines[..line_count] {
                 for x in 0..self.is_cell_taken.width {
-                    self.dropped_blocks_matrix.set(x, line.clone(), Color::none());
-                    // TODO
-                    // wait
+                    self.dropped_blocks_matrix.set(x, line, Color::none());
                 }
             }
 
-            let lines_length = lines.len();
-
-            for line in lines {
+            for &line in &lines[..line_count] {
                 for y in (0..line).rev() {
                     for x in 0..self.is_cell_taken.width {
-                        self.is_cell_taken.set(x, y, self.is_cell_taken.get(x, y - 1).clone());
-                        self.dropped_blocks_matrix
-                            .set(x, line, self.dropped_blocks_matrix.get(x, y - 1).clone());
-                        // TODO
-                        // wait
+                        let above = *self.is_cell_taken.get(x, y.saturating_sub(1));
+                        self.is_cell_taken.set(x, y, above);
+                        let color_above = *self.dropped_blocks_matrix.get(x, y.saturating_sub(1));
+                        self.dropped_blocks_matrix.set(x, line, color_above);
                     }
                 }
             }
 
-            return lines_length as u8;
+            return line_count as u8;
         }
 
         return 0;
@@ -493,9 +520,10 @@ impl Board {
         while self.garbage_bar.pop() {
             for x in 0..BOARD_WIDTH {
                 for y in 0..BOARD_HEIGHT - 1 {
-                    self.is_cell_taken.set(x, y, self.is_cell_taken.get(x, y + 1).clone());
-                    self.dropped_blocks_matrix
-                        .set(x, y, self.dropped_blocks_matrix.get(x, y + 1).clone());
+                    let val = *self.is_cell_taken.get(x, y + 1);
+                    self.is_cell_taken.set(x, y, val);
+                    let color = *self.dropped_blocks_matrix.get(x, y + 1);
+                    self.dropped_blocks_matrix.set(x, y, color);
                 }
             }
 
@@ -511,9 +539,6 @@ impl Board {
                     },
                 );
             }
-
-            // TODO
-            // wait
         }
     }
 
@@ -537,7 +562,6 @@ pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_
     }
 
     let actor_id = world.add_new_actor(
-        Some("board actor"),
         Some(transform),
         None,
         None,
