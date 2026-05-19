@@ -71,6 +71,7 @@ dependencies = [
  "critical-section",
  "embassy-sync 0.7.2",
  "embassy-time 0.5.0",
+ "esp-println",
  "libm",
  "rand",
  "serde",
@@ -792,6 +793,7 @@ dependencies = [
  "heapless 0.8.0",
  "log",
  "mcp230xx",
+ "spin",
  "static_cell",
 ]
 

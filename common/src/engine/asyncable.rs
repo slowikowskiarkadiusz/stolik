@@ -1,5 +1,4 @@
 use core::u16;
-// TODO HashMap
 
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
@@ -21,8 +20,13 @@ enum AsyncableActionType {
     Remove,
 }
 
-static QUEUE: Channel<CriticalSectionRawMutex, EnqueuedAsyncableJob, 64> = Channel::new();
-static TAKEN_IDS: RwLock< Vec<AsyncableId>> = RwLock::new(Vec::new());
+const MAX_ASYNCABLES: usize = 32;
+
+/// (ids array, count)
+static TAKEN_IDS: RwLock<([AsyncableId; MAX_ASYNCABLES], usize)> =
+    RwLock::new(([0; MAX_ASYNCABLES], 0));
+
+static QUEUE: Channel<CriticalSectionRawMutex, EnqueuedAsyncableJob, 32> = Channel::new();
 
 struct EnqueuedAsyncableJob {
     pub id_to_affect: AsyncableId,
@@ -40,7 +44,7 @@ struct AsyncableInProgress {
 
 pub struct AsyncableStorage {
     asyncables_in_progress: Vec<AsyncableInProgress>,
-    queue_receiver: Receiver<'static, CriticalSectionRawMutex, EnqueuedAsyncableJob, 64>,
+    queue_receiver: Receiver<'static, CriticalSectionRawMutex, EnqueuedAsyncableJob, 32>,
 }
 
 impl AsyncableStorage {
@@ -85,21 +89,32 @@ impl AsyncableStorage {
 }
 
 pub fn add_asyncable(function: AsyncableFunction, ms: f32, asyncable_type: AsyncableType) -> AsyncableId {
-    let lock = TAKEN_IDS.read();
-    let mut free_id = 0;
-    for i in 0..=u16::MAX {
-        // TODO optimize this shit
-        free_id = i;
-        if !lock.contains(&free_id) {
-            break;
+    let mut lock = TAKEN_IDS.write();
+    let (ids, count) = &mut *lock;
+
+    // Find first ID not already taken
+    let mut free_id: AsyncableId = 0;
+    'outer: loop {
+        for i in 0..*count {
+            if ids[i] == free_id {
+                free_id = free_id.wrapping_add(1);
+                continue 'outer;
+            }
         }
+        break;
     }
 
+    if *count < MAX_ASYNCABLES {
+        ids[*count] = free_id;
+        *count += 1;
+    }
+    drop(lock);
+
     let job = EnqueuedAsyncableJob {
-        id_to_affect: free_id.clone(),
+        id_to_affect: free_id,
         action_type: AsyncableActionType::Add,
         asyncable: Some(AsyncableInProgress {
-            id: free_id.clone(),
+            id: free_id,
             function,
             async_type: asyncable_type,
             seconds: ms,
@@ -107,22 +122,24 @@ pub fn add_asyncable(function: AsyncableFunction, ms: f32, asyncable_type: Async
         }),
     };
 
-    drop(lock);
-
-    TAKEN_IDS.write().push(free_id.clone());
-    TAKEN_IDS.write().sort();
     QUEUE.sender().try_send(job).ok();
-
     free_id
 }
 
 pub fn remove_asyncable(id: AsyncableId) {
+    let mut lock = TAKEN_IDS.write();
+    let (ids, count) = &mut *lock;
+    if let Some(pos) = ids[..*count].iter().position(|&x| x == id) {
+        *count -= 1;
+        ids[pos] = ids[*count];
+    }
+    drop(lock);
+
     let job = EnqueuedAsyncableJob {
-        id_to_affect: id.clone(),
+        id_to_affect: id,
         action_type: AsyncableActionType::Remove,
         asyncable: None,
     };
 
-    TAKEN_IDS.write().retain_mut(|f| f != &id);
     QUEUE.sender().try_send(job).ok();
 }

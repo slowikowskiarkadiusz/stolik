@@ -42,8 +42,8 @@ impl<T: Clone> Matrix<T> {
         &self.data
     }
 
-    pub fn fill(&mut self, to: T) {
-        self.data = vec![to; (self.width * self.height) as usize];
+    pub fn fill(&mut self, to: T) where T: Copy {
+        self.data.fill(to);
     }
 
     // TODO: do in-place. swapping pixels

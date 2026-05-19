@@ -26,13 +26,13 @@ embedded-graphics = "0.8"
 
 heapless = "0.8"
 static_cell = "2.1"
-# critical-section = "1.2"
 log = "0.4"
 
 esp-hub75 = { git = "https://github.com/liebman/esp-hub75", branch = "main", features = ["esp32s3"] }
 esp-rtos = { version = "0.2", features = ["esp32s3", "embassy"] }
 getrandom = { version = "0.2", default-features = false, features = ["custom"] }
 mcp230xx = "0.1"
+spin = { version = "0.9", default-features = false, features = ["mutex", "rwlock", "spin_mutex"] }
 
 [profile.dev]
 opt-level = "s"

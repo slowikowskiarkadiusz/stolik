@@ -18,14 +18,14 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use esp_hal::{
-    gpio::{Input as GpioInput, InputConfig, Pin, Pull},
-    peripherals::Peripherals,
+    gpio::{AnyPin, Input as GpioInput, InputConfig, Pin, Pull},
+    peripherals::{I2C0, Peripherals},
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum IoPin {
     Gpio1 = 1,
-    Gpio17 = 17,
+    // Gpio17 = 17,
     Gpio18 = 18,
     Gpio21 = 21,
     Gpio35 = 35,
@@ -48,10 +48,10 @@ enum IoPin {
     ExpP7 = 97,
 }
 
-const PINS_IN_USE_LENGTH: usize = 19;
+const PINS_IN_USE_LENGTH: usize = 18;
 
 static PINS_IN_USE: [IoPin; PINS_IN_USE_LENGTH] = [
-    IoPin::Gpio17,
+    // IoPin::Gpio17,
     IoPin::Gpio18,
     IoPin::Gpio21,
     IoPin::Gpio35,
@@ -82,31 +82,50 @@ pub struct Esp32Input<'a> {
     i2c: esp_hal::i2c::master::I2c<'a, esp_hal::Blocking>,
 }
 
+pub struct Esp32InputPinSetup<'a> {
+    pub gpio1: AnyPin<'a>,
+    // pub gpio17: AnyPin<'a>,
+    pub gpio18: AnyPin<'a>,
+    pub gpio21: AnyPin<'a>,
+    pub gpio35: AnyPin<'a>,
+    pub gpio36: AnyPin<'a>,
+    pub gpio37: AnyPin<'a>,
+    pub gpio38: AnyPin<'a>,
+    pub gpio39: AnyPin<'a>,
+    pub gpio40: AnyPin<'a>,
+    pub gpio41: AnyPin<'a>,
+    pub gpio42: AnyPin<'a>,
+    pub gpio47: AnyPin<'a>,
+    pub gpio48: AnyPin<'a>,
+    pub i2c0: I2C0<'a>,
+    pub gpio19: AnyPin<'a>,
+    pub gpio20: AnyPin<'a>,
+}
+
 impl<'a> Esp32Input<'a> {
-    pub fn new() -> Self {
-        let peripherals = esp_hal::init(esp_hal::Config::default());
+    pub fn new(setup: Esp32InputPinSetup<'a>) -> Self {
         let config = InputConfig::default().with_pull(Pull::Up);
 
         let mut gpio_buttons = HashMap::<IoPin, GpioInput<'a>>::new();
-        gpio_buttons.insert(IoPin::Gpio1, GpioInput::new(peripherals.GPIO1, config));
-        gpio_buttons.insert(IoPin::Gpio17, GpioInput::new(peripherals.GPIO17, config));
-        gpio_buttons.insert(IoPin::Gpio18, GpioInput::new(peripherals.GPIO18, config));
-        gpio_buttons.insert(IoPin::Gpio21, GpioInput::new(peripherals.GPIO21, config));
-        gpio_buttons.insert(IoPin::Gpio35, GpioInput::new(peripherals.GPIO35, config));
-        gpio_buttons.insert(IoPin::Gpio36, GpioInput::new(peripherals.GPIO36, config));
-        gpio_buttons.insert(IoPin::Gpio37, GpioInput::new(peripherals.GPIO37, config));
-        gpio_buttons.insert(IoPin::Gpio38, GpioInput::new(peripherals.GPIO38, config));
-        gpio_buttons.insert(IoPin::Gpio39, GpioInput::new(peripherals.GPIO39, config));
-        gpio_buttons.insert(IoPin::Gpio40, GpioInput::new(peripherals.GPIO40, config));
-        gpio_buttons.insert(IoPin::Gpio41, GpioInput::new(peripherals.GPIO41, config));
-        gpio_buttons.insert(IoPin::Gpio42, GpioInput::new(peripherals.GPIO42, config));
-        gpio_buttons.insert(IoPin::Gpio47, GpioInput::new(peripherals.GPIO47, config));
-        gpio_buttons.insert(IoPin::Gpio48, GpioInput::new(peripherals.GPIO48, config));
+        gpio_buttons.insert(IoPin::Gpio1, GpioInput::new(setup.gpio1, config));
+        // gpio_buttons.insert(IoPin::Gpio17, GpioInput::new(setup.gpio17, config));
+        gpio_buttons.insert(IoPin::Gpio18, GpioInput::new(setup.gpio18, config));
+        gpio_buttons.insert(IoPin::Gpio21, GpioInput::new(setup.gpio21, config));
+        gpio_buttons.insert(IoPin::Gpio35, GpioInput::new(setup.gpio35, config));
+        gpio_buttons.insert(IoPin::Gpio36, GpioInput::new(setup.gpio36, config));
+        gpio_buttons.insert(IoPin::Gpio37, GpioInput::new(setup.gpio37, config));
+        gpio_buttons.insert(IoPin::Gpio38, GpioInput::new(setup.gpio38, config));
+        gpio_buttons.insert(IoPin::Gpio39, GpioInput::new(setup.gpio39, config));
+        gpio_buttons.insert(IoPin::Gpio40, GpioInput::new(setup.gpio40, config));
+        gpio_buttons.insert(IoPin::Gpio41, GpioInput::new(setup.gpio41, config));
+        gpio_buttons.insert(IoPin::Gpio42, GpioInput::new(setup.gpio42, config));
+        gpio_buttons.insert(IoPin::Gpio47, GpioInput::new(setup.gpio47, config));
+        gpio_buttons.insert(IoPin::Gpio48, GpioInput::new(setup.gpio48, config));
 
-        let i2c = esp_hal::i2c::master::I2c::new(peripherals.I2C0, esp_hal::i2c::master::Config::default())
+        let i2c = esp_hal::i2c::master::I2c::new(setup.i2c0, esp_hal::i2c::master::Config::default())
             .unwrap()
-            .with_sda(peripherals.GPIO19)
-            .with_scl(peripherals.GPIO20);
+            .with_sda(setup.gpio19)
+            .with_scl(setup.gpio20);
 
         let obj = Self {
             gestures: Gestures::new(),
