@@ -209,10 +209,10 @@ async fn hub75_task(
     let mut iter = 0u32;
 
     loop {
-        iter += 1;
-        if iter <= 5 || iter % 100 == 0 {
-            println!("hub75: loop iter {}", iter);
-        }
+        // iter += 1;
+        // if iter <= 5 || iter % 100 == 0 {
+        //     println!("hub75: loop iter {}", iter);
+        // }
 
         // if there is a new buffer available, get it and send the old one
         if rx.signaled() {
@@ -222,9 +222,13 @@ async fn hub75_task(
         }
 
         let mut xfer = hub75.render(fb).map_err(|(e, _hub75)| e).expect("failed to start render!");
-        if iter <= 5 { println!("hub75: render started iter {}", iter); }
+        // if iter <= 5 {
+        //     println!("hub75: render started iter {}", iter);
+        // }
         xfer.wait_for_done().await.expect("rendering wait_for_done failed!");
-        if iter <= 5 { println!("hub75: render done iter {}", iter); }
+        // if iter <= 5 {
+        //     println!("hub75: render done iter {}", iter);
+        // }
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
         result.expect("transfer failed");
@@ -260,7 +264,8 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
             if s.valid {
                 for y in 0..64u8 {
                     for x in 0..64u8 {
-                        let color = &s.data[y as usize * 64 + x as usize];
+                        let (sample_x, sample_y) = if y < 32 { (63 - x, 31 - y) } else { (x, y) };
+                        let color = &s.data[sample_y as usize * 64 + sample_x as usize];
                         if color.a > 0 {
                             let esp32_color = Esp32Color::new(
                                 (color.r as u16 * color.a as u16 / 255) as u8,

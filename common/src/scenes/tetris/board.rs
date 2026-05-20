@@ -146,6 +146,8 @@ impl Board {
 
         self.garbage_bar.tick(delta_time);
 
+        let mut damage_to_do = 0;
+
         if let Some(current_agent) = self.current_agent.as_mut() {
             if input.gestures().is(
                 if self.is_p1 { Key::P1Blue } else { Key::P2Blue },
@@ -219,10 +221,18 @@ impl Board {
             }
 
             let damage_to_deal = self.fall(delta_time);
-            return self.garbage_bar.decrease_and_get_left(damage_to_deal);
+            damage_to_do = self.garbage_bar.decrease_and_get_left(damage_to_deal);
         }
 
-        return 0;
+        if let Some(current_agent_shadow) = self.current_agent_shadow.as_mut()
+            && let Some(current_agent) = self.current_agent.as_ref()
+        {
+            let mut center = current_agent.center;
+            let mut current_spots = current_agent.get_taken_spots();
+            current_agent_shadow.center = V2::new(center.x, center.y + Board::calc_drop(&self.is_cell_taken, 1, current_spots) as f32);
+        }
+
+        return damage_to_do;
     }
 
     /// Renders the board into a pre-allocated buffer and returns a reference to it.
@@ -277,7 +287,7 @@ impl Board {
         let new_agent = Block::new(agent_center, new_shape.clone(), false);
         let drop_pos = V2::new(
             new_agent.center.x,
-            new_agent.center.y + Board::calc_drop(&self.is_cell_taken, 1, &new_agent) as f32,
+            new_agent.center.y + Board::calc_drop(&self.is_cell_taken, 1, new_agent.get_taken_spots()) as f32,
         );
         self.current_agent = Some(new_agent);
         self.current_agent_shadow = Some(Block::new(drop_pos, new_shape, true));
@@ -294,8 +304,8 @@ impl Board {
                 current_agent.center = &current_agent.center + &by;
 
                 if let Some(current_agent_shadow) = self.current_agent_shadow.as_mut() {
-                    current_agent_shadow.center =
-                        &current_agent.center + &(V2::down() * Board::calc_drop(&self.is_cell_taken, 0, &current_agent) as f32);
+                    current_agent_shadow.center = &current_agent.center
+                        + &(V2::down() * Board::calc_drop(&self.is_cell_taken, 0, current_agent.get_taken_spots()) as f32);
                 }
             }
         }
@@ -311,7 +321,9 @@ impl Board {
             current_agent.rotate_block(90 * dir);
             let post_transform_center = current_agent.center.clone();
             let mut did_kick = false;
+            // let mut kick_attempts = 0;
             for kick in kicks {
+                // kick_attempts += 1;
                 current_agent.center = &post_transform_center + kick;
                 let spots = current_agent.get_taken_spots();
                 if !spots
@@ -322,6 +334,7 @@ impl Board {
                     break;
                 }
             }
+            // println!("kick attempts: {}", kick_attempts);
             if !did_kick {
                 current_agent.rotate_block(-90 * dir);
                 current_agent.center = pre_transform_center;
@@ -329,7 +342,7 @@ impl Board {
                 current_agent_shadow.rotate_block(90 * dir);
                 current_agent_shadow.center = V2::new(
                     current_agent.center.x,
-                    current_agent.center.y + Board::calc_drop(&self.is_cell_taken, 0, &current_agent) as f32,
+                    current_agent.center.y + Board::calc_drop(&self.is_cell_taken, 1, current_agent.get_taken_spots()) as f32,
                 );
             }
         }
@@ -372,11 +385,13 @@ impl Board {
     }
 
     /// Iterative drop calculation — avoids stack overflow risk of the recursive version.
-    fn calc_drop(is_cell_taken: &Matrix<bool>, start: i16, agent: &Block) -> i16 {
-        let spots = agent.get_taken_spots();
+    fn calc_drop(is_cell_taken: &Matrix<bool>, start: i16, spots: [V2; 4]) -> i16 {
         let mut i = start;
         loop {
-            if spots.iter().any(|f| Board::is_position_taken(is_cell_taken, f.x as i16, (f.y + i as f32) as i16)) {
+            if spots
+                .iter()
+                .any(|f| Board::is_position_taken(is_cell_taken, f.x as i16, (f.y + i as f32) as i16))
+            {
                 return i - 1;
             }
             i += 1;
@@ -439,11 +454,8 @@ impl Board {
 
             for spot in current_agent.get_taken_spots() {
                 self.is_cell_taken.set(spot.x as u8, spot.y as u8, true);
-                self.dropped_blocks_matrix.set(
-                    spot.x as u8,
-                    spot.y as u8,
-                    BLOCKS_COLORS[current_agent.shape as usize],
-                );
+                self.dropped_blocks_matrix
+                    .set(spot.x as u8, spot.y as u8, BLOCKS_COLORS[current_agent.shape as usize]);
 
                 if spot.y <= 0.0 {
                     self.is_dead = true;
@@ -497,12 +509,12 @@ impl Board {
             }
 
             for &line in &lines[..line_count] {
-                for y in (0..line).rev() {
+                for y in (1..=line as usize).rev() {
                     for x in 0..self.is_cell_taken.width {
-                        let above = *self.is_cell_taken.get(x, y.saturating_sub(1));
-                        self.is_cell_taken.set(x, y, above);
-                        let color_above = *self.dropped_blocks_matrix.get(x, y.saturating_sub(1));
-                        self.dropped_blocks_matrix.set(x, line, color_above);
+                        let above = *self.is_cell_taken.get(x, (y - 1) as u8);
+                        self.is_cell_taken.set(x, y as u8, above);
+                        let color_above = *self.dropped_blocks_matrix.get(x, (y - 1) as u8);
+                        self.dropped_blocks_matrix.set(x, y as u8, color_above);
                     }
                 }
             }
@@ -553,7 +565,7 @@ pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_
     let center = if is_p1 {
         V2::new(board.size.x, SCREEN_SIZE as f32 - board.size.y)
     } else {
-        V2::new(SCREEN_SIZE as f32 - board.size.x, board.size.y)
+        V2::new(SCREEN_SIZE as f32 - board.size.x - 1.0, board.size.y - 1.0)
     };
 
     let mut transform = Transform::new(center, board.size.clone());
@@ -566,7 +578,7 @@ pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_
         None,
         None,
         None,
-        Some(ColorMatrix::new(board.size.x as u8, board.size.y as u8, Color::none())),
+        Some(ColorMatrix::new(board.size.x as u8 * 2, board.size.y as u8 * 2, Color::none())),
     );
 
     tetris_world.add_new_actor(actor_id, Some(board));

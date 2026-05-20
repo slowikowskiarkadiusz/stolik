@@ -21,6 +21,7 @@ use esp_hal::{
     gpio::{AnyPin, Input as GpioInput, InputConfig, Pin, Pull},
     peripherals::{I2C0, Peripherals},
 };
+use esp_println::{print, println};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum IoPin {
@@ -255,6 +256,8 @@ impl<'a> Input for Esp32Input<'a> {
 
     fn update(&mut self, delta_time: f32) {
         let expander_data = self.read_expander_data();
+
+        // println!("{}", expander_data);
 
         for i in 0..PINS_IN_USE.len() {
             let pin = &PINS_IN_USE[i];

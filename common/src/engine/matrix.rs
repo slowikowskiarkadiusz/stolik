@@ -42,7 +42,10 @@ impl<T: Clone> Matrix<T> {
         &self.data
     }
 
-    pub fn fill(&mut self, to: T) where T: Copy {
+    pub fn fill(&mut self, to: T)
+    where
+        T: Copy,
+    {
         self.data.fill(to);
     }
 
@@ -83,7 +86,7 @@ impl<T: Clone> Matrix<T> {
     }
 
     // TODO: do in-place. start writing from right bottom corner if the non-scaled is in left-top corner
-    pub fn scale(&mut self, factor: f32, background: T) {
+    pub fn scale(&self, factor: f32, background: T) -> Matrix::<T> {
         let old_width = self.width;
         let old_height = self.height;
         let new_width = roundf(old_width as f32 * factor) as u8;
@@ -102,7 +105,7 @@ impl<T: Clone> Matrix<T> {
             }
         }
 
-        self.data = scaled.data
+        scaled
     }
 
     pub fn snippet(&self, from: &V2, to: &V2) -> Matrix<T> {
