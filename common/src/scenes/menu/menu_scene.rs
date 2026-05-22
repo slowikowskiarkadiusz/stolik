@@ -12,7 +12,7 @@ use crate::{
         scene::Scene,
         v2::V2,
     },
-    scenes::{controls::controls_scene::ControlsScene, pong::pong_scene::PongScene, tetris::tetris_scene::TetrisScene},
+    scenes::{controls::controls_scene::ControlsScene, pong::pong_scene::PongScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode}},
 };
 
 struct MenuOption {
@@ -47,8 +47,11 @@ pub struct MenuScene {
 impl Scene for MenuScene {
     fn init(&mut self, world: &mut World) {
         self.options = vec![
-            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong", 0),
-            MenuOption::new(Box::new(|| Box::new(TetrisScene::new())), "tetris", "tetris", 0),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new(false))), "pong", "pong", 0),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new(true))), "pong", "pong -- vs ai", 0),
+            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))), "tetris", "tetris", 0),
+            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))), "tetris", "tetris -- solo", 0),
+            // MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstAi))), "tetris", "tetris -- vs ai", 0),
             // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "fong", "fong", 0),
         ];
 

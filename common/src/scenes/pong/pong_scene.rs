@@ -20,7 +20,7 @@ use crate::{
     scenes::utils::print_victory_text,
 };
 
-static ORIGINAL_BALL_SPEED: f32 = 7.0;
+static ORIGINAL_BALL_SPEED: f32 = 10.0;
 static ORIGINAL_BALL_SPEED_MULTIPLIER: f32 = 1.0;
 static MAX_SCORE: u8 = 1;
 
@@ -40,6 +40,7 @@ pub struct PongScene {
     can_bounce: bool,
     do_play: bool,
     rng: SmallRng,
+    play_against_ai: bool,
 }
 
 impl Scene for PongScene {
@@ -113,7 +114,7 @@ impl Scene for PongScene {
 }
 
 impl PongScene {
-    pub fn new() -> Self {
+    pub fn new(play_against_ai: bool) -> Self {
         Self {
             score: [0, 0],
             paddle: [None, None],
@@ -130,6 +131,7 @@ impl PongScene {
             can_bounce: true,
             do_play: true,
             rng: SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()),
+            play_against_ai: play_against_ai,
         }
     }
 
@@ -155,7 +157,7 @@ impl PongScene {
                 self.can_bounce = true;
                 let ball_transform = &world.get_transform(&self.ball.unwrap()).unwrap();
                 let paddle_transform = &world.get_transform(&self.paddle[i].unwrap()).unwrap();
-                let x_offset = (&ball_transform.center.x - &paddle_transform.center.x) / &paddle_transform.size.x;
+                let x_offset = (&ball_transform.center.x - &paddle_transform.center.x) / &paddle_transform.size.x * 2.0;
                 let new_ball_speed = V2::new(
                     x_offset * self.max_bounce_speed * self.size_factor,
                     ORIGINAL_BALL_SPEED * self.size_factor * self.ball_speed_multiplier * if i == 0 { 1.0 } else { -1.0 },
@@ -210,9 +212,10 @@ impl PongScene {
         if self.score.iter().any(|x| x == &MAX_SCORE) {
             self.do_play = false;
             print_victory_text(world, if self.score[0] > self.score[1] { 1 } else { 2 });
+            let play_against_ai = self.play_against_ai;
             add_asyncable(
-                Box::new(|_, _| {
-                    open_scene(Box::new(|| Box::new(PongScene::new())));
+                Box::new(move |_, _| {
+                    open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
                 }),
                 10.0,
                 AsyncableType::Timeout,
@@ -230,22 +233,42 @@ impl PongScene {
     }
 
     fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, delta_time: f32) {
-        if input.is_key_press(Key::P1Left) ^ input.is_key_press(Key::P1Right) {
-            if let Some(paddle_p1_id) = self.paddle[0] {
+        if !self.play_against_ai {
+            if input.is_key_press(Key::P2Left) ^ input.is_key_press(Key::P2Right) {
+                if let Some(paddle_p1_id) = self.paddle[0] {
+                    PongScene::move_paddle(
+                        &paddle_p1_id,
+                        world,
+                        if input.is_key_press(Key::P2Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
+                    );
+                }
+            }
+        } else {
+            if let Some(ball_id) = self.ball
+                && let Some(ball_transform) = world.get_transform(&ball_id)
+                && let Some(paddle_p1_id) = self.paddle[0]
+                && let Some(paddle_p1_transform) = world.get_transform(&paddle_p1_id)
+            {
                 PongScene::move_paddle(
                     &paddle_p1_id,
                     world,
-                    if input.is_key_press(Key::P1Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
+                    if ball_transform.center.x < paddle_p1_transform.center.x - 1.0 {
+                        -1.0
+                    } else {
+                        1.0
+                    } * self.paddle_speed
+                        * self.size_factor
+                        * delta_time,
                 );
             }
         }
 
-        if input.is_key_press(Key::P2Left) ^ input.is_key_press(Key::P2Right) {
+        if input.is_key_press(Key::P1Left) ^ input.is_key_press(Key::P1Right) {
             if let Some(paddle_p2_id) = self.paddle[1] {
                 PongScene::move_paddle(
                     &paddle_p2_id,
                     world,
-                    if input.is_key_press(Key::P2Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
+                    if input.is_key_press(Key::P1Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
                 );
             }
         }

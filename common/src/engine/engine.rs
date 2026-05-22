@@ -8,7 +8,7 @@ use crate::{
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
     },
-    scenes::{menu::menu_scene::MenuScene, tetris::tetris_scene::TetrisScene},
+    scenes::{menu::menu_scene::MenuScene, pong::pong_scene::PongScene, tetris::tetris_scene::TetrisScene},
 };
 extern crate alloc;
 use alloc::boxed::Box;

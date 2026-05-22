@@ -19,10 +19,17 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 use rand::{RngCore, SeedableRng, rngs::SmallRng};
 
+pub enum TetrisSceneMode {
+    Solo,
+    AgainstAi,
+    AgainstHuman,
+}
+
 pub struct TetrisScene {
     p1_board_actor_id: ActorId,
     p2_board_actor_id: ActorId,
     tetris_world: TetrisWorld,
+    mode: TetrisSceneMode,
 }
 
 impl Scene for TetrisScene {
@@ -47,10 +54,12 @@ impl Scene for TetrisScene {
             is_p1_dead = p1_board.is_dead;
         }
 
-        // if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-        //     damage_for_p1 = p2_board.tick(input, delta_time);
-        //     is_p2_dead = p2_board.is_dead;
-        // }
+        if !matches!(self.mode, TetrisSceneMode::Solo) {
+            if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
+                damage_for_p1 = p2_board.tick(input, delta_time);
+                is_p2_dead = p2_board.is_dead;
+            }
+        }
 
         if is_p1_dead || is_p2_dead {
             self.on_players_death(world, is_p1_dead);
@@ -60,9 +69,11 @@ impl Scene for TetrisScene {
             p1_board.take_damage(damage_for_p2);
         }
 
-        // if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-        //     p2_board.take_damage(damage_for_p1);
-        // }
+        if !matches!(self.mode, TetrisSceneMode::Solo) {
+            if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
+                p2_board.take_damage(damage_for_p1);
+            }
+        }
 
         self.render(world);
     }
@@ -77,11 +88,12 @@ impl Scene for TetrisScene {
 }
 
 impl TetrisScene {
-    pub fn new() -> Self {
+    pub fn new(mode: TetrisSceneMode) -> Self {
         Self {
             p1_board_actor_id: ActorId::MAX,
             p2_board_actor_id: ActorId::MAX,
             tetris_world: TetrisWorld::new(),
+            mode: mode,
         }
     }
 
@@ -108,12 +120,14 @@ impl TetrisScene {
             }
         }
 
-        // if let Some(p2_render) = world.get_mut_render(&self.p2_board_actor_id) {
-        //     if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-        //         let mut board = p2_board.render();
-        //         p2_render.write_at_origin(&board.scale(2.0, Color::black()), &V2::zero());
-        //         // p2_render.write_at_origin(&p2_board.render(), &V2::zero());
-        //     }
-        // }
+        if !matches!(self.mode, TetrisSceneMode::Solo) {
+            if let Some(p2_render) = world.get_mut_render(&self.p2_board_actor_id) {
+                if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
+                    let mut board = p2_board.render();
+                    p2_render.write_at_origin(&board.scale(2.0, Color::black()), &V2::zero());
+                    // p2_render.write_at_origin(&p2_board.render(), &V2::zero());
+                }
+            }
+        }
     }
 }
