@@ -153,14 +153,21 @@ impl<'a> Esp32Input<'a> {
 
     fn read_expander_data(&mut self) -> u8 {
         if !self.expander_present {
-            return 0;
+            return 0xFF;
         }
         let addr: u8 = 0x20;
-        let mut buf = [0u8; 1];
-        if self.i2c.write_read(addr, &[0x12], &mut buf).is_err() {
-            return 0;
+        let mut data = [0xFFu8; 2];
+        let start = embassy_time::Instant::now();
+        match self.i2c.write_read(addr, &[0x12], &mut data) {
+            Ok(_) => {
+                println!("[I2C] ok {}us", start.elapsed().as_micros());
+                data[1]
+            },
+            Err(_) => {
+                println!("[I2C] err {}us", start.elapsed().as_micros());
+                0xFF
+            }
         }
-        buf[0]
     }
 
     fn is_pin_down(&mut self, expander_state: u8, pin: IoPin) -> bool {

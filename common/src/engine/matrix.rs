@@ -1,6 +1,7 @@
 extern crate alloc;
 use alloc::{string::String, string::ToString, vec, vec::Vec};
 use libm::{ceilf, cosf, floorf, roundf, sinf};
+use esp_println::println;
 
 #[derive(Clone)]
 pub struct Matrix<T: Clone> {
@@ -89,23 +90,40 @@ impl<T: Clone> Matrix<T> {
     pub fn scale(&self, factor: f32, background: T) -> Matrix<T> {
         let old_width = self.width;
         let old_height = self.height;
-        let new_width = roundf(old_width as f32 * factor) as u8;
-        let new_height = roundf(old_height as f32 * factor) as u8;
-
+        println!("{} {}", old_width, old_height);
+        let new_width = (old_width as f32 * factor) as u8;
+        let new_height = (old_height as f32 * factor) as u8;
         let mut scaled = Matrix::<T>::new(new_width, new_height, background);
+        let factor_int = factor as usize;
 
-        for x in 0..new_width {
-            for y in 0..new_height {
-                let src_x = floorf(x as f32 / factor) as u8;
-                let src_y = floorf(y as f32 / factor) as u8;
-
-                if src_x < old_width && src_y < old_height {
-                    scaled.set(x, y, self.get(src_x, src_y).clone());
+        for y in 0..old_height as usize {
+            for x in 0..old_width as usize {
+                let pixel = self.get(x as u8, y as u8).clone();
+                for dy in 0..factor_int {
+                    for dx in 0..factor_int {
+                        scaled.set((x * factor_int + dx) as u8, (y * factor_int + dy) as u8, pixel.clone());
+                    }
                 }
             }
         }
-
         scaled
+    }
+
+    pub fn scale_into(&self, factor: usize, dst: &mut Matrix<T>, background: T) {
+        for y in 0..self.height as usize {
+            for x in 0..self.width as usize {
+                let pixel = self.get(x as u8, y as u8).clone();
+                for dy in 0..factor {
+                    for dx in 0..factor {
+                        dst.set(
+                            (x * factor + dx) as u8,
+                            (y * factor + dy) as u8,
+                            pixel.clone(),
+                        );
+                    }
+                }
+            }
+        }
     }
 
     pub fn snippet(&self, from: &V2, to: &V2) -> Matrix<T> {
