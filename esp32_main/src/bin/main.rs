@@ -140,7 +140,7 @@ macro_rules! mk_static {
 
 // These are some values that can be tweaked to experiment with the display
 
-const TRANSFER_SPEED: Rate = Rate::from_mhz(20);
+const TRANSFER_SPEED: Rate = Rate::from_mhz(10);
 const BITS: u8 = 3;
 
 // Panel layout settings
@@ -209,10 +209,10 @@ async fn hub75_task(
     let mut iter = 0u32;
 
     loop {
-        // iter += 1;
-        // if iter <= 5 || iter % 100 == 0 {
-        //     println!("hub75: loop iter {}", iter);
-        // }
+        iter += 1;
+        if iter <= 5 || iter % 100 == 0 {
+            println!("hub75: loop iter {}", iter);
+        }
 
         // if there is a new buffer available, get it and send the old one
         if rx.signaled() {
@@ -222,13 +222,13 @@ async fn hub75_task(
         }
 
         let mut xfer = hub75.render(fb).map_err(|(e, _hub75)| e).expect("failed to start render!");
-        // if iter <= 5 {
-        //     println!("hub75: render started iter {}", iter);
-        // }
+        if iter <= 5 {
+            println!("hub75: render started iter {}", iter);
+        }
         xfer.wait_for_done().await.expect("rendering wait_for_done failed!");
-        // if iter <= 5 {
-        //     println!("hub75: render done iter {}", iter);
-        // }
+        if iter <= 5 {
+            println!("hub75: render done iter {}", iter);
+        }
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
         result.expect("transfer failed");
@@ -245,28 +245,25 @@ async fn hub75_task(
 
 #[task]
 async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBufferExchange, mut fb: &'static mut TiledFBType) {
-    // info!("display_task: starting!");
-    let fps_style = MonoTextStyleBuilder::new()
-        .font(&FONT_5X7)
-        .text_color(Esp32Color::YELLOW)
-        .background_color(Esp32Color::BLACK)
-        .build();
     let mut count = 0u32;
-
     let mut start = Instant::now();
+    let mut diag_count = 0u32;
 
     loop {
         fb.erase();
 
-        // Read frame data directly from static buffer — no clone, integer alpha multiply
+        // Read frame data directly from static buffer
+        let mut nonzero = 0u32;
         {
             let s = SHARED.lock();
             if s.valid {
                 for y in 0..64u8 {
                     for x in 0..64u8 {
-                        let (sample_x, sample_y) = if y < 32 { (63 - x, 31 - y) } else { (x, y) };
+                        let (mut sample_x, mut sample_y) = if y < 32 { (63 - x, 31 - y) } else { (x, y) };
+                        (sample_x, sample_y) = (63 - sample_x, 63 - sample_y);
                         let color = &s.data[sample_y as usize * 64 + sample_x as usize];
                         if color.a > 0 {
+                            nonzero += 1;
                             let esp32_color = Esp32Color::new(
                                 (color.r as u16 * color.a as u16 / 255) as u8,
                                 (color.g as u16 * color.a as u16 / 255) as u8,
@@ -277,6 +274,23 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
                     }
                 }
             }
+        }
+
+        // Corner markers — help identify which part of the virtual screen is visible:
+        // RED 4x4 at (0,0), GREEN at (60,0), BLUE at (0,60), YELLOW at (60,60), CYAN at (30,30)
+        // for dy in 0i32..4 {
+        //     for dx in 0i32..4 {
+        //         fb.set_pixel(Point::new(dx,    dy),    Esp32Color::RED);
+        //         fb.set_pixel(Point::new(60+dx, dy),    Esp32Color::GREEN);
+        //         fb.set_pixel(Point::new(dx,    60+dy), Esp32Color::BLUE);
+        //         fb.set_pixel(Point::new(60+dx, 60+dy), Esp32Color::YELLOW);
+        //         fb.set_pixel(Point::new(30+dx, 30+dy), Esp32Color::CYAN);
+        //     }
+        // }
+
+        diag_count += 1;
+        if diag_count <= 5 || diag_count % 100 == 0 {
+            println!("display: iter={} nonzero_pixels={}", diag_count, nonzero);
         }
 
         // send the frame buffer to be rendered
@@ -448,10 +462,13 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
         let dt = frame_start.duration_since(last);
         last = frame_start;
 
+        if frame_count < 5 {
+            println!("engine: pre-tick {}", frame_count + 1);
+        }
         engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
 
         frame_count += 1;
-        if frame_count <= 5 || frame_count % 100 == 0 {
+        if frame_count <= 10 || frame_count % 100 == 0 {
             println!("engine: frame {}", frame_count);
         }
 

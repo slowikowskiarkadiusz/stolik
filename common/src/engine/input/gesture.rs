@@ -39,9 +39,9 @@ fn u8_to_gesture(g: u8) -> Gesture {
 }
 
 const STATES: [State; 3] = [State::Down, State::Up, State::Press];
-const MAX_GESTURE_DELAY_SEC: f32 = 0.2;
-const LONG_PRESS_DURATION_SEC: f32 = 0.3;
-const REPEATER_PRESS_DURATION_SEC: f32 = 0.15;
+const MAX_GESTURE_DELAY_SEC: f32 = 0.3;
+const LONG_PRESS_DURATION_SEC: f32 = 0.5;
+const REPEATER_PRESS_DURATION_SEC: f32 = 0.3;
 
 pub struct Gestures {
     states: HashMap<State, Box<dyn Fn(Key, &InputSnapshot) -> bool>>,

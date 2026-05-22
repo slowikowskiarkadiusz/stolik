@@ -57,8 +57,8 @@ impl<T: Clone> Matrix<T> {
 
         let old_width = self.width as f32;
         let old_height = self.height as f32;
-        let new_width = ceilf(old_width * cos_abs + old_width * sin_abs) + 1.0;
-        let new_height = ceilf(old_height * cos_abs + old_height * sin_abs) + 1.0;
+        let new_width = ceilf(old_width * cos_abs + old_width * sin_abs);
+        let new_height = ceilf(old_height * cos_abs + old_height * sin_abs);
 
         let mut rotated = Matrix::<T>::new(new_width as u8, new_height as u8, background);
 
@@ -86,7 +86,7 @@ impl<T: Clone> Matrix<T> {
     }
 
     // TODO: do in-place. start writing from right bottom corner if the non-scaled is in left-top corner
-    pub fn scale(&self, factor: f32, background: T) -> Matrix::<T> {
+    pub fn scale(&self, factor: f32, background: T) -> Matrix<T> {
         let old_width = self.width;
         let old_height = self.height;
         let new_width = roundf(old_width as f32 * factor) as u8;

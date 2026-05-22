@@ -56,16 +56,26 @@ impl Engine {
 
         self.ensure_scene();
 
+        let mut engine_timer = 0.0;
+        let mut last: Instant = Instant::now();
+
         loop {
             let frame_start = Instant::now();
-            let dt = frame_start.duration_since(last);
+            let dt = frame_start.duration_since(last).as_millis() as f32 / 1000.0;
             last = frame_start;
-            self.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_finished);
 
-            let frame_time = frame_start.elapsed();
-            if frame_time < target_frame {
-                T::sleep_for((target_frame - frame_time).as_millis() as u64);
+            engine_timer += dt;
+
+            if engine_timer >= 0.033 {
+                self.tick_frame(engine_timer, &on_frame_finished);
+                self.input.as_mut().late_update(dt);
+                engine_timer = 0.0;
+            } else {
+                self.input.as_mut().update(dt);
             }
+
+            // Timer::after(Duration::from_millis(5)).await;
+            T::sleep_for(5);
         }
     }
 
@@ -120,13 +130,7 @@ impl Engine {
                     let center = transform.center.clone();
                     let rotation = transform.rotation;
                     let anchor = transform.anchor_offset.clone();
-                    self.screen.write(
-                        render,
-                        &center,
-                        Some(rotation),
-                        Some(anchor),
-                        Some(true),
-                    );
+                    self.screen.write(render, &center, Some(rotation), Some(anchor), Some(true));
                 }
             }
         }

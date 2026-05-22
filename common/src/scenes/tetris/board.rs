@@ -299,7 +299,7 @@ impl Board {
 
             if !spots
                 .iter()
-                .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i16 + by.x as i16, f.y as i16 + by.y as i16))
+                .any(|f| Board::is_position_taken(&self.is_cell_taken, f.x as i16 + by.x as i16, f.y.max(0.0) as i16 + by.y as i16))
             {
                 current_agent.center = &current_agent.center + &by;
 

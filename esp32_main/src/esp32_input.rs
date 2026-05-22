@@ -81,6 +81,7 @@ pub struct Esp32Input<'a> {
     keys_up: Vec<IoPin>,
     keys_press: Vec<IoPin>,
     i2c: esp_hal::i2c::master::I2c<'a, esp_hal::Blocking>,
+    expander_present: bool,
 }
 
 pub struct Esp32InputPinSetup<'a> {
@@ -123,10 +124,19 @@ impl<'a> Esp32Input<'a> {
         gpio_buttons.insert(IoPin::Gpio47, GpioInput::new(setup.gpio47, config));
         gpio_buttons.insert(IoPin::Gpio48, GpioInput::new(setup.gpio48, config));
 
-        let i2c = esp_hal::i2c::master::I2c::new(setup.i2c0, esp_hal::i2c::master::Config::default())
+        let i2c_config = esp_hal::i2c::master::Config::default()
+            .with_software_timeout(esp_hal::i2c::master::SoftwareTimeout::Transaction(
+                esp_hal::time::Duration::from_millis(5),
+            ));
+        let mut i2c = esp_hal::i2c::master::I2c::new(setup.i2c0, i2c_config)
             .unwrap()
             .with_sda(setup.gpio19)
             .with_scl(setup.gpio20);
+
+        // Configure MCP23017: set both ports as inputs (once, at init)
+        let addr: u8 = 0x20;
+        let expander_present = i2c.write(addr, &[0x00, 0xFF]).is_ok()
+            && i2c.write(addr, &[0x01, 0xFF]).is_ok();
 
         let obj = Self {
             gestures: Gestures::new(),
@@ -136,19 +146,21 @@ impl<'a> Esp32Input<'a> {
             keys_down: Vec::new(),
             keys_up: Vec::new(),
             keys_press: Vec::new(),
+            expander_present,
         };
 
         obj
     }
 
     fn read_expander_data(&mut self) -> u8 {
+        if !self.expander_present {
+            return 0;
+        }
         let addr: u8 = 0x20;
-
-        self.i2c.write(addr, &[0x00, 0xFF]).unwrap();
-        self.i2c.write(addr, &[0x01, 0xFF]).unwrap();
-
         let mut buf = [0u8; 1];
-        self.i2c.write_read(addr, &[0x12], &mut buf).unwrap();
+        if self.i2c.write_read(addr, &[0x12], &mut buf).is_err() {
+            return 0;
+        }
         buf[0]
     }
 
@@ -169,8 +181,12 @@ impl<'a> Esp32Input<'a> {
             };
         };
 
-        // let pins_for_key
-        false
+        let pins = Esp32Input::map_key(key.unwrap());
+        match key_state {
+            KeyState::Down => pins.iter().any(|p| self.keys_down.contains(p)),
+            KeyState::Up => pins.iter().any(|p| self.keys_up.contains(p)),
+            KeyState::Press => pins.iter().any(|p| self.keys_press.contains(p)),
+        }
     }
 
     fn map_key(key: Key) -> Vec<IoPin> {
@@ -302,7 +318,7 @@ impl<'a> Input for Esp32Input<'a> {
     }
 
     fn is_any_key_up(&self) -> bool {
-        self.is_key(None, KeyState::Down)
+        self.is_key(None, KeyState::Up)
     }
 
     fn is_key_press(&self, key: Key) -> bool {
@@ -310,7 +326,7 @@ impl<'a> Input for Esp32Input<'a> {
     }
 
     fn is_any_key_press(&self) -> bool {
-        self.is_key(None, KeyState::Down)
+        self.is_key(None, KeyState::Press)
     }
 
     fn clear(&mut self) {

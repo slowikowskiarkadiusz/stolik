@@ -35,9 +35,8 @@ impl GarbageBar {
 
     pub fn decrease_and_get_left(&mut self, count: u8) -> u8 {
         self.skip_next_pop = true;
-        let left = (count - self.current_level).max(0);
-        self.current_level -= count;
-        self.current_level = self.current_level.max(0);
+        let left = count.saturating_sub(self.current_level);
+        self.current_level = self.current_level.saturating_sub(count);
 
         self.draw_level_on_matrix();
 

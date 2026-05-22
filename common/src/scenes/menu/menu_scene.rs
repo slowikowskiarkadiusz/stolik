@@ -94,7 +94,7 @@ impl Scene for MenuScene {
             cursor_transform.center = V2::new(1.5, 2.5 + self.cursor_position as f32 * 6.0);
         }
 
-        if input.is_key_down(Key::Start) {
+        if input.is_key_down(Key::Start) || input.is_key_down(Key::P1Blue) || input.is_key_down(Key::P1Green) {
             let selected = self.options.remove(self.cursor_position as usize);
             let name = selected.next_scene_code_name;
             open_scene(Box::new(|| Box::new(ControlsScene::new(name, selected.next_scene_factory))));
