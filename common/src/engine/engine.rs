@@ -81,7 +81,7 @@ impl Engine {
 
     pub fn ensure_scene(&mut self) {
         if !self.is_any_scene {
-            self.change_scene(|| Box::new(TetrisScene::new()));
+            self.change_scene(|| Box::new(MenuScene::new()));
             self.is_any_scene = true;
         }
     }
