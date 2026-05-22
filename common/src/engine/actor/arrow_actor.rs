@@ -14,7 +14,8 @@ pub fn create_arrow_actor(world: &mut World, center: V2, height: u8, color: Colo
         Some(Transform::new(center, V2::new(shape.width as f32, shape.height as f32))),
         None,
         None,
-        Some(Blinker::new(delay_ms)),
+        // Some(Blinker::new(delay_ms)),
+        None,
         Some(shape),
     )
 }

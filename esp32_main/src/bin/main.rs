@@ -190,7 +190,7 @@ async fn hub75_task(
     // info!("hub75_task: starting!");
 
     let tx_descriptors = esp_hub75::hub75_dma_descriptors!(FBType);
-    println!("hub75: descriptors allocated");
+    //println!("hub75: descriptors allocated");
 
     let mut hub75 = Hub75::new_async(
         peripherals.lcd_cam,
@@ -200,7 +200,7 @@ async fn hub75_task(
         TRANSFER_SPEED,
     )
     .expect("failed to create Hub75!");
-    println!("hub75: hub75 created");
+    //println!("hub75: hub75 created");
 
     let mut count = 0u32;
     let mut start = Instant::now();
@@ -211,7 +211,7 @@ async fn hub75_task(
     loop {
         iter += 1;
         if iter <= 5 || iter % 100 == 0 {
-            println!("hub75: loop iter {}", iter);
+            //println!("hub75: loop iter {}", iter);
         }
 
         // if there is a new buffer available, get it and send the old one
@@ -223,11 +223,11 @@ async fn hub75_task(
 
         let mut xfer = hub75.render(fb).map_err(|(e, _hub75)| e).expect("failed to start render!");
         if iter <= 5 {
-            println!("hub75: render started iter {}", iter);
+            //println!("hub75: render started iter {}", iter);
         }
         xfer.wait_for_done().await.expect("rendering wait_for_done failed!");
         if iter <= 5 {
-            println!("hub75: render done iter {}", iter);
+            //println!("hub75: render done iter {}", iter);
         }
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
@@ -290,7 +290,7 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
 
         diag_count += 1;
         if diag_count <= 5 || diag_count % 100 == 0 {
-            println!("display: iter={} nonzero_pixels={}", diag_count, nonzero);
+            //println!("display: iter={} nonzero_pixels={}", diag_count, nonzero);
         }
 
         // send the frame buffer to be rendered
@@ -440,18 +440,18 @@ async fn main(_s: embassy_executor::Spawner) {
 
 #[task]
 async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
-    println!("engine: creating input");
+    //println!("engine: creating input");
     let mut engine = Engine::new(Box::new(Esp32Input::new(input_pin_setup)));
-    println!("engine: input ok");
+    //println!("engine: input ok");
     let on_frame_func: Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static> = Arc::new(move |mat: &ColorMatrix| {
         let mut s = SHARED.lock();
         s.data.copy_from_slice(&mat.data);
         s.valid = true;
     });
 
-    println!("engine: ensure_scene");
+    //println!("engine: ensure_scene");
     engine.ensure_scene();
-    println!("engine: scene ready, entering loop");
+    //println!("engine: scene ready, entering loop");
 
     let target_frame = Duration::from_millis(33);
     let mut last = Instant::now();
@@ -463,16 +463,16 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
         last = frame_start;
 
         if frame_count < 5 {
-            println!("engine: pre-tick {}", frame_count + 1);
+            //println!("engine: pre-tick {}", frame_count + 1);
         }
-        println!("engine: pre-tick {}", frame_count + 1);
+        //println!("engine: pre-tick {}", frame_count + 1);
         engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
         Timer::after(Duration::from_millis(0)).await;
-        println!("engine: post-tick {}", frame_count + 1);
+        //println!("engine: post-tick {}", frame_count + 1);
 
         frame_count += 1;
         if frame_count <= 10 || frame_count % 100 == 0 {
-            println!("engine: frame {}", frame_count);
+            //println!("engine: frame {}", frame_count);
         }
 
         let elapsed = frame_start.elapsed();

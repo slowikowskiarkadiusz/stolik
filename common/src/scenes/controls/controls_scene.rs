@@ -1,11 +1,20 @@
 extern crate alloc;
 use alloc::{boxed::Box, string::String, sync::Arc, vec, vec::Vec};
 use embassy_sync::lazy_lock::LazyLock;
+use esp_println::println;
 use spin::Mutex;
 
 use crate::{
     engine::{
-        actor::{arrow_actor::create_arrow_actor, rectangle_actor::create_rectangle_actor, text::create_text_actor}, asyncable::{AsyncableType, add_asyncable}, color::Color, components::world::World, engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2
+        actor::{arrow_actor::create_arrow_actor, rectangle_actor::create_rectangle_actor, text::create_text_actor},
+        asyncable::{AsyncableType, add_asyncable},
+        color::Color,
+        components::world::World,
+        engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
+        hash_map::HashMap,
+        input::{input::Input, key::Key},
+        scene::Scene,
+        v2::V2,
     },
     scenes::{controls::button_icon_actor::create_button_icon_actor, menu::menu_scene::MenuScene},
 };
@@ -34,7 +43,7 @@ impl ControlsData {
 }
 
 pub struct ControlsScene {
-    can_proceed: Arc<Mutex<bool>>,
+    can_proceed: bool,
     divider_actor_id: ActorId,
     pages: Vec<Vec<ControlsData>>,
     current_page_actors: Vec<ActorId>,
@@ -42,10 +51,13 @@ pub struct ControlsScene {
     next_scene: SceneFactory,
     lines_per_page: u8,
     print_page_timer_seconds: f32,
+    allow_proceeding_timer_sec: f32,
 }
 
 impl Scene for ControlsScene {
     fn init(&mut self, world: &mut crate::engine::components::world::World) {
+        // println!("[ControlsScene] init start");
+
         self.divider_actor_id = create_rectangle_actor(
             world,
             V2::one() * (SCREEN_SIZE / 2) as f32,
@@ -55,22 +67,24 @@ impl Scene for ControlsScene {
             Some("divider"),
         );
 
-        let can_proceed_arc = self.can_proceed.clone();
+        // println!("[ControlsScene] divider created");
 
-        add_asyncable(
-            Box::new(move |world, _| {
-                *can_proceed_arc.lock() = true;
-                ControlsScene::create_arrow(world, true);
-                ControlsScene::create_arrow(world, false);
-            }),
-            2.0,
-            AsyncableType::Timeout,
-        );
-
+        // println!("[ControlsScene] arrows created");
         self.print_page(world);
+        // println!("[ControlsScene] init done");
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
+        if !self.can_proceed {
+            if self.allow_proceeding_timer_sec <= 0.0 {
+                self.can_proceed = true;
+                ControlsScene::create_arrow(world, true);
+                ControlsScene::create_arrow(world, false);
+            } else {
+                self.allow_proceeding_timer_sec = (self.allow_proceeding_timer_sec - delta_time).max(0.0);
+            }
+        }
+
         self.print_page_timer_seconds += delta_time;
 
         if self.print_page_timer_seconds > 1.6 {
@@ -79,7 +93,14 @@ impl Scene for ControlsScene {
             self.print_page(world);
         }
 
-        if self.can_proceed.lock().clone() && input.is_any_key_down() {
+        println!(
+            "[ControlsScene] can_proceed: {}, any_key_down: {}",
+            self.can_proceed,
+            input.is_any_key_down()
+        );
+
+        if self.can_proceed && input.is_any_key_down() {
+            println!("[ControlsScene] opening next scene");
             let factory = core::mem::replace(&mut self.next_scene, Box::new(|| Box::new(MenuScene::new())));
             open_scene(factory);
         }
@@ -92,14 +113,18 @@ impl ControlsScene {
     pub fn new(next_scene_name: &str, next_scene: SceneFactory) -> Self {
         let lines_per_page = (SCREEN_SIZE / 2 - 5) / (BUTTON_SIZE + 1);
         Self {
-            can_proceed: Arc::new(Mutex::new(false)),
+            can_proceed: false,
             divider_actor_id: 0,
-            pages: ControlsScene::paginate(POSSIBLE_CONTROL_SETS.get().get(next_scene_name).unwrap(), lines_per_page.clone() as usize),
+            pages: ControlsScene::paginate(
+                POSSIBLE_CONTROL_SETS.get().get(next_scene_name).unwrap(),
+                lines_per_page.clone() as usize,
+            ),
             current_page_actors: Vec::new(),
             current_page_index: 0,
             next_scene,
             lines_per_page,
             print_page_timer_seconds: 0.0,
+            allow_proceeding_timer_sec: 2.0,
         }
     }
 
