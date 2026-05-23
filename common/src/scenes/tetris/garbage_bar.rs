@@ -1,4 +1,5 @@
 use crate::engine::{color::Color, color_matrix::ColorMatrix, v2::V2};
+use crate::scenes::tetris::board::SCALE;
 
 const GARBAGE_INSERTION_DELAY: f32 = 4000.0;
 const BLINKING_DELAY: f32 = 100.0;
@@ -9,7 +10,7 @@ pub struct GarbageBar {
     blink_off_color_matrix: ColorMatrix,
     current_level: u8,
     // anim_current_level: u8,
-    max_level: u8,
+    max_level: u8, // logical (1×) height
     is_ready_to_be_popped: bool,
     is_blink_on: bool,
     blinking_timer: f32,
@@ -19,12 +20,14 @@ pub struct GarbageBar {
 
 impl GarbageBar {
     pub fn new(center: V2, size: V2, color: Color) -> Self {
+        let s = SCALE as u8;
         Self {
             center,
-            color_matrix: ColorMatrix::new(size.x as u8, size.y as u8, color.clone()),
-            blink_off_color_matrix: ColorMatrix::new(size.x as u8, size.y as u8, color.clone()),
+            // Pre-scaled at SCALE× — render() returns directly, no per-frame scaling.
+            color_matrix: ColorMatrix::new(size.x as u8 * s, size.y as u8 * s, color.clone()),
+            blink_off_color_matrix: ColorMatrix::new(size.x as u8 * s, size.y as u8 * s, color.clone()),
             current_level: 0,
-            max_level: size.y as u8,
+            max_level: size.y as u8, // logical units
             is_ready_to_be_popped: false,
             is_blink_on: true,
             blinking_timer: 0.0,
@@ -37,30 +40,30 @@ impl GarbageBar {
         self.skip_next_pop = true;
         let left = count.saturating_sub(self.current_level);
         self.current_level = self.current_level.saturating_sub(count);
-
         self.draw_level_on_matrix();
-
         left
     }
 
     pub fn add_lines(&mut self, count: u8) {
         self.skip_next_pop = false;
-
         self.current_level += count;
-
         self.draw_level_on_matrix();
         //TODO animation
     }
 
     fn draw_level_on_matrix(&mut self) {
         let color = Color::lerp(&Color::yellow(), &Color::red(), self.current_level as f32 / self.max_level as f32);
+        let s = SCALE as u8;
+        let h = self.color_matrix.height; // SCALE× logical height
+        let w = self.color_matrix.width;  // SCALE× logical width
+        let filled = self.current_level * s; // how many scaled rows to fill
 
-        for y in 0..self.current_level {
-            self.color_matrix.set(0, self.color_matrix.height - 1 - y, color.clone());
-        }
-
-        for y in self.current_level..self.color_matrix.height {
-            self.color_matrix.set(0, self.color_matrix.height - 1 - y, self.color.clone());
+        for sy in 0..h {
+            for sx in 0..w {
+                // sy=0 is top; fill from the bottom up
+                let c = if sy >= h - filled { color.clone() } else { self.color.clone() };
+                self.color_matrix.set(sx, sy, c);
+            }
         }
     }
 
@@ -71,7 +74,6 @@ impl GarbageBar {
             if self.current_level <= 0 {
                 self.current_level = 0;
                 self.is_ready_to_be_popped = false;
-                // TODO zmienic wartosc pixeli po prostu, nie wiem czeu tak zrobilem
                 self.color_matrix.write_at_origin(&self.blink_off_color_matrix, &V2::zero());
             }
             return true;

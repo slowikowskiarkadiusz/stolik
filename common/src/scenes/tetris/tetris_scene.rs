@@ -9,7 +9,7 @@ use crate::{
     },
     scenes::{
         tetris::{
-            board::{Board, create_board_actor},
+            board::{create_board_actor, SCALE},
             world::TetrisWorld,
         },
         utils::print_victory_text,
@@ -133,20 +133,16 @@ impl TetrisScene {
     }
 
     fn render(&mut self, world: &mut World) {
-        if let Some(p1_render) = world.get_mut_render(&self.p1_board_actor_id) {
-            if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
-                let mut board = p1_board.render();
-                p1_render.write_at_origin(&board.scale(2.0, Color::black()), &V2::zero());
-                // p1_render.write_at_origin(&p1_board.render(), &V2::zero());
+        if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
+            if let Some(p1_render) = world.get_mut_render(&self.p1_board_actor_id) {
+                p1_board.render_into(p1_render);
             }
         }
 
         if !matches!(self.mode, TetrisSceneMode::Solo) {
-            if let Some(p2_render) = world.get_mut_render(&self.p2_board_actor_id) {
-                if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-                    let mut board = p2_board.render();
-                    p2_render.write_at_origin(&board.scale(2.0, Color::black()), &V2::zero());
-                    // p2_render.write_at_origin(&p2_board.render(), &V2::zero());
+            if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
+                if let Some(p2_render) = world.get_mut_render(&self.p2_board_actor_id) {
+                    p2_board.render_into(p2_render);
                 }
             }
         }

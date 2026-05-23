@@ -22,6 +22,10 @@ use crate::{
     },
 };
 
+/// Rendering scale. Logic stays at 1×; all render matrices are pre-scaled at creation.
+/// Toggle between 1 and 2 for debugging — no per-frame scaling ever happens.
+pub const SCALE: u8 = 2;
+
 const BOARD_WIDTH: u8 = 10;
 const BOARD_HEIGHT: u8 = 20;
 const AFTER_DROP_DELAY_SEC: f32 = 0.250;
@@ -53,12 +57,10 @@ pub struct Board {
     garbage_bar: GarbageBar,
     hold_logic: HoldLogic,
     can_drop: bool,
+    /// Pre-scaled at SCALE× — written at piece landing, copied directly each frame.
     dropped_blocks_matrix: ColorMatrix,
+    /// Pre-scaled at SCALE× — written once at init, copied directly each frame.
     border_matrix: ColorMatrix,
-    /// Pre-allocated full render buffer (reused every frame)
-    render_buf: ColorMatrix,
-    /// Pre-allocated board area buffer (reused every frame)
-    board_buf: ColorMatrix,
     continue_dropping: bool,
     drop_timer: f32,
     lock_delay_timer: f32,
@@ -97,10 +99,8 @@ impl Board {
                 size.y - 1.0 - BOARD_HEIGHT as f32 - 1.0 - HoldLogic::SIZE.y / 2.0,
             )),
             can_drop: true,
-            dropped_blocks_matrix: ColorMatrix::new(BOARD_WIDTH, BOARD_HEIGHT, Color::none()),
-            border_matrix: ColorMatrix::new(size.x as u8, size.y as u8, Color::none()),
-            render_buf: ColorMatrix::new(BOARD_RENDER_W, BOARD_RENDER_H, Color::none()),
-            board_buf: ColorMatrix::new(BOARD_WIDTH + 1, BOARD_HEIGHT, Color::none()),
+            dropped_blocks_matrix: ColorMatrix::new(BOARD_WIDTH * SCALE, BOARD_HEIGHT * SCALE, Color::none()),
+            border_matrix: ColorMatrix::new(size.x as u8 * SCALE, size.y as u8 * SCALE, Color::none()),
             continue_dropping: true,
             drop_timer: 0.0,
             lock_delay_timer: 0.0,
@@ -235,45 +235,60 @@ impl Board {
         return damage_to_do;
     }
 
-    /// Renders the board into a pre-allocated buffer and returns a reference to it.
-    pub fn render(&mut self) -> &ColorMatrix {
-        // Split borrows to avoid borrow checker conflict between render_buf and other fields
+    /// Composites the board directly into `dst` (the actor's render matrix).
+    /// All source matrices are pre-scaled at SCALE× — zero per-frame scaling.
+    pub fn render_into(&mut self, dst: &mut ColorMatrix) {
+        let s = SCALE as f32;
+
+        // Board area center in SCALE× space.
+        let board_off = V2::new(
+            (1 + BOARD_WIDTH / 2) as f32 * s,
+            (self.size.y - 1.0 - BOARD_HEIGHT as f32 + BOARD_HEIGHT as f32 / 2.0) * s,
+        );
+        // Offset to convert a 1× piece center into dst coords:
+        // dst_pos = center_1x * s + (board_off - half_of_scaled_board_buf)
+        // half_of_scaled_board_buf = ((BOARD_WIDTH+1)/2 * s, BOARD_HEIGHT/2 * s) but
+        // write() uses center-based addressing, so: px_off = board_off.x - (BOARD_WIDTH+1) * s/2...
+        // Actually write() centers the matrix on the given point already, so just scale center.
+        let piece_off_x = board_off.x - (BOARD_WIDTH as f32 + 1.0) * s / 2.0;
+        let piece_off_y = board_off.y - BOARD_HEIGHT as f32 * s / 2.0;
+
+        // Split borrows.
         let Board {
-            render_buf,
-            board_buf,
             border_matrix,
             garbage_bar,
             hold_logic,
             dropped_blocks_matrix,
             current_agent,
             current_agent_shadow,
-            size,
             ..
         } = self;
 
-        render_buf.fill(Color::none());
-        render_buf.write_at_origin(border_matrix, &V2::zero());
-        render_buf.write(garbage_bar.render(), &garbage_bar.center, None, None, None);
-        render_buf.write(hold_logic.render(), &hold_logic.center, None, None, None);
+        dst.fill(Color::none());
 
-        let board_offset = V2::new(
-            (1 + BOARD_WIDTH / 2) as f32,
-            size.y - 1.0 - BOARD_HEIGHT as f32 + BOARD_HEIGHT as f32 / 2.0,
-        );
+        // Border and static UI: pre-scaled, direct copy.
+        dst.write_at_origin(border_matrix, &V2::zero());
+        dst.write(garbage_bar.render(), &V2::new(garbage_bar.center.x * s, garbage_bar.center.y * s), None, None, None);
+        dst.write(hold_logic.render(), &V2::new(hold_logic.center.x * s, hold_logic.center.y * s), None, None, None);
 
-        board_buf.fill(Color::none());
-
+        // Active pieces: render_scaled() returns SCALE× matrix; center scaled to dst coords.
         if let Some(shadow) = current_agent_shadow {
-            board_buf.write(shadow.render(), &shadow.center, None, None, None);
+            dst.write(
+                shadow.render_scaled(),
+                &V2::new(shadow.center.x * s + piece_off_x, shadow.center.y * s + piece_off_y),
+                None, None, None,
+            );
         }
         if let Some(agent) = current_agent {
-            board_buf.write(agent.render(), &agent.center, None, None, None);
+            dst.write(
+                agent.render_scaled(),
+                &V2::new(agent.center.x * s + piece_off_x, agent.center.y * s + piece_off_y),
+                None, None, None,
+            );
         }
 
-        render_buf.write(board_buf, &board_offset, None, None, None);
-        render_buf.write(dropped_blocks_matrix, &board_offset, None, None, None);
-
-        render_buf
+        // Dropped blocks: pre-scaled, direct copy centered on board_off.
+        dst.write(dropped_blocks_matrix, &board_off, None, None, None);
     }
 
     pub fn dim(&mut self, opacity: i16) {
@@ -375,10 +390,15 @@ impl Board {
         let start_y = from.y.min(to.y) as u8;
         let end_x = from.x.max(to.x) as u8;
         let end_y = from.y.max(to.y) as u8;
-        for x in start_x..=end_x {
-            for y in start_y..=end_y {
-                if x == start_x || x == end_x || y == start_y || y == end_y {
-                    self.border_matrix.set(x, y, Color::white());
+        let s = SCALE as u8;
+        for lx in start_x..=end_x {
+            for ly in start_y..=end_y {
+                if lx == start_x || lx == end_x || ly == start_y || ly == end_y {
+                    for dy in 0..s {
+                        for dx in 0..s {
+                            self.border_matrix.set(lx * s + dx, ly * s + dy, Color::white());
+                        }
+                    }
                 }
             }
         }
@@ -452,10 +472,17 @@ impl Board {
         {
             current_agent.center = current_agent_shadow.center.clone();
 
+            let s = SCALE as u8;
+            let color = BLOCKS_COLORS[current_agent.shape as usize];
             for spot in current_agent.get_taken_spots() {
                 self.is_cell_taken.set(spot.x as u8, spot.y as u8, true);
-                self.dropped_blocks_matrix
-                    .set(spot.x as u8, spot.y as u8, BLOCKS_COLORS[current_agent.shape as usize]);
+                let px = spot.x as u8 * s;
+                let py = spot.y as u8 * s;
+                for dy in 0..s {
+                    for dx in 0..s {
+                        self.dropped_blocks_matrix.set(px + dx, py + dy, color);
+                    }
+                }
 
                 if spot.y <= 0.0 {
                     self.is_dead = true;
@@ -502,9 +529,14 @@ impl Board {
         }
 
         if line_count > 0 {
+            let s = SCALE as u8;
             for &line in &lines[..line_count] {
                 for x in 0..self.is_cell_taken.width {
-                    self.dropped_blocks_matrix.set(x, line, Color::none());
+                    for dy in 0..s {
+                        for dx in 0..s {
+                            self.dropped_blocks_matrix.set(x * s + dx, line * s + dy, Color::none());
+                        }
+                    }
                 }
             }
 
@@ -513,8 +545,12 @@ impl Board {
                     for x in 0..self.is_cell_taken.width {
                         let above = *self.is_cell_taken.get(x, (y - 1) as u8);
                         self.is_cell_taken.set(x, y as u8, above);
-                        let color_above = *self.dropped_blocks_matrix.get(x, (y - 1) as u8);
-                        self.dropped_blocks_matrix.set(x, y as u8, color_above);
+                        for dy in 0..s {
+                            for dx in 0..s {
+                                let c = *self.dropped_blocks_matrix.get(x * s + dx, (y - 1) as u8 * s + dy);
+                                self.dropped_blocks_matrix.set(x * s + dx, y as u8 * s + dy, c);
+                            }
+                        }
                     }
                 }
             }
@@ -529,27 +565,29 @@ impl Board {
         let hole =
             (SmallRng::from_seed([(self.seed % 255) as u8; core::mem::size_of::<SmallRng>()]).next_u32() % BOARD_WIDTH as u32) as i16;
 
+        let s = SCALE as u8;
         while self.garbage_bar.pop() {
             for x in 0..BOARD_WIDTH {
                 for y in 0..BOARD_HEIGHT - 1 {
                     let val = *self.is_cell_taken.get(x, y + 1);
                     self.is_cell_taken.set(x, y, val);
-                    let color = *self.dropped_blocks_matrix.get(x, y + 1);
-                    self.dropped_blocks_matrix.set(x, y, color);
+                    for dy in 0..s {
+                        for dx in 0..s {
+                            let c = *self.dropped_blocks_matrix.get(x * s + dx, (y + 1) * s + dy);
+                            self.dropped_blocks_matrix.set(x * s + dx, y * s + dy, c);
+                        }
+                    }
                 }
             }
 
             for x in 0..BOARD_WIDTH {
                 self.is_cell_taken.set(x, BOARD_HEIGHT - 1, x != hole as u8);
-                self.dropped_blocks_matrix.set(
-                    x,
-                    BOARD_HEIGHT - 1,
-                    if x != hole as u8 {
-                        Color::white().a(127).clone()
-                    } else {
-                        Color::none()
-                    },
-                );
+                let color = if x != hole as u8 { Color::white().a(127).clone() } else { Color::none() };
+                for dy in 0..s {
+                    for dx in 0..s {
+                        self.dropped_blocks_matrix.set(x * s + dx, (BOARD_HEIGHT - 1) * s + dy, color);
+                    }
+                }
             }
         }
     }
@@ -578,7 +616,7 @@ pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_
         None,
         None,
         None,
-        Some(ColorMatrix::new(board.size.x as u8 * 2, board.size.y as u8 * 2, Color::none())),
+        Some(ColorMatrix::new(board.size.x as u8 * SCALE, board.size.y as u8 * SCALE, Color::none())),
     );
 
     tetris_world.add_new_actor(actor_id, Some(board));

@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, v2::V2},
     scenes::tetris::{
-        board::BLOCKS_COLORS,
+        board::{BLOCKS_COLORS, SCALE},
         shape::{self, Shape},
     },
 };
@@ -14,14 +14,36 @@ pub struct Block {
     pub shape: Shape,
     pub is_shadow: bool,
     pub rotation: u16,
+    /// 1× logical matrix — used for collision detection and get_taken_spots().
     pub matrix: ColorMatrix,
+    /// Pre-scaled SCALE× render matrix — updated at creation and after each rotation.
+    matrix_scaled: ColorMatrix,
+}
+
+fn upscale(src: &ColorMatrix) -> ColorMatrix {
+    let s = SCALE as u8;
+    let mut dst = ColorMatrix::new(src.width * s, src.height * s, Color::none());
+    for y in 0..src.height {
+        for x in 0..src.width {
+            let c = *src.get(x, y);
+            for dy in 0..s {
+                for dx in 0..s {
+                    dst.set(x * s + dx, y * s + dy, c);
+                }
+            }
+        }
+    }
+    dst
 }
 
 impl Block {
     pub fn new(center: V2, shape: Shape, is_shadow: bool) -> Self {
+        let matrix = Block::generate_shape(&shape, 0, is_shadow);
+        let matrix_scaled = upscale(&matrix);
         Self {
             center,
-            matrix: Block::generate_shape(&shape, 0, is_shadow),
+            matrix_scaled,
+            matrix,
             shape,
             is_shadow,
             rotation: 0,
@@ -171,10 +193,16 @@ impl Block {
             }
         }
         self.matrix = new_matrix;
+        self.matrix_scaled = upscale(&self.matrix);
     }
 
     pub fn render(&self) -> &ColorMatrix {
         &self.matrix
+    }
+
+    /// Returns the pre-scaled SCALE× render matrix.
+    pub fn render_scaled(&self) -> &ColorMatrix {
+        &self.matrix_scaled
     }
 }
 

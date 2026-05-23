@@ -95,13 +95,16 @@ impl Engine {
         }
 
         {
+            let time = embassy_time::Instant::now();
             let mut_scene = self.current_scene.as_mut();
             self.input.as_mut().update(delta_time);
             mut_scene.tick(&self.input, &mut self.world, delta_time);
             self.asyncable_storage.update(&mut self.world, delta_time);
+            println!("tick {}", time.elapsed());
         }
 
         {
+            let time = embassy_time::Instant::now();
             let overlaps = Collider::detect_overlaps(&self.world);
             self.world.tick_blinkers(delta_time);
             let mut_scene = self.current_scene.as_mut();
@@ -111,6 +114,7 @@ impl Engine {
             on_frame_finished(&self.screen);
 
             self.input.as_mut().late_update(delta_time);
+            println!("late tick {}", time.elapsed());
         }
     }
 

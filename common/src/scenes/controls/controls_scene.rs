@@ -1,7 +1,7 @@
 extern crate alloc;
 use alloc::{boxed::Box, string::String, sync::Arc, vec, vec::Vec};
 use embassy_sync::lazy_lock::LazyLock;
-use esp_println::println;
+// use esp_println::println;
 use spin::Mutex;
 
 use crate::{
