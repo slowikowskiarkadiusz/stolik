@@ -1,7 +1,7 @@
 extern crate alloc;
 use alloc::{string::String, string::ToString, vec, vec::Vec};
 use libm::{ceilf, cosf, floorf, roundf, sinf};
-// use esp_println::println;
+//// use esp_println::println;
 
 #[derive(Clone)]
 pub struct Matrix<T: Clone> {
@@ -90,7 +90,7 @@ impl<T: Clone> Matrix<T> {
     pub fn scale(&self, factor: f32, background: T) -> Matrix<T> {
         let old_width = self.width;
         let old_height = self.height;
-        println!("{} {}", old_width, old_height);
+        //        println!("{} {}", old_width, old_height);
         let new_width = (old_width as f32 * factor) as u8;
         let new_height = (old_height as f32 * factor) as u8;
         let mut scaled = Matrix::<T>::new(new_width, new_height, background);

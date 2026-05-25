@@ -364,6 +364,9 @@ async fn main(_s: embassy_executor::Spawner) {
         gpio42: peripherals.GPIO42.degrade(),
         gpio47: peripherals.GPIO47.degrade(),
         gpio48: peripherals.GPIO48.degrade(),
+    };
+
+    let expander_pin_setup = esp32_main::esp32_input::Esp32ExpanderPinSetup {
         i2c0: peripherals.I2C0,
         gpio19: peripherals.GPIO19.degrade(),
         gpio20: peripherals.GPIO20.degrade(),
@@ -413,6 +416,7 @@ async fn main(_s: embassy_executor::Spawner) {
             // display task runs as low priority task
             lp_executor.run(|spawner: Spawner| {
                 spawner.spawn(run_engine(input_pin_setup)).ok();
+                spawner.spawn(esp32_main::esp32_input::read_expander_data(expander_pin_setup)).ok();
                 spawner.spawn(display_task(&TX, &RX, fb0)).ok();
             });
         }

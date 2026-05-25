@@ -118,6 +118,24 @@ impl Matrix<Color> {
         self
     }
 
+    /// Fast blit: copies `other` at the given top-left pixel position.
+    /// No rotation, no alpha blending, no sin/cos — pure pixel copy, skips transparent.
+    pub fn blit(&mut self, other: &ColorMatrix, top_left_x: i16, top_left_y: i16) {
+        let dw = self.width as i16;
+        let dh = self.height as i16;
+        for sy in 0..other.height as i16 {
+            let dy = top_left_y + sy;
+            if dy < 0 || dy >= dh { continue; }
+            for sx in 0..other.width as i16 {
+                let dx = top_left_x + sx;
+                if dx < 0 || dx >= dw { continue; }
+                let c = *other.get(sx as u8, sy as u8);
+                if c.a == 0 { continue; }
+                self.set(dx as u8, dy as u8, c);
+            }
+        }
+    }
+
     pub fn dim(&mut self, to_opacity: u8) {
         for x in 0..self.width {
             for y in 0..self.height {

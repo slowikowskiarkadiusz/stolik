@@ -17,6 +17,9 @@ extern crate alloc;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use embassy_executor::task;
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
+use embassy_time::Timer;
 use esp_hal::{
     gpio::{AnyPin, Input as GpioInput, InputConfig, Pin, Pull},
     peripherals::{I2C0, Peripherals},
@@ -78,8 +81,9 @@ pub struct Esp32Input<'a> {
     keys_down: Vec<IoPin>,
     keys_up: Vec<IoPin>,
     keys_press: Vec<IoPin>,
-    i2c: esp_hal::i2c::master::I2c<'a, esp_hal::Blocking>,
-    expander_present: bool,
+    // i2c: esp_hal::i2c::master::I2c<'a, esp_hal::Blocking>,
+    // expander_present: bool,
+    // consecutive_i2c_errors: u8,
 }
 
 pub struct Esp32InputPinSetup<'a> {
@@ -96,6 +100,9 @@ pub struct Esp32InputPinSetup<'a> {
     pub gpio42: AnyPin<'a>,
     pub gpio47: AnyPin<'a>,
     pub gpio48: AnyPin<'a>,
+}
+
+pub struct Esp32ExpanderPinSetup<'a> {
     pub i2c0: I2C0<'a>,
     pub gpio19: AnyPin<'a>,
     pub gpio20: AnyPin<'a>,
@@ -120,53 +127,16 @@ impl<'a> Esp32Input<'a> {
         gpio_buttons.insert(IoPin::Gpio47, GpioInput::new(setup.gpio47, config));
         gpio_buttons.insert(IoPin::Gpio48, GpioInput::new(setup.gpio48, config));
 
-        let i2c_config = esp_hal::i2c::master::Config::default();
-        let mut i2c = esp_hal::i2c::master::I2c::new(setup.i2c0, i2c_config)
-            .unwrap()
-            .with_sda(setup.gpio19)
-            .with_scl(setup.gpio20);
-
-        let addr: u8 = 0x20;
-
-        // IOCON - ustaw Sequential Mode OFF dla szybszego czytania
-        let _ = i2c.write(addr, &[0x0A, 0x00]); // IOCON register
-
-        // IODIRB
-        let _ = i2c.write(addr, &[0x01, 0xFF]);
-
-        // GPPUB
-        let _ = i2c.write(addr, &[0x0D, 0xFF]);
-
-        let expander_present = true;
-
         Self {
             gestures: Gestures::new(),
-            i2c,
+            // i2c,
             gpio_buttons,
             last_level: [false; PINS_IN_USE_LENGTH],
             keys_down: Vec::new(),
             keys_up: Vec::new(),
             keys_press: Vec::new(),
-            expander_present,
-        }
-    }
-
-    fn read_expander_data(&mut self) -> u8 {
-        if !self.expander_present {
-            return 0xFF;
-        }
-        let addr: u8 = 0x20;
-        let mut data = [0xFFu8; 2];
-        let start = embassy_time::Instant::now();
-        match self.i2c.write_read(addr, &[0x12], &mut data) {
-            Ok(_) => {
-                println!("[I2C] ok {}us", start.elapsed().as_micros());
-                data[1]
-            },
-            Err(_) => {
-                println!("[I2C] err {}us", start.elapsed().as_micros());
-                0xFF
-            }
+            // expander_present,
+            // consecutive_i2c_errors: 0,
         }
     }
 
@@ -250,7 +220,7 @@ impl<'a> Input for Esp32Input<'a> {
     }
 
     fn update(&mut self, delta_time: f32) {
-        let expander_data = self.read_expander_data();
+        let expander_data = EXPANDER_DATA.try_take().unwrap_or(0xFF);
         // let expander_data = 0;
 
         for i in 0..PINS_IN_USE.len() {
@@ -310,5 +280,71 @@ impl<'a> Input for Esp32Input<'a> {
         self.keys_down.clear();
         self.keys_up.clear();
         self.keys_press.clear();
+    }
+}
+
+static EXPANDER_DATA: Signal<CriticalSectionRawMutex, u8> = Signal::new();
+
+#[task]
+pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
+    println!("[expander] task started");
+
+    let i2c_config = esp_hal::i2c::master::Config::default().with_timeout(esp_hal::i2c::master::BusTimeout::BusCycles(1000));
+
+    let i2c_result = esp_hal::i2c::master::I2c::new(setup.i2c0, i2c_config);
+    let mut i2c = match i2c_result {
+        Ok(i2c) => i2c.with_sda(setup.gpio19).with_scl(setup.gpio20).into_async(),
+        Err(e) => {
+            println!("[expander] spawn failed: {:?}", e);
+
+            println!("[I2C] init failed: {:?}", e);
+            EXPANDER_DATA.signal(0xFF);
+            return;
+        }
+    };
+
+    // SKAN NAJPIERW
+    println!("[I2C] scanning...");
+    for addr in 0x08u8..0x78 {
+        let mut buf = [0u8; 1];
+        if i2c.read_async(addr, &mut buf).await.is_ok() {
+            println!("[I2C] found device at 0x{:02X}", addr);
+        }
+    }
+    println!("[I2C] scan done");
+
+
+    let addr: u8 = 0x20;
+    let _ = i2c.write(addr, &[0x0A, 0x00]);
+    let _ = i2c.write(addr, &[0x01, 0xFF]);
+    let _ = i2c.write(addr, &[0x0D, 0xFF]);
+
+    let mut consecutive_i2c_errors = 0u32;
+    let mut expander_present = true;
+
+    loop {
+        let result = if !expander_present {
+            0xFF
+        } else {
+            let mut data = [0xFFu8; 2];
+            match i2c.write_read_async(addr, &[0x12], &mut data).await {
+                Ok(_) => {
+                    consecutive_i2c_errors = 0;
+                    data[1]
+                }
+                Err(e) => {
+                    consecutive_i2c_errors += 1;
+                    println!("[I2C] err #{}: {:?}", consecutive_i2c_errors, e);
+                    if consecutive_i2c_errors >= 5 {
+                        println!("[I2C] expander disabled");
+                        expander_present = false;
+                    }
+                    0xFF
+                }
+            }
+        };
+
+        EXPANDER_DATA.signal(result);
+        Timer::after_millis(10).await;
     }
 }

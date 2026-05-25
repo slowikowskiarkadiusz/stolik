@@ -9,6 +9,7 @@ pub struct GarbageBar {
     color_matrix: ColorMatrix,
     blink_off_color_matrix: ColorMatrix,
     current_level: u8,
+    last_drawn_level: u8, // skip draw_level_on_matrix() when level hasn't changed
     // anim_current_level: u8,
     max_level: u8, // logical (1×) height
     is_ready_to_be_popped: bool,
@@ -27,6 +28,7 @@ impl GarbageBar {
             color_matrix: ColorMatrix::new(size.x as u8 * s, size.y as u8 * s, color.clone()),
             blink_off_color_matrix: ColorMatrix::new(size.x as u8 * s, size.y as u8 * s, color.clone()),
             current_level: 0,
+            last_drawn_level: u8::MAX, // force first draw
             max_level: size.y as u8, // logical units
             is_ready_to_be_popped: false,
             is_blink_on: true,
@@ -52,15 +54,19 @@ impl GarbageBar {
     }
 
     fn draw_level_on_matrix(&mut self) {
+        if self.current_level == self.last_drawn_level {
+            return; // nothing changed — skip the full matrix rewrite
+        }
+        self.last_drawn_level = self.current_level;
+
         let color = Color::lerp(&Color::yellow(), &Color::red(), self.current_level as f32 / self.max_level as f32);
         let s = SCALE as u8;
-        let h = self.color_matrix.height; // SCALE× logical height
-        let w = self.color_matrix.width;  // SCALE× logical width
-        let filled = self.current_level * s; // how many scaled rows to fill
+        let h = self.color_matrix.height;
+        let w = self.color_matrix.width;
+        let filled = self.current_level * s;
 
         for sy in 0..h {
             for sx in 0..w {
-                // sy=0 is top; fill from the bottom up
                 let c = if sy >= h - filled { color.clone() } else { self.color.clone() };
                 self.color_matrix.set(sx, sy, c);
             }

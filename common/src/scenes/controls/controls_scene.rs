@@ -93,14 +93,14 @@ impl Scene for ControlsScene {
             self.print_page(world);
         }
 
-        println!(
-            "[ControlsScene] can_proceed: {}, any_key_down: {}",
-            self.can_proceed,
-            input.is_any_key_down()
-        );
+        // println!(
+        //     "[ControlsScene] can_proceed: {}, any_key_down: {}",
+        //     self.can_proceed,
+        //     input.is_any_key_down()
+        // );
 
         if self.can_proceed && input.is_any_key_down() {
-            println!("[ControlsScene] opening next scene");
+            // println!("[ControlsScene] opening next scene");
             let factory = core::mem::replace(&mut self.next_scene, Box::new(|| Box::new(MenuScene::new())));
             open_scene(factory);
         }

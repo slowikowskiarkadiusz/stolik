@@ -6,6 +6,7 @@ edition = "2024"
 [features]
 default = ["std"]
 std = ["embassy-time/std", "critical-section/std", "rand/std", "serde_json", "serde"]
+esp-log = ["esp-println"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
@@ -15,5 +16,5 @@ rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 spin = { version = "0.9", default-features = false, features = ["mutex", "rwlock", "spin_mutex"] }
 embassy-sync = { version = "0.7.2", default-features = false }
 embassy-time = { version = "0.5.0", default-features = false }
-# esp-println = "0.16.1"
+esp-println = { version = "0.16.1", optional = true }
 libm = { version = "0.2.16", default-features = false }

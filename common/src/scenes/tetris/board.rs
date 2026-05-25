@@ -57,10 +57,16 @@ pub struct Board {
     garbage_bar: GarbageBar,
     hold_logic: HoldLogic,
     can_drop: bool,
-    /// Pre-scaled at SCALE× — written at piece landing, copied directly each frame.
-    dropped_blocks_matrix: ColorMatrix,
-    /// Pre-scaled at SCALE× — written once at init, copied directly each frame.
-    border_matrix: ColorMatrix,
+    /// Single SCALE× buffer combining border + dropped blocks.
+    /// Updated only on piece landing / line clear / garbage pop — never every frame.
+    /// Co klatkę: jeden write_at_origin() zamiast fill() + write(border) + write(dropped_blocks).
+    static_buf: ColorMatrix,
+    /// SCALE× pixel origin of the board area inside static_buf.
+    /// Computed once in new() — used by drop/clear_lines/pop_garbage_lines to write directly.
+    board_area_x: u8,
+    board_area_y: u8,
+    /// Cached garbage hole column — same deterministic value every call, so compute once.
+    garbage_hole: u8,
     continue_dropping: bool,
     drop_timer: f32,
     lock_delay_timer: f32,
@@ -99,8 +105,13 @@ impl Board {
                 size.y - 1.0 - BOARD_HEIGHT as f32 - 1.0 - HoldLogic::SIZE.y / 2.0,
             )),
             can_drop: true,
-            dropped_blocks_matrix: ColorMatrix::new(BOARD_WIDTH * SCALE, BOARD_HEIGHT * SCALE, Color::none()),
-            border_matrix: ColorMatrix::new(size.x as u8 * SCALE, size.y as u8 * SCALE, Color::none()),
+            static_buf: ColorMatrix::new(size.x as u8 * SCALE, size.y as u8 * SCALE, Color::none()),
+            // Board area top-left in static_buf (SCALE× coords).
+            // Derived from write() centering: final_x = x - W*S/2 + board_off_x*S
+            // For BOARD_WIDTH=10 (even): board_area_x = SCALE
+            board_area_x: SCALE,
+            board_area_y: (size.y as u8 - 1 - BOARD_HEIGHT) * SCALE,
+            garbage_hole: (SmallRng::from_seed([(seed % 255) as u8; core::mem::size_of::<SmallRng>()]).next_u32() % BOARD_WIDTH as u32) as u8,
             continue_dropping: true,
             drop_timer: 0.0,
             lock_delay_timer: 0.0,
@@ -236,59 +247,73 @@ impl Board {
     }
 
     /// Composites the board directly into `dst` (the actor's render matrix).
-    /// All source matrices are pre-scaled at SCALE× — zero per-frame scaling.
+    /// static_buf (border + dropped blocks) is copied in one shot — never rebuilt per frame.
+    /// Only active pieces are composited on top each frame.
     pub fn render_into(&mut self, dst: &mut ColorMatrix) {
-        let s = SCALE as f32;
+        // One full-frame copy — replaces fill() + write(border) + write(dropped_blocks).
+        dst.write_at_origin(&self.static_buf, &V2::zero());
 
-        // Board area center in SCALE× space.
-        let board_off = V2::new(
-            (1 + BOARD_WIDTH / 2) as f32 * s,
-            (self.size.y - 1.0 - BOARD_HEIGHT as f32 + BOARD_HEIGHT as f32 / 2.0) * s,
-        );
-        // Offset to convert a 1× piece center into dst coords:
-        // dst_pos = center_1x * s + (board_off - half_of_scaled_board_buf)
-        // half_of_scaled_board_buf = ((BOARD_WIDTH+1)/2 * s, BOARD_HEIGHT/2 * s) but
-        // write() uses center-based addressing, so: px_off = board_off.x - (BOARD_WIDTH+1) * s/2...
-        // Actually write() centers the matrix on the given point already, so just scale center.
-        let piece_off_x = board_off.x - (BOARD_WIDTH as f32 + 1.0) * s / 2.0;
-        let piece_off_y = board_off.y - BOARD_HEIGHT as f32 * s / 2.0;
-
-        // Split borrows.
-        let Board {
-            border_matrix,
-            garbage_bar,
-            hold_logic,
-            dropped_blocks_matrix,
-            current_agent,
-            current_agent_shadow,
-            ..
-        } = self;
-
-        dst.fill(Color::none());
-
-        // Border and static UI: pre-scaled, direct copy.
-        dst.write_at_origin(border_matrix, &V2::zero());
-        dst.write(garbage_bar.render(), &V2::new(garbage_bar.center.x * s, garbage_bar.center.y * s), None, None, None);
-        dst.write(hold_logic.render(), &V2::new(hold_logic.center.x * s, hold_logic.center.y * s), None, None, None);
-
-        // Active pieces: render_scaled() returns SCALE× matrix; center scaled to dst coords.
-        if let Some(shadow) = current_agent_shadow {
-            dst.write(
-                shadow.render_scaled(),
-                &V2::new(shadow.center.x * s + piece_off_x, shadow.center.y * s + piece_off_y),
-                None, None, None,
-            );
+        let si = SCALE as i16;
+        // Garbage bar and hold: blit() instead of write() — no sin/cos, no float math.
+        // Top-left = center*SCALE - matrix_size/2  (integer, matches write()'s ceilf behaviour)
+        {
+            let m = self.garbage_bar.render();
+            let tlx = self.garbage_bar.center.x as i16 * si - m.width  as i16 / 2;
+            let tly = self.garbage_bar.center.y as i16 * si - m.height as i16 / 2;
+            dst.blit(m, tlx, tly);
         }
-        if let Some(agent) = current_agent {
-            dst.write(
-                agent.render_scaled(),
-                &V2::new(agent.center.x * s + piece_off_x, agent.center.y * s + piece_off_y),
-                None, None, None,
-            );
+        {
+            let m = self.hold_logic.render();
+            let tlx = self.hold_logic.center.x as i16 * si - m.width  as i16 / 2;
+            let tly = self.hold_logic.center.y as i16 * si - m.height as i16 / 2;
+            dst.blit(m, tlx, tly);
         }
 
-        // Dropped blocks: pre-scaled, direct copy centered on board_off.
-        dst.write(dropped_blocks_matrix, &board_off, None, None, None);
+        // Active pieces: direct set() using same integer formula as get_taken_spots().
+        // Avoids write()'s ceilf/sin/cos which misalign with integer board coords.
+        let si = SCALE as i16;
+        let bx = self.board_area_x as i16;
+        let by = self.board_area_y as i16;
+        let dw = dst.width as i16;
+        let dh = dst.height as i16;
+
+        if let Some(shadow) = &self.current_agent_shadow {
+            let scaled = shadow.render_scaled();
+            let cx = shadow.center.x as i16;
+            let cy = shadow.center.y as i16;
+            let wh = (shadow.matrix.width / 2) as i16;
+            let hh = (shadow.matrix.height / 2) as i16;
+            for my in 0..scaled.height as i16 {
+                for mx in 0..scaled.width as i16 {
+                    let c = *scaled.get(mx as u8, my as u8);
+                    if c.a == 0 { continue; }
+                    let px = (cx - wh) * si + mx + bx;
+                    let py = (cy - hh) * si + my + by;
+                    if px >= 0 && py >= 0 && px < dw && py < dh {
+                        dst.set(px as u8, py as u8, c);
+                    }
+                }
+            }
+        }
+
+        if let Some(agent) = &self.current_agent {
+            let scaled = agent.render_scaled();
+            let cx = agent.center.x as i16;
+            let cy = agent.center.y as i16;
+            let wh = (agent.matrix.width / 2) as i16;
+            let hh = (agent.matrix.height / 2) as i16;
+            for my in 0..scaled.height as i16 {
+                for mx in 0..scaled.width as i16 {
+                    let c = *scaled.get(mx as u8, my as u8);
+                    if c.a == 0 { continue; }
+                    let px = (cx - wh) * si + mx + bx;
+                    let py = (cy - hh) * si + my + by;
+                    if px >= 0 && py >= 0 && px < dw && py < dh {
+                        dst.set(px as u8, py as u8, c);
+                    }
+                }
+            }
+        }
     }
 
     pub fn dim(&mut self, opacity: i16) {
@@ -396,7 +421,7 @@ impl Board {
                 if lx == start_x || lx == end_x || ly == start_y || ly == end_y {
                     for dy in 0..s {
                         for dx in 0..s {
-                            self.border_matrix.set(lx * s + dx, ly * s + dy, Color::white());
+                            self.static_buf.set(lx * s + dx, ly * s + dy, Color::white());
                         }
                     }
                 }
@@ -474,13 +499,15 @@ impl Board {
 
             let s = SCALE as u8;
             let color = BLOCKS_COLORS[current_agent.shape as usize];
+            let bx = self.board_area_x;
+            let by = self.board_area_y;
             for spot in current_agent.get_taken_spots() {
                 self.is_cell_taken.set(spot.x as u8, spot.y as u8, true);
-                let px = spot.x as u8 * s;
-                let py = spot.y as u8 * s;
+                let sx = spot.x as u8 * s + bx;
+                let sy = spot.y as u8 * s + by;
                 for dy in 0..s {
                     for dx in 0..s {
-                        self.dropped_blocks_matrix.set(px + dx, py + dy, color);
+                        self.static_buf.set(sx + dx, sy + dy, color);
                     }
                 }
 
@@ -530,11 +557,13 @@ impl Board {
 
         if line_count > 0 {
             let s = SCALE as u8;
+            let bx = self.board_area_x;
+            let by = self.board_area_y;
             for &line in &lines[..line_count] {
                 for x in 0..self.is_cell_taken.width {
                     for dy in 0..s {
                         for dx in 0..s {
-                            self.dropped_blocks_matrix.set(x * s + dx, line * s + dy, Color::none());
+                            self.static_buf.set(x * s + bx + dx, line * s + by + dy, Color::none());
                         }
                     }
                 }
@@ -547,8 +576,8 @@ impl Board {
                         self.is_cell_taken.set(x, y as u8, above);
                         for dy in 0..s {
                             for dx in 0..s {
-                                let c = *self.dropped_blocks_matrix.get(x * s + dx, (y - 1) as u8 * s + dy);
-                                self.dropped_blocks_matrix.set(x * s + dx, y as u8 * s + dy, c);
+                                let c = *self.static_buf.get(x * s + bx + dx, (y - 1) as u8 * s + by + dy);
+                                self.static_buf.set(x * s + bx + dx, y as u8 * s + by + dy, c);
                             }
                         }
                     }
@@ -562,10 +591,11 @@ impl Board {
     }
 
     fn pop_garbage_lines(&mut self) {
-        let hole =
-            (SmallRng::from_seed([(self.seed % 255) as u8; core::mem::size_of::<SmallRng>()]).next_u32() % BOARD_WIDTH as u32) as i16;
+        let hole = self.garbage_hole as i16;
 
         let s = SCALE as u8;
+        let bx = self.board_area_x;
+        let by = self.board_area_y;
         while self.garbage_bar.pop() {
             for x in 0..BOARD_WIDTH {
                 for y in 0..BOARD_HEIGHT - 1 {
@@ -573,8 +603,8 @@ impl Board {
                     self.is_cell_taken.set(x, y, val);
                     for dy in 0..s {
                         for dx in 0..s {
-                            let c = *self.dropped_blocks_matrix.get(x * s + dx, (y + 1) * s + dy);
-                            self.dropped_blocks_matrix.set(x * s + dx, y * s + dy, c);
+                            let c = *self.static_buf.get(x * s + bx + dx, (y + 1) * s + by + dy);
+                            self.static_buf.set(x * s + bx + dx, y * s + by + dy, c);
                         }
                     }
                 }
@@ -585,7 +615,7 @@ impl Board {
                 let color = if x != hole as u8 { Color::white().a(127).clone() } else { Color::none() };
                 for dy in 0..s {
                     for dx in 0..s {
-                        self.dropped_blocks_matrix.set(x * s + dx, (BOARD_HEIGHT - 1) * s + dy, color);
+                        self.static_buf.set(x * s + bx + dx, (BOARD_HEIGHT - 1) * s + by + dy, color);
                     }
                 }
             }

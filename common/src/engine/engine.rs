@@ -17,7 +17,8 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Duration;
 use embassy_time::Instant;
-// use esp_println::println;
+#[cfg(feature = "esp-log")]
+use esp_println::println;
 
 pub const SCREEN_SIZE: u8 = 64;
 pub type TempActorId = u16;
@@ -100,7 +101,7 @@ impl Engine {
             self.input.as_mut().update(delta_time);
             mut_scene.tick(&self.input, &mut self.world, delta_time);
             self.asyncable_storage.update(&mut self.world, delta_time);
-            println!("tick {}", time.elapsed());
+            // println!("tick {}", time.elapsed());
         }
 
         {
@@ -114,7 +115,7 @@ impl Engine {
             on_frame_finished(&self.screen);
 
             self.input.as_mut().late_update(delta_time);
-            println!("late tick {}", time.elapsed());
+            // println!("late tick {}", time.elapsed());
         }
     }
 
