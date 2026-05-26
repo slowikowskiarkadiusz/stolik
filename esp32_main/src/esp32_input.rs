@@ -20,7 +20,9 @@ use alloc::vec::Vec;
 use embassy_executor::task;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 use embassy_time::Timer;
+use embedded_hal::i2c::I2c;
 use esp_hal::{
+    Blocking,
     gpio::{AnyPin, Input as GpioInput, InputConfig, Pin, Pull},
     peripherals::{I2C0, Peripherals},
 };
@@ -289,62 +291,34 @@ static EXPANDER_DATA: Signal<CriticalSectionRawMutex, u8> = Signal::new();
 pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
     println!("[expander] task started");
 
-    let i2c_config = esp_hal::i2c::master::Config::default().with_timeout(esp_hal::i2c::master::BusTimeout::BusCycles(1000));
+    let i2c_config = esp_hal::i2c::master::Config::default().with_software_timeout(esp_hal::i2c::master::SoftwareTimeout::Transaction(
+        esp_hal::time::Duration::from_millis(5),
+    ));
+    let mut i2c = esp_hal::i2c::master::I2c::new(setup.i2c0, i2c_config)
+        .unwrap()
+        .with_sda(setup.gpio19)
+        .with_scl(setup.gpio20);
 
-    let i2c_result = esp_hal::i2c::master::I2c::new(setup.i2c0, i2c_config);
-    let mut i2c = match i2c_result {
-        Ok(i2c) => i2c.with_sda(setup.gpio19).with_scl(setup.gpio20).into_async(),
-        Err(e) => {
-            println!("[expander] spawn failed: {:?}", e);
-
-            println!("[I2C] init failed: {:?}", e);
-            EXPANDER_DATA.signal(0xFF);
-            return;
-        }
-    };
-
-    // SKAN NAJPIERW
-    println!("[I2C] scanning...");
-    for addr in 0x08u8..0x78 {
-        let mut buf = [0u8; 1];
-        if i2c.read_async(addr, &mut buf).await.is_ok() {
-            println!("[I2C] found device at 0x{:02X}", addr);
-        }
-    }
-    println!("[I2C] scan done");
-
-
+    // Configure MCP23017: set both ports as inputs (once, at init)
     let addr: u8 = 0x20;
-    let _ = i2c.write(addr, &[0x0A, 0x00]);
-    let _ = i2c.write(addr, &[0x01, 0xFF]);
-    let _ = i2c.write(addr, &[0x0D, 0xFF]);
-
-    let mut consecutive_i2c_errors = 0u32;
-    let mut expander_present = true;
 
     loop {
-        let result = if !expander_present {
-            0xFF
-        } else {
-            let mut data = [0xFFu8; 2];
-            match i2c.write_read_async(addr, &[0x12], &mut data).await {
-                Ok(_) => {
-                    consecutive_i2c_errors = 0;
-                    data[1]
-                }
-                Err(e) => {
-                    consecutive_i2c_errors += 1;
-                    println!("[I2C] err #{}: {:?}", consecutive_i2c_errors, e);
-                    if consecutive_i2c_errors >= 5 {
-                        println!("[I2C] expander disabled");
-                        expander_present = false;
-                    }
-                    0xFF
-                }
-            }
-        };
+        let result = read(addr, &mut i2c);
 
         EXPANDER_DATA.signal(result);
         Timer::after_millis(10).await;
     }
+}
+
+fn read(addr: u8, i2c: &mut esp_hal::i2c::master::I2c<'_, esp_hal::Blocking>) -> u8 {
+    return 0xff;
+    let expander_present = i2c.write(addr, &[0x00, 0xFF]).is_ok() && i2c.write(addr, &[0x01, 0xFF]).is_ok();
+    if !expander_present {
+        return 0;
+    }
+    let mut buf = [0u8; 1];
+    if i2c.write_read(addr, &[0x12], &mut buf).is_err() {
+        return 0;
+    }
+    buf[0]
 }
