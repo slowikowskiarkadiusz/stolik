@@ -43,14 +43,14 @@ enum IoPin {
     Gpio42 = 42,
     Gpio47 = 47,
     Gpio48 = 48,
-    ExpP0 = 90,
-    ExpP1 = 91,
-    ExpP2 = 92,
-    ExpP3 = 93,
-    ExpP4 = 94,
-    ExpP5 = 95,
-    ExpP6 = 96,
-    ExpP7 = 97,
+    ExpA0 = 90,
+    ExpA1 = 91,
+    ExpA2 = 92,
+    ExpA3 = 93,
+    ExpA4 = 94,
+    ExpA5 = 95,
+    ExpA6 = 96,
+    ExpA7 = 97,
 }
 
 const PINS_IN_USE_LENGTH: usize = 18;
@@ -66,14 +66,14 @@ static PINS_IN_USE: [IoPin; PINS_IN_USE_LENGTH] = [
     IoPin::Gpio40,
     IoPin::Gpio47,
     IoPin::Gpio48,
-    IoPin::ExpP0,
-    IoPin::ExpP1,
-    IoPin::ExpP2,
-    IoPin::ExpP3,
-    IoPin::ExpP4,
-    IoPin::ExpP5,
-    IoPin::ExpP6,
-    IoPin::ExpP7,
+    IoPin::ExpA0,
+    IoPin::ExpA1,
+    IoPin::ExpA2,
+    IoPin::ExpA3,
+    IoPin::ExpA4,
+    IoPin::ExpA5,
+    IoPin::ExpA6,
+    IoPin::ExpA7,
 ];
 
 pub struct Esp32Input<'a> {
@@ -191,10 +191,10 @@ impl<'a> Esp32Input<'a> {
                 keys.append(&mut Esp32Input::map_key(Key::P1Green));
                 keys
             }
-            Key::P2Down => vec![IoPin::ExpP1],
-            Key::P2Up => vec![IoPin::ExpP3],
-            Key::P2Left => vec![IoPin::ExpP0],
-            Key::P2Right => vec![IoPin::ExpP2],
+            Key::P2Down => vec![IoPin::ExpA1],
+            Key::P2Up => vec![IoPin::ExpA3],
+            Key::P2Left => vec![IoPin::ExpA0],
+            Key::P2Right => vec![IoPin::ExpA2],
             Key::P2AnyDirection => {
                 let mut keys = Vec::<IoPin>::new();
                 keys.append(&mut Esp32Input::map_key(Key::P2Down));
@@ -203,8 +203,8 @@ impl<'a> Esp32Input<'a> {
                 keys.append(&mut Esp32Input::map_key(Key::P2Right));
                 keys
             }
-            Key::P2Blue => vec![IoPin::ExpP7],
-            Key::P2Green => vec![IoPin::ExpP6],
+            Key::P2Blue => vec![IoPin::ExpA7],
+            Key::P2Green => vec![IoPin::ExpA6],
             Key::P2Any => {
                 let mut keys = Vec::<IoPin>::new();
                 keys.append(&mut Esp32Input::map_key(Key::P2AnyDirection));
@@ -285,12 +285,14 @@ impl<'a> Input for Esp32Input<'a> {
     }
 }
 
+use alloc::collections::btree_map::BTreeMap;
+use embedded_hal_compat::Reverse;
+use embedded_hal_compat::ReverseCompat;
 static EXPANDER_DATA: Signal<CriticalSectionRawMutex, u8> = Signal::new();
+use pcf857x::{Pcf8574, PinFlag, SlaveAddr};
 
 #[task]
 pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
-    println!("[expander] task started");
-
     let i2c_config = esp_hal::i2c::master::Config::default().with_software_timeout(esp_hal::i2c::master::SoftwareTimeout::Transaction(
         esp_hal::time::Duration::from_millis(5),
     ));
@@ -299,13 +301,40 @@ pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
         .with_sda(setup.gpio19)
         .with_scl(setup.gpio20);
 
-    // Configure MCP23017: set both ports as inputs (once, at init)
-    let addr: u8 = 0x20;
+    let i2c_compat = i2c.reverse();
+    let mut expander = Pcf8574::new(i2c_compat, SlaveAddr::default());
+
+    let mask =
+        PinFlag::P0
+        | PinFlag::P1
+        | PinFlag::P2
+        | PinFlag::P3
+        | PinFlag::P4
+        | PinFlag::P5
+        | PinFlag::P6
+        | PinFlag::P7;
+        // |
+        // PinFlag::P10
+        // | PinFlag::P11
+        // | PinFlag::P12
+        // | PinFlag::P13
+        // | PinFlag::P14
+        // | PinFlag::P15
+        // | PinFlag::P16
+        // | PinFlag::P17;
+
+    let mut i = 0;
 
     loop {
-        let result = read(addr, &mut i2c);
+        if let Ok(inputs) = expander.get(&mask) {
+            EXPANDER_DATA.signal(inputs);
+            println!("hej {}", inputs);
+        } else {
+            i += 1;
+            i %= 100;
+            println!("Halo {}", i);
+        }
 
-        EXPANDER_DATA.signal(result);
         Timer::after_millis(10).await;
     }
 }

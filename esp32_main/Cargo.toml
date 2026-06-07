@@ -21,6 +21,7 @@ embassy-time = "0.4"
 embassy-sync = "0.7"
 
 embedded-hal = "1.0"
+embedded-hal-compat = "0.13"
 embedded-hal-async = "1.0"
 embedded-graphics = "0.8"
 
@@ -31,7 +32,7 @@ log = "0.4"
 esp-hub75 = { git = "https://github.com/liebman/esp-hub75", branch = "main", features = ["esp32s3"] }
 esp-rtos = { version = "0.2", features = ["esp32s3", "embassy"] }
 getrandom = { version = "0.2", default-features = false, features = ["custom"] }
-mcp230xx = "0.1"
+pcf857x = "0.2"
 spin = { version = "0.9", default-features = false, features = ["mutex", "rwlock", "spin_mutex"] }
 
 [profile.dev]
