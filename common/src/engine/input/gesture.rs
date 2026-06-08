@@ -2,7 +2,7 @@ extern crate alloc;
 use crate::engine::{
     hash_map::HashMap,
     input::{
-        input::{Input, InputSnapshot},
+        input::InputSnapshot,
         key::{KEYS_LENGTH, Key, u8_to_key},
     },
     max_heap::MaxHeap,

@@ -26,6 +26,7 @@ impl MaxHeap {
         }
     }
 
+    #[allow(dead_code)]
     fn peek(&self) -> u32 {
         if self.heap.is_empty() {
             return 0;

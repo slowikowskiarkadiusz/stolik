@@ -12,7 +12,7 @@ const RIGHT_KEYS: [Key; 2] = [Key::P1Right, Key::P2Right];
 const UP_KEYS: [Key; 2] = [Key::P1Up, Key::P2Up];
 const DOWN_KEYS: [Key; 2] = [Key::P1Down, Key::P2Down];
 
-pub fn create_button_icon_actor(world: &mut World, center: V2, size: u8, key: Key, name: Option<&str>) -> ActorId {
+pub fn create_button_icon_actor(world: &mut World, center: V2, size: u8, key: Key, _name: Option<&str>) -> ActorId {
     world.add_new_actor(
         Some(Transform::new(center, V2::one() * size as f32)),
         None,

@@ -93,14 +93,14 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         }
         map
     }
-    pub fn iter(&self) -> HashMapIter<K, V> {
+    pub fn iter(&self) -> HashMapIter<'_, K, V> {
         HashMapIter {
             buckets: &self.buckets,
             bucket_idx: 0,
             item_idx: 0,
         }
     }
-    pub fn iter_mut(&mut self) -> HashMapIterMut<K, V> {
+    pub fn iter_mut(&mut self) -> HashMapIterMut<'_, K, V> {
         HashMapIterMut {
             buckets: self.buckets.iter_mut().collect(),
             bucket_idx: 0,

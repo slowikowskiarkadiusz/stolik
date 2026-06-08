@@ -40,8 +40,6 @@ impl Collider {
         let actors = world.actors();
         for (ai, first_actor) in actors.iter().enumerate() {
             for second_actor in &actors[ai + 1..] {
-                
-
                 if first_actor != second_actor
                     && let Some(first_collider) = world.get_collider(first_actor)
                     && let Some(first_transform) = world.get_transform(first_actor)

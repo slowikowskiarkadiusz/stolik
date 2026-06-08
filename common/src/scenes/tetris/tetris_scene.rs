@@ -1,15 +1,12 @@
 use crate::{
     engine::{
-        color::Color,
         components::world::World,
-        engine::{ActorId, SCREEN_SIZE},
-        hash_map::HashMap,
+        engine::ActorId,
         scene::Scene,
-        v2::V2,
     },
     scenes::{
         tetris::{
-            board::{create_board_actor, SCALE},
+            board::create_board_actor,
             world::TetrisWorld,
         },
         utils::print_victory_text,

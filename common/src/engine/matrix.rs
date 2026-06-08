@@ -1,6 +1,6 @@
 extern crate alloc;
 use alloc::{string::String, string::ToString, vec, vec::Vec};
-use libm::{ceilf, cosf, floorf, roundf, sinf};
+use libm::{ceilf, cosf, roundf, sinf};
 //// use esp_println::println;
 
 #[derive(Clone)]
@@ -109,7 +109,7 @@ impl<T: Clone> Matrix<T> {
         scaled
     }
 
-    pub fn scale_into(&self, factor: usize, dst: &mut Matrix<T>, background: T) {
+    pub fn scale_into(&self, factor: usize, dst: &mut Matrix<T>, _background: T) {
         for y in 0..self.height as usize {
             for x in 0..self.width as usize {
                 let pixel = self.get(x as u8, y as u8).clone();

@@ -8,14 +8,13 @@ use crate::{
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
     },
-    scenes::{menu::menu_scene::MenuScene, pong::pong_scene::PongScene, tetris::tetris_scene::TetrisScene},
+    scenes::menu::menu_scene::MenuScene,
 };
 extern crate alloc;
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
-use embassy_time::Duration;
 use embassy_time::Instant;
 #[cfg(feature = "esp-log")]
 use esp_println::println;
@@ -52,9 +51,6 @@ impl Engine {
     }
 
     pub fn run<T: Thread>(&mut self, on_frame_finished: Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static>) {
-        let mut last = Instant::now();
-        let target_frame = Duration::from_millis(33);
-
         self.ensure_scene();
 
         let mut engine_timer = 0.0;
@@ -96,16 +92,16 @@ impl Engine {
         }
 
         {
-            let time = embassy_time::Instant::now();
+            let _time = embassy_time::Instant::now();
             let mut_scene = self.current_scene.as_mut();
             self.input.as_mut().update(delta_time);
             mut_scene.tick(&self.input, &mut self.world, delta_time);
             self.asyncable_storage.update(&mut self.world, delta_time);
-            // println!("tick {}", time.elapsed());
+            // println!("tick {}", _time.elapsed());
         }
 
         {
-            let time = embassy_time::Instant::now();
+            let _time = embassy_time::Instant::now();
             let overlaps = Collider::detect_overlaps(&self.world);
             self.world.tick_blinkers(delta_time);
             let mut_scene = self.current_scene.as_mut();

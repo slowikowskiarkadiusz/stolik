@@ -1,7 +1,6 @@
 use crate::engine::{color::Color, color_matrix::ColorMatrix, v2::V2};
 use crate::scenes::tetris::board::SCALE;
 
-const GARBAGE_INSERTION_DELAY: f32 = 4000.0;
 const BLINKING_DELAY: f32 = 100.0;
 
 pub struct GarbageBar {

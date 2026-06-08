@@ -3,15 +3,12 @@
     "rust-analyzer": {
       "initialization_options": {
         "cargo": {
-          "buildScripts": {
-            "enable": false
-          },
-          "target": "xtensa-esp32s3-none-elf"
+          "buildScripts": { "enable": false },
+          "features": ["std"],
         },
-        "rustc": {
-          "source": "discover"
-        }
-      }
-    }
-  }
+        "linkedProjects": ["/Users/ark/Desktop/stolik/desktop_main/Cargo.toml", "/Users/ark/Desktop/stolik/common/Cargo.toml"],
+        "checkOnSave": false,
+      },
+    },
+  },
 }

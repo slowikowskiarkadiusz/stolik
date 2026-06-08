@@ -1,13 +1,10 @@
 extern crate alloc;
-use alloc::{boxed::Box, string::String, sync::Arc, vec, vec::Vec};
+use alloc::{boxed::Box, string::String, vec, vec::Vec};
 use embassy_sync::lazy_lock::LazyLock;
 // use esp_println::println;
-use spin::Mutex;
-
 use crate::{
     engine::{
         actor::{arrow_actor::create_arrow_actor, rectangle_actor::create_rectangle_actor, text::create_text_actor},
-        asyncable::{AsyncableType, add_asyncable},
         color::Color,
         components::world::World,
         engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
@@ -49,6 +46,7 @@ pub struct ControlsScene {
     current_page_actors: Vec<ActorId>,
     current_page_index: u8,
     next_scene: SceneFactory,
+    #[allow(dead_code)]
     lines_per_page: u8,
     print_page_timer_seconds: f32,
     allow_proceeding_timer_sec: f32,

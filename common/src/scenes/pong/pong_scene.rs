@@ -234,7 +234,7 @@ impl PongScene {
 
     fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, delta_time: f32) {
         if !self.play_against_ai {
-            let a = input.is_key_press(Key::P2Left)
+            let _a = input.is_key_press(Key::P2Left)
                 || input.is_key_press(Key::P2Right)
                 || input.is_key_press(Key::P2AnyDirection)
                 || input.is_key_press(Key::P2Blue)

@@ -12,7 +12,7 @@ use crate::{
         scene::Scene,
         v2::V2,
     },
-    scenes::{controls::controls_scene::ControlsScene, pong::pong_scene::PongScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode}},
+    scenes::{pong::pong_scene::PongScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode}},
 };
 
 struct MenuOption {
@@ -99,7 +99,7 @@ impl Scene for MenuScene {
 
         if input.is_key_down(Key::Start) || input.is_key_down(Key::P1Blue) || input.is_key_down(Key::P1Green) {
             let selected = self.options.remove(self.cursor_position as usize);
-            let name = selected.next_scene_code_name;
+            let _name = selected.next_scene_code_name;
             open_scene(selected.next_scene_factory);
             // let factory = core::mem::replace(&mut self.next_scene, Box::new(|| Box::new(MenuScene::new())));
             // open_scene(factory);

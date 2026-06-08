@@ -1,8 +1,7 @@
 extern crate alloc;
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
 use rand::RngCore;
-use rand::seq::SliceRandom;
 use rand::{SeedableRng, rngs::SmallRng};
 
 use crate::engine::components::transform::Transform;
@@ -18,7 +17,7 @@ use crate::{
         block::Block,
         garbage_bar::GarbageBar,
         hold_logic::HoldLogic,
-        shape::{Shape, get_shape},
+        shape::Shape,
     },
 };
 
@@ -28,17 +27,9 @@ pub const SCALE: u8 = 2;
 
 const BOARD_WIDTH: u8 = 10;
 const BOARD_HEIGHT: u8 = 20;
-const AFTER_DROP_DELAY_SEC: f32 = 0.250;
-const LINE_CLEARING_ANIMATION_FACTOR_SEC: f32 = 0.075;
 const DROPPING_DELAY_SEC: f32 = 1.0;
 const FASTER_DROPPING_DELAY_SEC: f32 = 0.1;
 const LOCK_DELAY_SEC: f32 = 1.0;
-
-// Board render dimensions (derived from BOARD_WIDTH, BOARD_HEIGHT, HoldLogic::SIZE)
-// size.x = 1 + BOARD_WIDTH + 1 + 1 + 1 = 14
-// size.y = 1 + BOARD_HEIGHT + 1 + 4 + 1 = 27
-const BOARD_RENDER_W: u8 = 14;
-const BOARD_RENDER_H: u8 = 27;
 
 pub const BLOCKS_COLORS: &[Color; 7] = &[
     Color::new(0, 255, 255, 255), // Cyan
@@ -238,8 +229,8 @@ impl Board {
         if let Some(current_agent_shadow) = self.current_agent_shadow.as_mut()
             && let Some(current_agent) = self.current_agent.as_ref()
         {
-            let mut center = current_agent.center;
-            let mut current_spots = current_agent.get_taken_spots();
+            let center = current_agent.center;
+            let current_spots = current_agent.get_taken_spots();
             current_agent_shadow.center = V2::new(center.x, center.y + Board::calc_drop(&self.is_cell_taken, 1, current_spots) as f32);
         }
 

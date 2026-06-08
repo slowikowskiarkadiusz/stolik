@@ -7,7 +7,8 @@
       "Bash(cargo metadata *)",
       "Bash(python3 -c \"import sys,json; m=json.load\\(sys.stdin\\); [print\\(p['name'], p['version']\\) for p in m['packages'] if 'bootloader' in p['name'] or 'espflash' in p['name']]\")",
       "Bash(find ~/.cargo/git/checkouts/esp-hub75-* -name \"*.rs\")",
-      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(p['name'], p['version'], p.get\\('features', {}\\)\\) for p in data['packages'] if 'hub75' in p['name'].lower\\(\\)]\")"
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(p['name'], p['version'], p.get\\('features', {}\\)\\) for p in data['packages'] if 'hub75' in p['name'].lower\\(\\)]\")",
+      "Bash(cargo check *)"
     ]
   }
 }

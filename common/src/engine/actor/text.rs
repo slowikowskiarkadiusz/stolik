@@ -38,7 +38,7 @@ pub fn create_text_actor(
     container_size: V2,
     color: Color,
     options: Option<TextActorOptions>,
-    name: Option<&str>,
+    _name: Option<&str>,
 ) -> ActorId {
     let mut reverse = false;
     if let Some(opt) = options {
@@ -65,7 +65,7 @@ pub fn create_text_actor_at_center(
     container_size: V2,
     color: Color,
     options: Option<TextActorOptions>,
-    name: Option<&str>,
+    _name: Option<&str>,
 ) -> ActorId {
     let mut reverse = false;
     if let Some(opt) = options {

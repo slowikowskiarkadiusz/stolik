@@ -1,11 +1,10 @@
 extern crate alloc;
-use alloc::vec::Vec;
 
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, v2::V2},
     scenes::tetris::{
         board::{BLOCKS_COLORS, SCALE},
-        shape::{self, Shape},
+        shape::{Shape},
     },
 };
 
