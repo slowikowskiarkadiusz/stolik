@@ -63,20 +63,20 @@ impl World {
         self.transforms[*actor_id as usize].as_mut()
     }
 
-    pub fn get_collider(&self, actor_id: &ActorId) -> Option<&Collider> {
-        self.colliders[*actor_id as usize].as_ref()
-    }
-
-    pub fn get_mut_collider(&mut self, actor_id: &ActorId) -> Option<&mut Collider> {
-        self.colliders[*actor_id as usize].as_mut()
-    }
-
     pub fn get_physics(&self, actor_id: &ActorId) -> Option<&Physics> {
         self.physics[*actor_id as usize].as_ref()
     }
 
     pub fn get_mut_physics(&mut self, actor_id: &ActorId) -> Option<&mut Physics> {
         self.physics[*actor_id as usize].as_mut()
+    }
+
+    pub fn get_collider(&self, actor_id: &ActorId) -> Option<&Collider> {
+        self.colliders[*actor_id as usize].as_ref()
+    }
+
+    pub fn get_mut_collider(&mut self, actor_id: &ActorId) -> Option<&mut Collider> {
+        self.colliders[*actor_id as usize].as_mut()
     }
 
     pub fn get_blinker(&self, actor_id: &ActorId) -> Option<&Blinker> {
@@ -103,9 +103,7 @@ impl World {
         blinker: Option<Blinker>,
         render: Option<ColorMatrix>,
     ) -> ActorId {
-        let slot = (0..MAX_ACTORS)
-            .find(|&i| !self.actor_alive[i])
-            .expect("MAX_ACTORS exceeded") as ActorId;
+        let slot = (0..MAX_ACTORS).find(|&i| !self.actor_alive[i]).expect("MAX_ACTORS exceeded") as ActorId;
 
         let idx = slot as usize;
         self.actor_alive[idx] = true;

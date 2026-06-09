@@ -4,7 +4,10 @@ use alloc::vec::Vec;
 // TODO HashMap
 
 use crate::engine::{
-    components::{transform::Transform, world::World}, engine::ActorId, hash_map::HashMap, v2::V2
+    components::{transform::Transform, world::World},
+    engine::ActorId,
+    hash_map::HashMap,
+    v2::V2,
 };
 
 pub type CollisionMask = u8;
@@ -101,7 +104,12 @@ impl Collider {
                 for i in 0..first_vertices.len() {
                     let j = (i + 1) % &first_vertices.len();
 
-                    if do_intersect(&V2::new(min_first_vertex.x - 1.0, s_v.y), &s_v, &first_vertices[i], &first_vertices[j]) {
+                    if do_intersect(
+                        &V2::new(min_first_vertex.x - 1.0, s_v.y),
+                        &s_v,
+                        &first_vertices[i],
+                        &first_vertices[j],
+                    ) {
                         intersects += 1;
                     }
                 }
@@ -120,7 +128,9 @@ impl Collider {
 
         for first_part in &first.0.collider_parts {
             for second_part in &second.0.collider_parts {
-                if is_part_overlapping(&first_part, &first.1.center, &second_part, &second.1.center) {
+                if is_part_overlapping(&first_part, &first.1.center, &second_part, &second.1.center)
+                    || is_part_overlapping(&second_part, &second.1.center, &first_part, &first.1.center)
+                {
                     return true;
                 }
             }
@@ -129,14 +139,19 @@ impl Collider {
         false
     }
 
-    pub fn are_in_colliding_distance(first_collider: &Collider, first_position: &V2, second_collider: &Collider, second_position: &V2) -> bool {
+    pub fn are_in_colliding_distance(
+        first_collider: &Collider,
+        first_position: &V2,
+        second_collider: &Collider,
+        second_position: &V2,
+    ) -> bool {
         fn get_reach(collider: &Collider) -> f32 {
             collider
                 .collider_parts
                 .iter()
                 .flat_map(|f| Collider::get_parts_vertices(f).map(|g| &g + &f.offset))
                 .map(|f| f.mag())
-                .reduce(|f, g| if f < g { f } else { g })
+                .reduce(|f, g| if f > g { f } else { g })
                 .unwrap()
         }
 
