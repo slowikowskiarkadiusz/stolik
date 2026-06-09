@@ -91,6 +91,10 @@ impl V2 {
 
         Self { x: rx, y: ry }
     }
+
+    pub fn dot(&self, other: &V2) -> f32 {
+        self.x * other.x + self.y * other.y
+    }
 }
 
 use core::ops::{Add, Div, Mul, Sub};

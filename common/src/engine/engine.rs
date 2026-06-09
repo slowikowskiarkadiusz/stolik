@@ -3,12 +3,12 @@ use crate::{
         asyncable::AsyncableStorage,
         color::Color,
         color_matrix::ColorMatrix,
-        components::{collider::Collider, world::World},
+        components::{collider::Collider, physics::Physics, world::World},
         input::input::Input,
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
     },
-    scenes::menu::menu_scene::MenuScene,
+    scenes::{menu::menu_scene::MenuScene, physics_test::physics_test_scene::PhysicsTestScene},
 };
 extern crate alloc;
 use alloc::boxed::Box;
@@ -78,7 +78,7 @@ impl Engine {
 
     pub fn ensure_scene(&mut self) {
         if !self.is_any_scene {
-            self.change_scene(|| Box::new(MenuScene::new()));
+            self.change_scene(|| Box::new(PhysicsTestScene::new()));
             self.is_any_scene = true;
         }
     }
@@ -98,6 +98,7 @@ impl Engine {
             mut_scene.tick(&self.input, &mut self.world, delta_time);
             self.asyncable_storage.update(&mut self.world, delta_time);
             // println!("tick {}", _time.elapsed());
+            Physics::update(&mut self.world, delta_time);
         }
 
         {
@@ -106,6 +107,7 @@ impl Engine {
             self.world.tick_blinkers(delta_time);
             let mut_scene = self.current_scene.as_mut();
             mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
+
 
             self.combine_color_matrixes();
             on_frame_finished(&self.screen);
