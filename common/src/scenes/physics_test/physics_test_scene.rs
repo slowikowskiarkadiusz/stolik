@@ -26,6 +26,10 @@ static ORIGINAL_BALL_SPEED: f32 = 10.0;
 pub struct PhysicsTestScene {
     ball: ActorId,
     ball_2: ActorId,
+    wall_top: ActorId,
+    wall_bottom: ActorId,
+    wall_left: ActorId,
+    wall_right: ActorId,
 }
 
 impl Scene for PhysicsTestScene {
@@ -46,6 +50,42 @@ impl Scene for PhysicsTestScene {
             Color::red(),
             Some("ball"),
         );
+
+        let wall_thickness = 4.0 * size_factor;
+
+        self.wall_top = create_rectangle_actor(
+            world,
+            V2::new(screen_size / 2.0, wall_thickness / 2.0),
+            V2::new(screen_size, wall_thickness),
+            Color::white(),
+            None,
+        );
+        self.wall_bottom = create_rectangle_actor(
+            world,
+            V2::new(screen_size / 2.0, screen_size - wall_thickness / 2.0),
+            V2::new(screen_size, wall_thickness),
+            Color::white(),
+            None,
+        );
+        self.wall_left = create_rectangle_actor(
+            world,
+            V2::new(wall_thickness / 2.0, screen_size / 2.0),
+            V2::new(wall_thickness, screen_size),
+            Color::white(),
+            None,
+        );
+        self.wall_right = create_rectangle_actor(
+            world,
+            V2::new(screen_size - wall_thickness / 2.0, screen_size / 2.0),
+            V2::new(wall_thickness, screen_size),
+            Color::white(),
+            None,
+        );
+
+        world.get_mut_physics(&self.wall_top).unwrap().with_is_fixed(true);
+        world.get_mut_physics(&self.wall_bottom).unwrap().with_is_fixed(true);
+        world.get_mut_physics(&self.wall_left).unwrap().with_is_fixed(true);
+        world.get_mut_physics(&self.wall_right).unwrap().with_is_fixed(true);
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
@@ -57,7 +97,14 @@ impl Scene for PhysicsTestScene {
 
 impl PhysicsTestScene {
     pub fn new() -> Self {
-        Self { ball: 0, ball_2: 0 }
+        Self {
+            ball: 0,
+            ball_2: 0,
+            wall_top: 0,
+            wall_bottom: 0,
+            wall_left: 0,
+            wall_right: 0,
+        }
     }
 
     fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, delta_time: f32) {

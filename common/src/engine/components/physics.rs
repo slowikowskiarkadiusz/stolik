@@ -51,7 +51,7 @@ impl Physics {
 
     fn apply_forces(actors: &Vec<ActorId>, world: &mut World, delta_time: f32) {
         for actor_id in actors {
-            if world.get_physics(&actor_id).is_none() {
+            if world.get_physics(&actor_id).is_none() || world.get_physics(&actor_id).unwrap().is_fixed {
                 continue;
             }
             let (new_velocity, new_center) = {
@@ -70,6 +70,10 @@ impl Physics {
     }
 
     fn apply_impuls(actor: &ActorId, collision: &(ActorId, CollisionResult), world: &mut World, delta_time: f32) {
+        if world.get_physics(actor).unwrap().is_fixed {
+            return;
+        }
+
         let (a_mass, a_velocity) = {
             let body = world.get_physics(actor).unwrap();
             (body.mass, body.velocity)
