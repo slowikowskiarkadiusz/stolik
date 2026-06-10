@@ -6,7 +6,7 @@ use crate::{
     engine::{
         actor::{arrow_actor::create_arrow_actor, rectangle_actor::create_rectangle_actor, text::create_text_actor},
         color::Color,
-        components::world::World,
+        components::{collider::CollisionResult, world::World},
         engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
         hash_map::HashMap,
         input::{input::Input, key::Key},
@@ -105,6 +105,8 @@ impl Scene for ControlsScene {
     }
 
     fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}
+
+    fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 }
 
 impl ControlsScene {

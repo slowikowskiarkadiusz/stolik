@@ -1,14 +1,7 @@
 use crate::{
-    engine::{
-        components::world::World,
-        engine::ActorId,
-        scene::Scene,
-    },
+    engine::{components::{collider::CollisionResult, world::World}, engine::ActorId, hash_map::HashMap, scene::Scene},
     scenes::{
-        tetris::{
-            board::create_board_actor,
-            world::TetrisWorld,
-        },
+        tetris::{board::create_board_actor, world::TetrisWorld},
         utils::print_victory_text,
     },
 };
@@ -103,6 +96,8 @@ impl Scene for TetrisScene {
         _: f32,
     ) {
     }
+
+    fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 }
 
 impl TetrisScene {

@@ -7,7 +7,7 @@ use crate::{
         color::Color,
         color_matrix::ColorMatrix,
         components::{
-            collider::{Collider, ColliderPart, ColliderType},
+            collider::{Collider, ColliderPart, ColliderType, CollisionResult},
             physics::Physics,
             transform::Transform,
             world::World,
@@ -20,12 +20,13 @@ use crate::{
     },
     scenes::utils::print_victory_text,
 };
+use alloc::vec;
 
 static ORIGINAL_BALL_SPEED: f32 = 10.0;
 
 pub struct PhysicsTestScene {
     ball: ActorId,
-    ball_2: ActorId,
+    ball_2: Option<ActorId>,
     wall_top: ActorId,
     wall_bottom: ActorId,
     wall_left: ActorId,
@@ -43,11 +44,19 @@ impl Scene for PhysicsTestScene {
             Color::white(),
             Some("ball"),
         );
-        self.ball_2 = create_rectangle_actor(
+        // create_rectangle_actor(
+        //     world,
+        //     &(V2::one() * screen_size / 2.0) - &V2::new(0.0, -5.0),
+        //     V2::one() * 2.0 * size_factor,
+        //     Color::red(),
+        //     Some("ball"),
+        // );
+
+        create_rectangle_actor(
             world,
-            &(V2::one() * screen_size / 2.0) - &V2::new(0.0, -5.0),
+            &(V2::one() * screen_size / 2.0) - &V2::new(0.0, -15.0),
             V2::one() * 2.0 * size_factor,
-            Color::red(),
+            Color::blue(),
             Some("ball"),
         );
 
@@ -93,13 +102,24 @@ impl Scene for PhysicsTestScene {
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {}
+
+    fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32) {
+        let mut collides = false;
+        for col in collisions {
+            if col.0 == &self.ball && col.1[0].0 == self.wall_bottom {
+                collides = true;
+            }
+        }
+
+        // println!("{}", if collides { "collides" } else { "doesnt" });
+    }
 }
 
 impl PhysicsTestScene {
     pub fn new() -> Self {
         Self {
             ball: 0,
-            ball_2: 0,
+            ball_2: None,
             wall_top: 0,
             wall_bottom: 0,
             wall_left: 0,
@@ -112,17 +132,17 @@ impl PhysicsTestScene {
             let is_left = input.is_key_press(Key::P1Left);
             let is_right = input.is_key_press(Key::P1Right);
             let is_down = input.is_key_press(Key::P1Down);
-            let is_up = input.is_key_press(Key::P1Up);
+            let is_up = input.is_key_down(Key::P1Up);
             let move_by = V2::new(
                 if is_left {
-                    -1.0
+                    -20.0
                 } else if is_right {
-                    1.0
+                    20.0
                 } else {
                     0.0
                 },
                 if is_up {
-                    -1.0
+                    -1000.0
                 } else if is_down {
                     1.0
                 } else {
@@ -130,14 +150,14 @@ impl PhysicsTestScene {
                 },
             );
 
-            ball_physics.add_force(move_by * 10.0);
+            ball_physics.add_force(move_by);
         }
     }
 }
 
 fn create_rectangle_actor(world: &mut World, center: V2, size: V2, color: Color, _name: Option<&str>) -> ActorId {
     let mut physics = Physics::new();
-    physics.with_mass(1.0).with_drag(0.5);
+    physics.with_mass(1.0).with_drag(0.8);
     world.add_new_actor(
         Some(Transform::new(center, size.clone())),
         Some(Collider::new(

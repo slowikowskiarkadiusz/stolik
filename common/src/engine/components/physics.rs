@@ -1,11 +1,18 @@
+use spin::Mutex;
+
+extern crate alloc;
 use crate::engine::{
     components::{
         collider::{Collider, CollisionResult},
         world::World,
     },
     engine::ActorId,
+    hash_map::HashMap,
     v2::V2,
 };
+use alloc::vec::Vec;
+
+static GRAVITY: Mutex<V2> = Mutex::new(V2::new(0.0, 0.981));
 
 #[allow(dead_code)]
 pub struct Physics {
@@ -39,14 +46,22 @@ impl Physics {
         }
     }
 
-    pub fn update(world: &mut World, delta_time: f32) {
+    pub fn set_gravity(value: V2) {
+        let mut g = GRAVITY.lock();
+        g.x = value.x;
+        g.y = value.y;
+    }
+
+    pub fn update(world: &mut World, delta_time: f32) -> HashMap<u16, Vec<(u16, CollisionResult)>> {
         let actors: Vec<ActorId> = world.actors().iter().copied().collect();
         Physics::apply_forces(&actors, world, delta_time);
-        for res in Collider::detect_collisions(world) {
+        let collisions = Collider::detect_collisions(world);
+        for res in &collisions {
             for col in res.1 {
                 Physics::apply_impuls(&res.0, &col, world, delta_time);
             }
         }
+        collisions
     }
 
     fn apply_forces(actors: &Vec<ActorId>, world: &mut World, delta_time: f32) {
@@ -59,6 +74,8 @@ impl Physics {
                 let physics = world.get_physics(&actor_id).unwrap();
                 let new_vel = &physics.velocity + &(physics.force / physics.mass * delta_time);
                 let new_vel = &new_vel * (1.0 - physics.drag * delta_time);
+                let g = GRAVITY.lock();
+                let new_vel = &new_vel + &g;
                 let new_center = &transform.center + &(new_vel * delta_time);
                 (new_vel, new_center)
             };
@@ -95,6 +112,13 @@ impl Physics {
         let j = -(1.0 + e) * vel_along_normal / (1.0 / a_mass + 1.0 / b_mass);
 
         world.get_mut_physics(actor).unwrap().velocity -= normal * j / a_mass;
+
+        const SLOP: f32 = 0.1;
+        const PERCENT: f32 = 0.8;
+        let correction = (penetration - SLOP).max(0.0) * PERCENT;
+        if let Some(t) = world.get_mut_transform(actor) {
+            t.center -= normal * correction;
+        }
     }
 
     pub fn add_force(&mut self, force: V2) {

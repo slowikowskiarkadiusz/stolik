@@ -1,6 +1,6 @@
 use core::f32::consts::PI;
 
-use libm::{ceilf, cosf, roundf, sinf};
+use libm::{cosf, roundf, sinf};
 
 use crate::engine::{color::Color, matrix::Matrix, v2::V2};
 
@@ -83,8 +83,8 @@ impl Matrix<Color> {
                     }
                 }
 
-                let final_x = ceilf(rx + other_center.x);
-                let final_y = ceilf(ry + other_center.y);
+                let final_x = roundf(rx + other_center.x);
+                let final_y = roundf(ry + other_center.y);
 
                 if final_x >= 0.0 && final_y >= 0.0 && final_x < self.width as f32 && final_y < self.height as f32 {
                     if blend_colors {

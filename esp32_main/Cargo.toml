@@ -29,7 +29,7 @@ heapless = "0.8"
 static_cell = "2.1"
 log = "0.4"
 
-esp-hub75 = { git = "https://github.com/liebman/esp-hub75", branch = "main", features = ["esp32s3"] }
+esp-hub75 = { git = "https://github.com/liebman/esp-hub75", rev = "191d486a07efbabcd413e3dc7f0fcb49faa38302", features = ["esp32s3"] }
 esp-rtos = { version = "0.2", features = ["esp32s3", "embassy"] }
 getrandom = { version = "0.2", default-features = false, features = ["custom"] }
 pcf857x = "0.2"

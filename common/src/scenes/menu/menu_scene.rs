@@ -5,14 +5,17 @@ use crate::{
     engine::{
         actor::{arrow_actor::create_arrow_actor, text::create_text_actor},
         color::Color,
-        components::world::World,
+        components::{collider::CollisionResult, world::World},
         engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
         hash_map::HashMap,
         input::{input::Input, key::Key},
         scene::Scene,
         v2::V2,
     },
-    scenes::{pong::pong_scene::PongScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode}},
+    scenes::{
+        pong::pong_scene::PongScene,
+        tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
+    },
 };
 
 struct MenuOption {
@@ -49,8 +52,18 @@ impl Scene for MenuScene {
         self.options = vec![
             MenuOption::new(Box::new(|| Box::new(PongScene::new(false))), "pong", "pong", 0),
             MenuOption::new(Box::new(|| Box::new(PongScene::new(true))), "pong", "pong -- vs ai", 0),
-            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))), "tetris", "tetris", 0),
-            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))), "tetris", "tetris -- solo", 0),
+            MenuOption::new(
+                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))),
+                "tetris",
+                "tetris",
+                0,
+            ),
+            MenuOption::new(
+                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))),
+                "tetris",
+                "tetris -- solo",
+                0,
+            ),
             // MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstAi))), "tetris", "tetris -- vs ai", 0),
             // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "fong", "fong", 0),
         ];
@@ -112,9 +125,9 @@ impl Scene for MenuScene {
         }
     }
 
-    fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {
-        // todo!()
-    }
+    fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}
+
+    fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 }
 
 impl MenuScene {

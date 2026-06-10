@@ -8,7 +8,12 @@
       "Bash(python3 -c \"import sys,json; m=json.load\\(sys.stdin\\); [print\\(p['name'], p['version']\\) for p in m['packages'] if 'bootloader' in p['name'] or 'espflash' in p['name']]\")",
       "Bash(find ~/.cargo/git/checkouts/esp-hub75-* -name \"*.rs\")",
       "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(p['name'], p['version'], p.get\\('features', {}\\)\\) for p in data['packages'] if 'hub75' in p['name'].lower\\(\\)]\")",
-      "Bash(cargo check *)"
+      "Bash(cargo check *)",
+      "Bash(ls /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/1845817/src/)",
+      "Bash(ls /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/191d486/src/)",
+      "Bash(cat /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/1845817/examples/hello_parl_io.rs | head -60)",
+      "Bash(grep -rn \"dma_buffer_size_bytes\" /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/1845817/ | head -10)",
+      "Bash(grep \"esp-bootloader-esp-idf\" /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/191d486/Cargo.toml)"
     ]
   }
 }

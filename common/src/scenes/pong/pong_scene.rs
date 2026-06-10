@@ -10,7 +10,7 @@ use crate::{
         },
         asyncable::{AsyncableType, add_asyncable},
         color::Color,
-        components::{collider::ColliderType, world::World},
+        components::{collider::{ColliderType, CollisionResult}, world::World},
         engine::{ActorId, SCREEN_SIZE, open_scene},
         hash_map::HashMap,
         input::{input::Input, key::Key},
@@ -111,6 +111,8 @@ impl Scene for PongScene {
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {
         self.bounce_off_paddle(overlaps, world);
     }
+
+    fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 }
 
 impl PongScene {

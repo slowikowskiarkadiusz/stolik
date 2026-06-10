@@ -98,7 +98,14 @@ impl Engine {
             mut_scene.tick(&self.input, &mut self.world, delta_time);
             self.asyncable_storage.update(&mut self.world, delta_time);
             // println!("tick {}", _time.elapsed());
-            Physics::update(&mut self.world, delta_time);
+        }
+
+        {
+            let _time = embassy_time::Instant::now();
+            let mut_scene = self.current_scene.as_mut();
+            let collisions = Physics::update(&mut self.world, delta_time);
+            mut_scene.on_collisions(&collisions, &mut self.world, delta_time);
+            // println!("physics {}", _time.elapsed());
         }
 
         {
@@ -107,7 +114,6 @@ impl Engine {
             self.world.tick_blinkers(delta_time);
             let mut_scene = self.current_scene.as_mut();
             mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
-
 
             self.combine_color_matrixes();
             on_frame_finished(&self.screen);
