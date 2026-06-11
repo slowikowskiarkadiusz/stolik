@@ -44,13 +44,13 @@ impl Scene for PhysicsTestScene {
             Color::white(),
             Some("ball"),
         );
-        // create_rectangle_actor(
-        //     world,
-        //     &(V2::one() * screen_size / 2.0) - &V2::new(0.0, -5.0),
-        //     V2::one() * 2.0 * size_factor,
-        //     Color::red(),
-        //     Some("ball"),
-        // );
+        create_rectangle_actor(
+            world,
+            &(V2::one() * screen_size / 2.0) - &V2::new(0.0, -5.0),
+            V2::one() * 2.0 * size_factor,
+            Color::red(),
+            Some("ball"),
+        );
 
         create_rectangle_actor(
             world,
@@ -60,7 +60,7 @@ impl Scene for PhysicsTestScene {
             Some("ball"),
         );
 
-        let wall_thickness = 4.0 * size_factor;
+        let wall_thickness = 1.0 * size_factor;
 
         self.wall_top = create_rectangle_actor(
             world,

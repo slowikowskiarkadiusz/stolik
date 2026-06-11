@@ -142,6 +142,7 @@ macro_rules! mk_static {
 
 const TRANSFER_SPEED: Rate = Rate::from_mhz(10);
 const BITS: u8 = 3;
+const BRIGHTNESS: f32 = 0.8;
 
 // Panel layout settings
 const TILED_COLS: usize = 1;
@@ -265,9 +266,9 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
                         if color.a > 0 {
                             nonzero += 1;
                             let esp32_color = Esp32Color::new(
-                                (color.r as u16 * color.a as u16 / 255) as u8,
-                                (color.g as u16 * color.a as u16 / 255) as u8,
-                                (color.b as u16 * color.a as u16 / 255) as u8,
+                                ((color.r as u16 * color.a as u16 / 255) as f32 * BRIGHTNESS) as u8,
+                                ((color.g as u16 * color.a as u16 / 255) as f32 * BRIGHTNESS) as u8,
+                                ((color.b as u16 * color.a as u16 / 255) as f32 * BRIGHTNESS) as u8,
                             );
                             fb.set_pixel(Point::new(x as i32, y as i32), esp32_color);
                         }

@@ -13,6 +13,7 @@ use crate::engine::{
 use alloc::vec::Vec;
 
 static GRAVITY: Mutex<V2> = Mutex::new(V2::new(0.0, 0.981));
+static ITERATIONS: u8 = 10;
 
 #[allow(dead_code)]
 pub struct Physics {
@@ -54,11 +55,14 @@ impl Physics {
 
     pub fn update(world: &mut World, delta_time: f32) -> HashMap<u16, Vec<(u16, CollisionResult)>> {
         let actors: Vec<ActorId> = world.actors().iter().copied().collect();
+        let mut collisions: HashMap<u16, Vec<(u16, CollisionResult)>> = HashMap::new();
         Physics::apply_forces(&actors, world, delta_time);
-        let collisions = Collider::detect_collisions(world);
-        for res in &collisions {
-            for col in res.1 {
-                Physics::apply_impuls(&res.0, &col, world, delta_time);
+        for _ in 0..ITERATIONS {
+            collisions = Collider::detect_collisions(world);
+            for res in &collisions {
+                for col in res.1 {
+                    Physics::apply_impuls(&res.0, &col, world, delta_time);
+                }
             }
         }
         collisions
