@@ -20,6 +20,8 @@ pub enum ColliderType {
 pub struct CollisionResult {
     pub normal: V2,
     pub penetration: f32,
+    /// World-space contact point: deepest penetrating vertex (or edge midpoint) of shape B into A.
+    pub contact_point: V2,
     pub is_overlap: bool,
 }
 
@@ -100,6 +102,7 @@ impl Collider {
                             let flipped = CollisionResult {
                                 normal: V2::new(-result.normal.x, -result.normal.y),
                                 penetration: result.penetration,
+                                contact_point: result.contact_point,
                                 is_overlap: result.is_overlap,
                             };
 
@@ -142,9 +145,22 @@ impl Collider {
         (min, max)
     }
 
-    fn sat_test(first_part: &ColliderPart, first_center: &V2, second_part: &ColliderPart, second_center: &V2) -> Option<CollisionResult> {
-        let first_verts = Collider::get_parts_vertices(first_part).map(|v| &(&v + &first_part.offset) + first_center);
-        let second_verts = Collider::get_parts_vertices(second_part).map(|v| &(&v + &second_part.offset) + second_center);
+    fn sat_test(
+        first_part: &ColliderPart, first_center: &V2, first_rotation: f32,
+        second_part: &ColliderPart, second_center: &V2, second_rotation: f32,
+    ) -> Option<CollisionResult> {
+        // Rotate local vertices (including their offset) by the transform rotation, then
+        // translate to world space. Offset=0 is the common case so the `if` is a fast path.
+        let first_verts = Collider::get_parts_vertices(first_part).map(|v| {
+            let local = &v + &first_part.offset;
+            let rotated = if first_rotation != 0.0 { local.rotate(first_rotation) } else { local };
+            &rotated + first_center
+        });
+        let second_verts = Collider::get_parts_vertices(second_part).map(|v| {
+            let local = &v + &second_part.offset;
+            let rotated = if second_rotation != 0.0 { local.rotate(second_rotation) } else { local };
+            &rotated + second_center
+        });
 
         let mut min_penetration = f32::MAX;
         let mut best_normal = V2::new(0.0, 0.0);
@@ -171,17 +187,32 @@ impl Collider {
             }
         }
 
-        // normal od first do second
-        let first_center_with_offset = &(first_center + &first_part.offset);
-        let second_center_with_offset = &(second_center + &second_part.offset);
-        let dir = second_center_with_offset - first_center_with_offset;
+        let first_offset_rot = if first_rotation != 0.0 { first_part.offset.rotate(first_rotation) } else { first_part.offset };
+        let second_offset_rot = if second_rotation != 0.0 { second_part.offset.rotate(second_rotation) } else { second_part.offset };
+        let first_center_eff = V2::new(first_center.x + first_offset_rot.x, first_center.y + first_offset_rot.y);
+        let second_center_eff = V2::new(second_center.x + second_offset_rot.x, second_center.y + second_offset_rot.y);
+        let dir = &second_center_eff - &first_center_eff;
         if dir.dot(&best_normal) < 0.0 {
             best_normal = V2::new(-best_normal.x, -best_normal.y);
         }
 
+        let min_proj = second_verts.iter().map(|v| v.dot(&best_normal)).fold(f32::MAX, f32::min);
+        let mut cx = 0.0;
+        let mut cy = 0.0;
+        let mut cnt = 0;
+        for v in &second_verts {
+            if v.dot(&best_normal) <= min_proj + 0.01 {
+                cx += v.x;
+                cy += v.y;
+                cnt += 1;
+            }
+        }
+        let contact_point = V2::new(cx / cnt as f32, cy / cnt as f32);
+
         Some(CollisionResult {
             normal: best_normal,
             penetration: min_penetration,
+            contact_point,
             is_overlap: first_part.is_overlap || second_part.is_overlap,
         })
     }
@@ -195,7 +226,7 @@ impl Collider {
 
         for first_part in &first.0.collider_parts {
             for second_part in &second.0.collider_parts {
-                if let Some(r) = Collider::sat_test(first_part, &first.1.center, second_part, &second.1.center) {
+                if let Some(r) = Collider::sat_test(first_part, &first.1.center, first.1.rotation, second_part, &second.1.center, second.1.rotation) {
                     // zwróć kolizję z najmniejszą penetracją
                     match &result {
                         None => result = Some(r),

@@ -1,3 +1,4 @@
+use core::f32::consts::PI;
 use spin::Mutex;
 
 extern crate alloc;
@@ -20,6 +21,7 @@ pub struct Physics {
     force: V2,
     velocity: V2,
     angular_velocity: f32,
+    can_rotate: bool,
     is_fixed: bool,
     mass: f32,
     drag: f32,
@@ -36,6 +38,7 @@ impl Physics {
             force: V2::zero(),
             velocity: V2::zero(),
             angular_velocity: 0.0,
+            can_rotate: false,
             is_fixed: false,
             mass: 1.0,
             drag: 0.0,
@@ -73,49 +76,111 @@ impl Physics {
             if world.get_physics(&actor_id).is_none() || world.get_physics(&actor_id).unwrap().is_fixed {
                 continue;
             }
-            let (new_velocity, new_center) = {
+            let (new_velocity, new_center, new_ang_vel, new_rotation, computed_inertia) = {
                 let transform = world.get_transform(&actor_id).unwrap();
                 let physics = world.get_physics(&actor_id).unwrap();
+
                 let new_vel = &physics.velocity + &(physics.force / physics.mass * delta_time);
                 let new_vel = &new_vel * (1.0 - physics.drag * delta_time);
                 let g = GRAVITY.lock();
                 let new_vel = &new_vel + &g;
                 let new_center = &transform.center + &(new_vel * delta_time);
-                (new_vel, new_center)
+
+                let new_ang_vel = if physics.can_rotate {
+                    physics.angular_velocity * (1.0 - physics.angular_drag * delta_time)
+                } else {
+                    0.0
+                };
+                let new_rotation = if physics.can_rotate {
+                    physics.rotation + new_ang_vel * delta_time
+                } else {
+                    0.0
+                };
+
+                let computed_inertia = if physics.inertia > 0.0 {
+                    physics.inertia
+                } else {
+                    let w = transform.size.x;
+                    let h = transform.size.y;
+                    physics.mass * (w * w + h * h) / 12.0
+                };
+
+                (new_vel, new_center, new_ang_vel, new_rotation, computed_inertia)
             };
             let physics = world.get_mut_physics(&actor_id).unwrap();
             physics.velocity = new_velocity;
             physics.force = V2::zero();
-            world.get_mut_transform(&actor_id).unwrap().center = new_center;
+            physics.angular_velocity = new_ang_vel;
+            physics.rotation = new_rotation;
+            physics.inertia = computed_inertia;
+
+            let transform = world.get_mut_transform(&actor_id).unwrap();
+            transform.center = new_center;
+            transform.rotation = new_rotation;
         }
     }
 
-    fn apply_impuls(actor: &ActorId, collision: &(ActorId, CollisionResult), world: &mut World, delta_time: f32) {
+    fn apply_impuls(actor: &ActorId, collision: &(ActorId, CollisionResult), world: &mut World, _delta_time: f32) {
         if world.get_physics(actor).unwrap().is_fixed {
             return;
         }
 
-        let (a_mass, a_velocity) = {
-            let body = world.get_physics(actor).unwrap();
-            (body.mass, body.velocity)
-        };
-        let (b_mass, b_velocity) = {
-            let body = world.get_physics(&collision.0).unwrap();
-            (body.mass, body.velocity)
-        };
         let normal = collision.1.normal;
         let penetration = collision.1.penetration;
-        let v_rel = &b_velocity - &a_velocity;
+        let contact = collision.1.contact_point;
+
+        let (a_mass, a_velocity, a_inertia, a_ang_vel, a_center) = {
+            let body = world.get_physics(actor).unwrap();
+            let t = world.get_transform(actor).unwrap();
+            (body.mass, body.velocity, body.inertia, body.angular_velocity, t.center)
+        };
+        let (b_mass, b_velocity, b_inertia, b_ang_vel, b_center, b_is_fixed) = {
+            let body = world.get_physics(&collision.0).unwrap();
+            let t = world.get_transform(&collision.0).unwrap();
+            (
+                body.mass,
+                body.velocity,
+                body.inertia,
+                body.angular_velocity,
+                t.center,
+                body.is_fixed,
+            )
+        };
+
+        let ra = V2::new(contact.x - a_center.x, contact.y - a_center.y);
+        let rb = V2::new(contact.x - b_center.x, contact.y - b_center.y);
+
+        let omega_a = a_ang_vel * (PI / 180.0);
+        let omega_b = b_ang_vel * (PI / 180.0);
+        let va_c = V2::new(a_velocity.x - omega_a * ra.y, a_velocity.y + omega_a * ra.x);
+        let vb_c = V2::new(b_velocity.x - omega_b * rb.y, b_velocity.y + omega_b * rb.x);
+
+        let v_rel = &vb_c - &va_c;
         let vel_along_normal = v_rel.dot(&normal);
 
         if vel_along_normal > 0.0 {
             return;
         }
 
-        let e = 0.5; // restitution
-        let j = -(1.0 + e) * vel_along_normal / (1.0 / a_mass + 1.0 / b_mass);
+        let e = 0.5;
 
-        world.get_mut_physics(actor).unwrap().velocity -= normal * j / a_mass;
+        let a_can_rotate = world.get_physics(actor).unwrap().can_rotate;
+        let inv_ia = if a_can_rotate && a_inertia > 0.0 { 1.0 / a_inertia } else { 0.0 };
+        let inv_ib = if !b_is_fixed && b_inertia > 0.0 { 1.0 / b_inertia } else { 0.0 };
+        let inv_mb = if b_is_fixed { 0.0 } else { 1.0 / b_mass };
+
+        let ra_x_n = ra.cross(&normal);
+        let rb_x_n = rb.cross(&normal);
+        let j = -(1.0 + e) * vel_along_normal / (1.0 / a_mass + inv_mb + ra_x_n * ra_x_n * inv_ia + rb_x_n * rb_x_n * inv_ib);
+
+        {
+            let phys_a = world.get_mut_physics(actor).unwrap();
+            phys_a.velocity -= normal * (j / a_mass);
+            if a_can_rotate {
+                let delta_omega_rad = -(j * ra_x_n) * inv_ia;
+                phys_a.angular_velocity += delta_omega_rad * (180.0 / PI);
+            }
+        }
 
         const SLOP: f32 = 0.1;
         const PERCENT: f32 = 0.8;
@@ -127,6 +192,11 @@ impl Physics {
 
     pub fn add_force(&mut self, force: V2) {
         self.force += force;
+    }
+
+    pub fn with_can_rotate(&mut self, can_rotate: bool) -> &mut Self {
+        self.can_rotate = can_rotate;
+        self
     }
 
     pub fn with_is_fixed(&mut self, is_fixed: bool) -> &mut Self {

@@ -95,6 +95,17 @@ impl V2 {
     pub fn dot(&self, other: &V2) -> f32 {
         self.x * other.x + self.y * other.y
     }
+
+    /// 2D scalar cross product: self × other = self.x*other.y − self.y*other.x
+    /// Positive = other is counterclockwise from self (in math coords).
+    pub fn cross(&self, other: &V2) -> f32 {
+        self.x * other.y - self.y * other.x
+    }
+
+    /// Rotate this vector around the origin by `degrees` (positive = CCW in math / CW on screen).
+    pub fn rotate(&self, degrees: f32) -> Self {
+        self.rotate_around(&V2::new(0.0, 0.0), &degrees)
+    }
 }
 
 use core::ops::{Add, Div, Mul, Sub};
