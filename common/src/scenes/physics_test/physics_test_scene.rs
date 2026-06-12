@@ -31,6 +31,7 @@ pub struct PhysicsTestScene {
     wall_bottom: ActorId,
     wall_left: ActorId,
     wall_right: ActorId,
+    resize_timer: f32,
 }
 
 impl Scene for PhysicsTestScene {
@@ -91,14 +92,23 @@ impl Scene for PhysicsTestScene {
             None,
         );
 
-        world.get_mut_physics(&self.wall_top).unwrap().with_is_fixed(true);
-        world.get_mut_physics(&self.wall_bottom).unwrap().with_is_fixed(true);
-        world.get_mut_physics(&self.wall_left).unwrap().with_is_fixed(true);
-        world.get_mut_physics(&self.wall_right).unwrap().with_is_fixed(true);
+        world.get_mut_physics(&self.wall_top).unwrap().with_can_move(true);
+        world.get_mut_physics(&self.wall_bottom).unwrap().with_can_move(true);
+        world.get_mut_physics(&self.wall_left).unwrap().with_can_move(true);
+        world.get_mut_physics(&self.wall_right).unwrap().with_can_move(true);
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
         self.handle_input(input, world, delta_time);
+
+        let ball_center = world.get_transform(&self.ball).unwrap().center;
+        world.get_mut_camera().set_center(ball_center);
+
+        // self.resize_timer += delta_time;
+
+        // if self.resize_timer < 10.0 && self.resize_timer > 1.0 {
+        //     world.get_mut_camera().zoom(4.0/self.resize_timer);
+        // }
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {}
@@ -124,6 +134,7 @@ impl PhysicsTestScene {
             wall_bottom: 0,
             wall_left: 0,
             wall_right: 0,
+            resize_timer: 0.0,
         }
     }
 

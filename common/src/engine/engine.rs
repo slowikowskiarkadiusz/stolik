@@ -125,6 +125,7 @@ impl Engine {
 
     fn combine_color_matrixes(&mut self) {
         self.screen.fill(Color::none());
+        let camera = self.world.get_camera();
         for i in 0..self.world.actor_count {
             let actor_id = self.world.all_actors[i];
             if let Some(render) = self.world.get_render(&actor_id)
@@ -139,10 +140,14 @@ impl Engine {
                     let center = transform.center.clone();
                     let rotation = transform.rotation;
                     let anchor = transform.anchor_offset.clone();
-                    self.screen.write(render, &center, Some(rotation), Some(anchor), Some(true));
+                    self.screen
+                        .write(render, &center, Some(rotation), Some(anchor), Some(true), Some(camera));
                 }
             }
         }
+
+        let size = 1.0 / camera.get_viewport_size_relative_to_screen();
+        self.screen.scale(size, Color::none(), false);
     }
 
     pub fn change_scene<F>(&mut self, new_scene_func: F)

@@ -3,3 +3,4 @@ pub mod transform;
 pub mod collider;
 pub mod physics;
 pub mod blinker;
+pub mod camera;

@@ -86,27 +86,60 @@ impl<T: Clone> Matrix<T> {
         self.height = new_height as u8;
     }
 
-    // TODO: do in-place. start writing from right bottom corner if the non-scaled is in left-top corner
-    pub fn scale(&self, factor: f32, background: T) -> Matrix<T> {
+    pub fn scale(&mut self, factor: f32, background: T, resize: bool) {
         let old_width = self.width;
         let old_height = self.height;
-        //        println!("{} {}", old_width, old_height);
-        let new_width = (old_width as f32 * factor) as u8;
-        let new_height = (old_height as f32 * factor) as u8;
-        let mut scaled = Matrix::<T>::new(new_width, new_height, background);
-        let factor_int = factor as usize;
+        let scaled_width = (old_width as f32 * factor) as usize;
+        let scaled_height = (old_height as f32 * factor) as usize;
+        let new_width = if resize { scaled_width as u8 } else { old_width };
+        let new_height = if resize { scaled_height as u8 } else { old_height };
 
-        for y in 0..old_height as usize {
-            for x in 0..old_width as usize {
-                let pixel = self.get(x as u8, y as u8).clone();
-                for dy in 0..factor_int {
-                    for dx in 0..factor_int {
-                        scaled.set((x * factor_int + dx) as u8, (y * factor_int + dy) as u8, pixel.clone());
+        if factor >= 1.0 && factor == factor as u8 as f32 {
+            let f = factor as usize;
+            let oy = old_height as usize;
+            let ox = old_width as usize;
+            self.data.resize(new_width as usize * new_height as usize, background.clone());
+            for y in (0..oy).rev() {
+                for x in (0..ox).rev() {
+                    let src_idx = y * ox + x;
+                    let pixel = self.data[src_idx].clone();
+                    for dy in 0..f {
+                        for dx in 0..f {
+                            let nx = x * f + dx;
+                            let ny = y * f + dy;
+                            if nx < new_width as usize && ny < new_height as usize {
+                                self.data[ny * new_width as usize + nx] = pixel.clone();
+                            }
+                        }
                     }
                 }
             }
+            if !resize {
+                for y in 0..new_height as usize {
+                    for x in 0..new_width as usize {
+                        if x >= scaled_width || y >= scaled_height {
+                            self.data[y * new_width as usize + x] = background.clone();
+                        }
+                    }
+                }
+            }
+            self.width = new_width;
+            self.height = new_height;
+        } else {
+            let mut result = Matrix::<T>::new(new_width, new_height, background.clone());
+            for y in 0..scaled_height.min(new_height as usize) {
+                for x in 0..scaled_width.min(new_width as usize) {
+                    let src_x = (x as f32 / factor) as u8;
+                    let src_y = (y as f32 / factor) as u8;
+                    if src_x < old_width && src_y < old_height {
+                        result.data[y * new_width as usize + x] = self.get(src_x, src_y).clone();
+                    }
+                }
+            }
+            self.data = result.data;
+            self.width = new_width;
+            self.height = new_height;
         }
-        scaled
     }
 
     pub fn scale_into(&self, factor: usize, dst: &mut Matrix<T>, _background: T) {
@@ -115,11 +148,7 @@ impl<T: Clone> Matrix<T> {
                 let pixel = self.get(x as u8, y as u8).clone();
                 for dy in 0..factor {
                     for dx in 0..factor {
-                        dst.set(
-                            (x * factor + dx) as u8,
-                            (y * factor + dy) as u8,
-                            pixel.clone(),
-                        );
+                        dst.set((x * factor + dx) as u8, (y * factor + dy) as u8, pixel.clone());
                     }
                 }
             }
@@ -131,7 +160,7 @@ impl<T: Clone> Matrix<T> {
         for x in from.x as u8..to.x as u8 {
             for y in from.y as u8..to.y as u8 {
                 let t: T = self.get(x, y).clone();
-                result.set(x - from.x as u8, y - to.x as u8, t);
+                result.set(x - from.x as u8, y - from.y as u8, t);
             }
         }
 

@@ -22,7 +22,7 @@ pub struct Physics {
     velocity: V2,
     angular_velocity: f32,
     can_rotate: bool,
-    is_fixed: bool,
+    can_move: bool,
     mass: f32,
     drag: f32,
     angular_drag: f32,
@@ -39,7 +39,7 @@ impl Physics {
             velocity: V2::zero(),
             angular_velocity: 0.0,
             can_rotate: false,
-            is_fixed: false,
+            can_move: false,
             mass: 1.0,
             drag: 0.0,
             angular_drag: 0.0,
@@ -57,7 +57,7 @@ impl Physics {
     }
 
     pub fn update(world: &mut World, delta_time: f32) -> HashMap<u16, Vec<(u16, CollisionResult)>> {
-        let actors: Vec<ActorId> = world.actors().iter().copied().collect();
+        let actors: Vec<ActorId> = world.get_actors().iter().copied().collect();
         let mut collisions: HashMap<u16, Vec<(u16, CollisionResult)>> = HashMap::new();
         Physics::apply_forces(&actors, world, delta_time);
         for _ in 0..ITERATIONS {
@@ -73,7 +73,7 @@ impl Physics {
 
     fn apply_forces(actors: &Vec<ActorId>, world: &mut World, delta_time: f32) {
         for actor_id in actors {
-            if world.get_physics(&actor_id).is_none() || world.get_physics(&actor_id).unwrap().is_fixed {
+            if world.get_physics(&actor_id).is_none() || world.get_physics(&actor_id).unwrap().can_move {
                 continue;
             }
             let (new_velocity, new_center, new_ang_vel, new_rotation, computed_inertia) = {
@@ -121,7 +121,7 @@ impl Physics {
     }
 
     fn apply_impuls(actor: &ActorId, collision: &(ActorId, CollisionResult), world: &mut World, _delta_time: f32) {
-        if world.get_physics(actor).unwrap().is_fixed {
+        if world.get_physics(actor).unwrap().can_move {
             return;
         }
 
@@ -143,7 +143,7 @@ impl Physics {
                 body.inertia,
                 body.angular_velocity,
                 t.center,
-                body.is_fixed,
+                body.can_move,
             )
         };
 
@@ -199,8 +199,8 @@ impl Physics {
         self
     }
 
-    pub fn with_is_fixed(&mut self, is_fixed: bool) -> &mut Self {
-        self.is_fixed = is_fixed;
+    pub fn with_can_move(&mut self, is_fixed: bool) -> &mut Self {
+        self.can_move = is_fixed;
         self
     }
 

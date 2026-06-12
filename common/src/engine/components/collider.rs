@@ -46,7 +46,7 @@ impl Collider {
 
     pub fn detect_overlaps(world: &World) -> HashMap<u16, Vec<u16>> {
         let mut dict = HashMap::<ActorId, Vec<ActorId>>::new();
-        let actors = world.actors();
+        let actors = world.get_actors();
         for (ai, first_actor) in actors.iter().enumerate() {
             for second_actor in &actors[ai + 1..] {
                 if first_actor != second_actor
@@ -79,7 +79,7 @@ impl Collider {
 
     pub fn detect_collisions(world: &World) -> HashMap<u16, Vec<(u16, CollisionResult)>> {
         let mut dict = HashMap::<ActorId, Vec<(ActorId, CollisionResult)>>::new();
-        let actors = world.actors();
+        let actors = world.get_actors();
         for (ai, first_actor) in actors.iter().enumerate() {
             for second_actor in &actors[ai + 1..] {
                 if first_actor != second_actor
@@ -227,7 +227,6 @@ impl Collider {
         for first_part in &first.0.collider_parts {
             for second_part in &second.0.collider_parts {
                 if let Some(r) = Collider::sat_test(first_part, &first.1.center, first.1.rotation, second_part, &second.1.center, second.1.rotation) {
-                    // zwróć kolizję z najmniejszą penetracją
                     match &result {
                         None => result = Some(r),
                         Some(prev) if r.penetration < prev.penetration => result = Some(r),

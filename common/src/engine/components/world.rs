@@ -3,10 +3,7 @@ extern crate alloc;
 use crate::engine::{
     color_matrix::ColorMatrix,
     components::{
-        blinker::Blinker,
-        collider::{Collider, CollisionMask, CollisionMaskId},
-        physics::Physics,
-        transform::Transform,
+        blinker::Blinker, camera::Camera, collider::{Collider, CollisionMask, CollisionMaskId}, physics::Physics, transform::Transform
     },
     engine::ActorId,
 };
@@ -14,6 +11,7 @@ use crate::engine::{
 pub const MAX_ACTORS: usize = 32;
 
 pub struct World {
+    camera: Camera,
     pub all_actors: [ActorId; MAX_ACTORS],
     pub actor_count: usize,
     actor_alive: [bool; MAX_ACTORS],
@@ -28,6 +26,7 @@ pub struct World {
 impl World {
     pub fn new() -> Self {
         Self {
+            camera: Camera::new(),
             all_actors: [0; MAX_ACTORS],
             actor_count: 0,
             actor_alive: [false; MAX_ACTORS],
@@ -40,8 +39,15 @@ impl World {
         }
     }
 
-    /// Returns a slice of currently active actor IDs.
-    pub fn actors(&self) -> &[ActorId] {
+    pub fn get_camera(&self) -> &Camera {
+        &self.camera
+    }
+
+    pub fn get_mut_camera(&mut self) -> &mut Camera {
+        &mut self.camera
+    }
+
+    pub fn get_actors(&self) -> &[ActorId] {
         &self.all_actors[..self.actor_count]
     }
 
