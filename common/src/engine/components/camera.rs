@@ -20,10 +20,21 @@ impl Camera {
     }
 
     pub fn set_center(&mut self, to: V2) {
-        let center = self.get_center();
-        let difference = &to - &center;
-        self.viewport.0 += difference;
-        self.viewport.1 += difference;
+        let size = &self.viewport.1 - &self.viewport.0;
+        self.viewport.0 = &to - &(size / 2.0);
+        self.viewport.1 = &to + &(size / 2.0);
+    }
+
+    pub fn set_x(&mut self, to: f32) {
+        let size = &self.viewport.1.x - &self.viewport.0.x;
+        self.viewport.0.x = to - (size / 2.0);
+        self.viewport.1.x = to + (size / 2.0);
+    }
+
+    pub fn set_y(&mut self, to: f32) {
+        let size = &self.viewport.1.y - &self.viewport.0.y;
+        self.viewport.0.y = to - (size / 2.0);
+        self.viewport.1.y = to + (size / 2.0);
     }
 
     pub fn get_viewport_size_relative_to_screen(&self) -> f32 {

@@ -12,7 +12,7 @@ use crate::{
             transform::Transform,
             world::World,
         },
-        engine::{ActorId, SCREEN_SIZE, open_scene},
+        engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene},
         hash_map::HashMap,
         input::{input::Input, key::Key},
         scene::Scene,
@@ -23,10 +23,13 @@ use crate::{
 use alloc::vec;
 
 static ORIGINAL_BALL_SPEED: f32 = 10.0;
+static SIZE_FACTOR: f32 = SCREEN_SIZEF32 / 32.0;
+static BALL_SIZE: f32 = 2.0 * SIZE_FACTOR;
 
 pub struct PhysicsTestScene {
     ball: ActorId,
-    ball_2: Option<ActorId>,
+    foot_sensor: ActorId,
+    collides: bool,
     wall_top: ActorId,
     wall_bottom: ActorId,
     wall_left: ActorId,
@@ -36,92 +39,134 @@ pub struct PhysicsTestScene {
 
 impl Scene for PhysicsTestScene {
     fn init(&mut self, world: &mut World) {
-        let screen_size = SCREEN_SIZE as f32;
-        let size_factor = screen_size / 32.0;
-        self.ball = create_rectangle_actor(
+        let map_width = 128.0_f32;
+        let map_height = 64.0_f32;
+
+        // podłoga
+        create_rectangle_actor(
             world,
-            V2::one() * screen_size / 2.0,
-            V2::one() * 2.0 * size_factor,
+            V2::new(map_width / 2.0, map_height - SIZE_FACTOR / 2.0),
+            V2::new(map_width, SIZE_FACTOR),
             Color::white(),
-            Some("ball"),
-        );
-        create_rectangle_actor(
-            world,
-            &(V2::one() * screen_size / 2.0) - &V2::new(0.0, -5.0),
-            V2::one() * 2.0 * size_factor,
-            Color::red(),
-            Some("ball"),
+            None,
         );
 
-        create_rectangle_actor(
-            world,
-            &(V2::one() * screen_size / 2.0) - &V2::new(0.0, -15.0),
-            V2::one() * 2.0 * size_factor,
-            Color::blue(),
-            Some("ball"),
-        );
+        // rury
+        let pipe_positions = [16.0, 48.0, 80.0, 112.0];
+        let pipe_height = 12.0;
+        let pipe_width = 6.0;
+        for px in pipe_positions {
+            create_rectangle_actor(
+                world,
+                V2::new(px, map_height - pipe_height / 2.0 - SIZE_FACTOR),
+                V2::new(pipe_width, pipe_height),
+                Color::green(),
+                None,
+            );
+        }
 
-        let wall_thickness = 1.0 * size_factor;
+        // platformy nad rurami (ten sam Y)
+        let platform_y = map_height - pipe_height - SIZE_FACTOR - 8.0;
+        for px in pipe_positions {
+            create_rectangle_actor(
+                world,
+                V2::new(px - 10.0, platform_y),
+                V2::new(14.0, SIZE_FACTOR),
+                Color::new(139, 69, 19, 255),
+                None,
+            );
+        }
 
+        // ściany
+        let wall_thickness = SIZE_FACTOR;
         self.wall_top = create_rectangle_actor(
             world,
-            V2::new(screen_size / 2.0, wall_thickness / 2.0),
-            V2::new(screen_size, wall_thickness),
+            V2::new(map_width / 2.0, wall_thickness / 2.0),
+            V2::new(map_width, wall_thickness),
             Color::white(),
             None,
         );
         self.wall_bottom = create_rectangle_actor(
             world,
-            V2::new(screen_size / 2.0, screen_size - wall_thickness / 2.0),
-            V2::new(screen_size, wall_thickness),
+            V2::new(map_width / 2.0, map_height - wall_thickness / 2.0),
+            V2::new(map_width, wall_thickness),
             Color::white(),
             None,
         );
         self.wall_left = create_rectangle_actor(
             world,
-            V2::new(wall_thickness / 2.0, screen_size / 2.0),
-            V2::new(wall_thickness, screen_size),
-            Color::white(),
+            V2::new(wall_thickness / 2.0, map_height / 2.0),
+            V2::new(wall_thickness, map_height),
+            Color::none(),
             None,
         );
         self.wall_right = create_rectangle_actor(
             world,
-            V2::new(screen_size - wall_thickness / 2.0, screen_size / 2.0),
-            V2::new(wall_thickness, screen_size),
-            Color::white(),
+            V2::new(map_width - wall_thickness / 2.0, map_height / 2.0),
+            V2::new(wall_thickness, map_height),
+            Color::none(),
             None,
         );
 
-        world.get_mut_physics(&self.wall_top).unwrap().with_can_move(true);
-        world.get_mut_physics(&self.wall_bottom).unwrap().with_can_move(true);
-        world.get_mut_physics(&self.wall_left).unwrap().with_can_move(true);
-        world.get_mut_physics(&self.wall_right).unwrap().with_can_move(true);
+        // ball
+        self.ball = create_rectangle_actor(
+            world,
+            V2::new(8.0, map_height * 0.5),
+            V2::one() * BALL_SIZE,
+            Color::white(),
+            Some("ball"),
+        );
+        world.get_mut_physics(&self.ball).unwrap().with_can_move(true);
+
+        self.foot_sensor = world.add_new_actor(
+            Some(Transform::new(
+                V2::new(8.0, map_height * 0.5 + BALL_SIZE / 2.0 + 0.5),
+                V2::new(BALL_SIZE - 1.0, 1.0),
+            )),
+            Some(Collider::new(
+                vec![ColliderPart {
+                    offset: V2::zero(),
+                    extend: V2::new(BALL_SIZE - 1.0, 1.0),
+                    is_overlap: true,
+                }],
+                Some(0),
+            )),
+            None,
+            None,
+            Some(ColorMatrix::new((BALL_SIZE - 1.0) as u8, 1, Color::new(0, 0, 0, 0))),
+        );
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
         self.handle_input(input, world, delta_time);
 
         let ball_center = world.get_transform(&self.ball).unwrap().center;
-        world.get_mut_camera().set_center(ball_center);
 
-        // self.resize_timer += delta_time;
-
-        // if self.resize_timer < 10.0 && self.resize_timer > 1.0 {
-        //     world.get_mut_camera().zoom(4.0/self.resize_timer);
-        // }
+        if let Some(t) = world.get_mut_transform(&self.foot_sensor) {
+            t.center = V2::new(ball_center.x, ball_center.y + BALL_SIZE / 2.0 + 0.5);
+        }
+        let mut camera = world.get_mut_camera();
+        camera.set_x(ball_center.x);
     }
 
-    fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {}
-
-    fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32) {
-        let mut collides = false;
-        for col in collisions {
-            if col.0 == &self.ball && col.1[0].0 == self.wall_bottom {
-                collides = true;
+    fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {
+        self.collides = false;
+        for col in overlaps {
+            if col.0 == &self.foot_sensor {
+                if col.1.iter().any(|c| c != &self.ball) {
+                    self.collides = true;
+                }
             }
         }
+    }
 
-        // println!("{}", if collides { "collides" } else { "doesnt" });
+    fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32) {
+        // self.collides = false;
+        // for col in collisions {
+        //     if col.0 == &self.ball && col.1[0].0 == self.wall_bottom {
+        //         self.collides = true;
+        //     }
+        // }
     }
 }
 
@@ -129,7 +174,8 @@ impl PhysicsTestScene {
     pub fn new() -> Self {
         Self {
             ball: 0,
-            ball_2: None,
+            foot_sensor: 0,
+            collides: false,
             wall_top: 0,
             wall_bottom: 0,
             wall_left: 0,
@@ -152,7 +198,7 @@ impl PhysicsTestScene {
                 } else {
                     0.0
                 },
-                if is_up {
+                if is_up && self.collides {
                     -1000.0
                 } else if is_down {
                     1.0

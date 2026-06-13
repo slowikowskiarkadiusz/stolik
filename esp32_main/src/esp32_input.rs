@@ -328,7 +328,7 @@ pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
     loop {
         if let Ok(inputs) = expander.get(&mask) {
             EXPANDER_DATA.signal(inputs);
-            println!("hej {}", inputs);
+            // println!("hej {}", inputs);
         } else {
             i += 1;
             i %= 100;

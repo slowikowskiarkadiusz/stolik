@@ -20,6 +20,7 @@ use embassy_time::Instant;
 use esp_println::println;
 
 pub const SCREEN_SIZE: u8 = 64;
+pub const SCREEN_SIZEF32: f32 = SCREEN_SIZE as f32;
 pub type TempActorId = u16;
 pub type ActorId = u16;
 

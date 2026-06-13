@@ -1,7 +1,9 @@
 extern crate alloc;
 use alloc::{string::String, string::ToString, vec, vec::Vec};
 use libm::{ceilf, cosf, roundf, sinf};
-//// use esp_println::println;
+
+#[cfg(feature = "esp")]
+use esp_println::{print, println};
 
 #[derive(Clone)]
 pub struct Matrix<T: Clone> {
@@ -12,6 +14,7 @@ pub struct Matrix<T: Clone> {
 
 impl<T: Clone> Matrix<T> {
     pub fn new(width: u8, height: u8, init: T) -> Self {
+        assert!(width > 0 || height > 0, "Matrix::new zero: {}x{}", width, height);
         Self {
             width,
             height,
@@ -94,7 +97,14 @@ impl<T: Clone> Matrix<T> {
         let new_width = if resize { scaled_width as u8 } else { old_width };
         let new_height = if resize { scaled_height as u8 } else { old_height };
 
-        if factor >= 1.0 && factor == factor as u8 as f32 {
+        // #[cfg(feature = "esp")]
+        // println!("free: {}", esp_alloc::HEAP.free());
+
+        if new_width <= 0 || new_height <= 0 {
+            return;
+        }
+
+        if factor >= 1.0 {
             let f = factor as usize;
             let oy = old_height as usize;
             let ox = old_width as usize;
@@ -126,17 +136,20 @@ impl<T: Clone> Matrix<T> {
             self.width = new_width;
             self.height = new_height;
         } else {
-            let mut result = Matrix::<T>::new(new_width, new_height, background.clone());
+            // println!("scale {}, {}", new_width, new_height);
             for y in 0..scaled_height.min(new_height as usize) {
                 for x in 0..scaled_width.min(new_width as usize) {
                     let src_x = (x as f32 / factor) as u8;
                     let src_y = (y as f32 / factor) as u8;
                     if src_x < old_width && src_y < old_height {
-                        result.data[y * new_width as usize + x] = self.get(src_x, src_y).clone();
+                        self.data[y * old_width as usize + x] = self.data[src_y as usize * old_width as usize + src_x as usize].clone();
                     }
                 }
             }
-            self.data = result.data;
+            if resize {
+                self.data.truncate(new_width as usize * new_height as usize);
+                self.data.shrink_to_fit();
+            }
             self.width = new_width;
             self.height = new_height;
         }

@@ -56,24 +56,27 @@ impl Collider {
                     && let Some(second_transform) = world.get_transform(second_actor)
                     && (!dict.contains_key(first_actor) || !dict[first_actor].contains(second_actor))
                 {
+                    let first_is_overlap = first_collider.collider_parts.iter().any(|p| p.is_overlap);
+                    let second_is_overlap = second_collider.collider_parts.iter().any(|p| p.is_overlap);
+                    if !(first_is_overlap || second_is_overlap) {
+                        continue;
+                    }
+
                     if (world.get_collision_matrix(first_collider.mask_id) & 1 << second_collider.mask_id) == 1
                         && Collider::is_overlapping((first_collider, first_transform), (second_collider, second_transform))
                     {
                         if !dict.contains_key(first_actor) {
                             dict.insert(first_actor.clone(), Vec::new());
                         }
-
                         if !dict.contains_key(second_actor) {
                             dict.insert(second_actor.clone(), Vec::new());
                         }
-
                         dict.get_mut(first_actor).unwrap().push(second_actor.clone());
                         dict.get_mut(second_actor).unwrap().push(first_actor.clone());
                     }
                 }
             }
         }
-
         dict
     }
 
@@ -88,6 +91,12 @@ impl Collider {
                     && let Some(second_collider) = world.get_collider(second_actor)
                     && let Some(second_transform) = world.get_transform(second_actor)
                 {
+                    let first_is_overlap = first_collider.collider_parts.iter().any(|p| p.is_overlap);
+                    let second_is_overlap = second_collider.collider_parts.iter().any(|p| p.is_overlap);
+                    if first_is_overlap || second_is_overlap {
+                        continue;
+                    }
+
                     if (world.get_collision_matrix(first_collider.mask_id) & 1 << second_collider.mask_id) == 1 {
                         if let Some(result) =
                             Collider::get_collision_result((first_collider, first_transform), (second_collider, second_transform))
@@ -113,7 +122,6 @@ impl Collider {
                 }
             }
         }
-
         dict
     }
 
@@ -146,19 +154,29 @@ impl Collider {
     }
 
     fn sat_test(
-        first_part: &ColliderPart, first_center: &V2, first_rotation: f32,
-        second_part: &ColliderPart, second_center: &V2, second_rotation: f32,
+        first_part: &ColliderPart,
+        first_center: &V2,
+        first_rotation: f32,
+        second_part: &ColliderPart,
+        second_center: &V2,
+        second_rotation: f32,
     ) -> Option<CollisionResult> {
-        // Rotate local vertices (including their offset) by the transform rotation, then
-        // translate to world space. Offset=0 is the common case so the `if` is a fast path.
         let first_verts = Collider::get_parts_vertices(first_part).map(|v| {
             let local = &v + &first_part.offset;
-            let rotated = if first_rotation != 0.0 { local.rotate(first_rotation) } else { local };
+            let rotated = if first_rotation != 0.0 {
+                local.rotate(first_rotation)
+            } else {
+                local
+            };
             &rotated + first_center
         });
         let second_verts = Collider::get_parts_vertices(second_part).map(|v| {
             let local = &v + &second_part.offset;
-            let rotated = if second_rotation != 0.0 { local.rotate(second_rotation) } else { local };
+            let rotated = if second_rotation != 0.0 {
+                local.rotate(second_rotation)
+            } else {
+                local
+            };
             &rotated + second_center
         });
 
@@ -187,8 +205,16 @@ impl Collider {
             }
         }
 
-        let first_offset_rot = if first_rotation != 0.0 { first_part.offset.rotate(first_rotation) } else { first_part.offset };
-        let second_offset_rot = if second_rotation != 0.0 { second_part.offset.rotate(second_rotation) } else { second_part.offset };
+        let first_offset_rot = if first_rotation != 0.0 {
+            first_part.offset.rotate(first_rotation)
+        } else {
+            first_part.offset
+        };
+        let second_offset_rot = if second_rotation != 0.0 {
+            second_part.offset.rotate(second_rotation)
+        } else {
+            second_part.offset
+        };
         let first_center_eff = V2::new(first_center.x + first_offset_rot.x, first_center.y + first_offset_rot.y);
         let second_center_eff = V2::new(second_center.x + second_offset_rot.x, second_center.y + second_offset_rot.y);
         let dir = &second_center_eff - &first_center_eff;
@@ -226,7 +252,14 @@ impl Collider {
 
         for first_part in &first.0.collider_parts {
             for second_part in &second.0.collider_parts {
-                if let Some(r) = Collider::sat_test(first_part, &first.1.center, first.1.rotation, second_part, &second.1.center, second.1.rotation) {
+                if let Some(r) = Collider::sat_test(
+                    first_part,
+                    &first.1.center,
+                    first.1.rotation,
+                    second_part,
+                    &second.1.center,
+                    second.1.rotation,
+                ) {
                     match &result {
                         None => result = Some(r),
                         Some(prev) if r.penetration < prev.penetration => result = Some(r),
