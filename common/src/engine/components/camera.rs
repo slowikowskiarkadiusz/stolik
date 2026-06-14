@@ -1,4 +1,8 @@
-use crate::engine::{engine::SCREEN_SIZE, v2::V2};
+use crate::engine::{
+    components::world::World,
+    engine::{ActorId, SCREEN_SIZE},
+    v2::V2,
+};
 
 pub struct Camera {
     viewport: (V2, V2),
@@ -17,6 +21,10 @@ impl Camera {
 
     pub fn get_viewport_bounds(&self) -> (V2, V2) {
         self.viewport
+    }
+
+    pub fn get_viewport_size(&self) -> V2 {
+        &self.viewport.1 - &self.viewport.0
     }
 
     pub fn set_center(&mut self, to: V2) {
@@ -58,5 +66,12 @@ impl Camera {
 
     pub fn can_see(&self, point: V2) -> bool {
         self.can_see_x(point.x) && self.can_see_x(point.y)
+    }
+
+    pub fn can_see_actor(&self, actor_id: ActorId, world: &World) -> bool {
+        if let Some(actor_transform) = world.get_transform(&actor_id) {
+            return self.can_see(actor_transform.center);
+        }
+        false
     }
 }

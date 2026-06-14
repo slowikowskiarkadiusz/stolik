@@ -644,11 +644,11 @@ pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_
         None,
         None,
         None,
-        Some(ColorMatrix::new(
-            board.size.x as u8 * SCALE,
-            board.size.y as u8 * SCALE,
-            Color::none(),
-        )),
+        // Some(ColorMatrix::new(
+        //     board.size.x as u8 * SCALE,
+        //     board.size.y as u8 * SCALE,
+        //     Color::none(),
+        // )),
     );
 
     tetris_world.add_new_actor(actor_id, Some(board));

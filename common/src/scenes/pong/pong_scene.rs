@@ -6,11 +6,14 @@ use crate::{
     engine::{
         actor::{
             rectangle_actor::create_rectangle_actor,
-            text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, create_text_actor_at_center},
+            text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, create_text_actor_at_center, generate_word_matrix},
         },
         asyncable::{AsyncableType, add_asyncable},
         color::Color,
-        components::{collider::{ColliderType, CollisionResult}, world::World},
+        color_matrix::ColorMatrix,
+        components::{
+            camera::Camera, collider::{ColliderType, CollisionResult}, world::World
+        },
         engine::{ActorId, SCREEN_SIZE, open_scene},
         hash_map::HashMap,
         input::{input::Input, key::Key},
@@ -52,7 +55,7 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, 3.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
-                Color::white(),
+                // Color::white(),
                 Some(ColliderType::Overlapping),
                 Some("paddle1"),
             )),
@@ -60,7 +63,7 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
-                Color::white(),
+                // Color::white(),
                 Some(ColliderType::Overlapping),
                 Some("paddle2"),
             )),
@@ -70,7 +73,7 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, -4.0 * size_factor),
                 V2::new(screen_size, 10.0),
-                Color::none(),
+                // Color::none(),
                 Some(ColliderType::Overlapping),
                 Some("score_zone1"),
             )),
@@ -78,7 +81,7 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, screen_size + 4.0 * size_factor),
                 V2::new(screen_size, 10.0),
-                Color::none(),
+                // Color::none(),
                 Some(ColliderType::Overlapping),
                 Some("score_zone2"),
             )),
@@ -87,7 +90,7 @@ impl Scene for PongScene {
             world,
             V2::one() * screen_size / 2.0,
             V2::one() * 2.0 * size_factor,
-            Color::white(),
+            // Color::white(),
             Some(ColliderType::Overlapping),
             Some("ball"),
         ));
@@ -106,6 +109,51 @@ impl Scene for PongScene {
             self.bounce_off_wall(world);
             self.check_scoring(world);
         }
+    }
+
+    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+        let mut result = ColorMatrix::new(camera.get_viewport_size().0, camera.get_viewport_size().1, Color::none());
+
+        for i in 0..2 {
+            if camera.can_see_actor(self.paddle[i].unwrap(), world) {
+                if let Some(transform) = world.get_mut_transform(&self.paddle[i].unwrap()) {
+                    result.write(
+                        &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::wite()),
+                        &transform.center,
+                        None,
+                        None,
+                        None,
+                        Some(camera),
+                    );
+                }
+            }
+
+            let text_center = V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 }));
+            let text_size = V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32);
+            result.write(
+                &generate_word_matrix(&self.score[i].to_string(), text_size.x as u8, &Color::blue(), false).0,
+                &text_center,
+                None,
+                None,
+                None,
+                Some(camera),
+            );
+        }
+
+        if camera.can_see_actor(self.ball.unwrap(), world) {
+            if let Some(transform) = world.get_mut_transform(&self.ball.unwrap()) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        result
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {
@@ -321,7 +369,6 @@ impl PongScene {
                 self.score[i].to_string(),
                 V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 })),
                 V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32),
-                Color::blue().a(127).clone(),
                 None,
                 Some("score_text"),
             );

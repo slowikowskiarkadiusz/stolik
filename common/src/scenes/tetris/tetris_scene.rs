@@ -1,9 +1,6 @@
 use crate::{
     engine::{
-        components::{collider::CollisionResult, world::World},
-        engine::ActorId,
-        hash_map::HashMap,
-        scene::Scene,
+        color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::World}, engine::ActorId, hash_map::HashMap, scene::Scene
     },
     scenes::{
         tetris::{board::create_board_actor, world::TetrisWorld},
@@ -87,11 +84,25 @@ impl Scene for TetrisScene {
                 p2_board.take_damage(damage_for_p1);
             }
         }
+    }
 
-        // println!("[Tetris] rendering");
-        self.render(world);
+    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+        let mut result = ColorMatrix::new(camera.get_viewport_size().0, camera.get_viewport_size().1, Color::none());
 
-        // println!("[Tetris] tick end");
+        if camera.can_see_actor(self.p1_board_actor_id, world) {
+            if let Some(p1_board) = self.tetris_world.get_board(&self.p1_board_actor_id) {
+                p1_board.render_into(&mut result);
+            }
+        }
+
+        // if !matches!(self.mode, TetrisSceneMode::Solo) {
+        if camera.can_see_actor(self.p2_board_actor_id, world) {
+            if let Some(p2_board) = self.tetris_world.get_board(&self.p2_board_actor_id) {
+                p2_board.render_into(&mut result);
+            }
+        }
+
+        result
     }
 
     fn on_overlaps(
@@ -127,21 +138,5 @@ impl TetrisScene {
         }
 
         print_victory_text(world, if is_p1 { 1 } else { 2 });
-    }
-
-    fn render(&mut self, world: &mut World) {
-        if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
-            if let Some(p1_render) = world.get_mut_render(&self.p1_board_actor_id) {
-                p1_board.render_into(p1_render);
-            }
-        }
-
-        if !matches!(self.mode, TetrisSceneMode::Solo) {
-            if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-                if let Some(p2_render) = world.get_mut_render(&self.p2_board_actor_id) {
-                    p2_board.render_into(p2_render);
-                }
-            }
-        }
     }
 }

@@ -74,7 +74,7 @@ impl Scene for MenuScene {
                 String::from(self.options[i].next_scene_print_name),
                 V2::new(4.0, i as f32 * 6.0),
                 V2::new(SCREEN_SIZE as f32 - 4.0, 5.0),
-                Color::white(),
+                // Color::white(),
                 None,
                 Some("scene text"),
             );

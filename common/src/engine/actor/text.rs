@@ -36,7 +36,6 @@ pub fn create_text_actor(
     text: String,
     top_left: V2,
     container_size: V2,
-    color: Color,
     options: Option<TextActorOptions>,
     _name: Option<&str>,
 ) -> ActorId {
@@ -47,23 +46,23 @@ pub fn create_text_actor(
     let bottom_right = &top_left + &container_size;
     let center = (&top_left + &bottom_right) / 2.0;
 
-    let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
+    // let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
 
     world.add_new_actor(
         Some(Transform::new(center, container_size.clone())),
         None,
         None,
         None,
-        Some(generated),
     )
 }
+
+// pub fn
 
 pub fn create_text_actor_at_center(
     world: &mut World,
     text: String,
     center: V2,
     container_size: V2,
-    color: Color,
     options: Option<TextActorOptions>,
     _name: Option<&str>,
 ) -> ActorId {
@@ -71,18 +70,17 @@ pub fn create_text_actor_at_center(
     if let Some(opt) = options {
         reverse = opt.reverse;
     }
-    let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
+    // let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
 
     world.add_new_actor(
-        Some(Transform::new(center, generated.get_size())),
+        Some(Transform::new(center, container_size)),
         None,
         None,
         None,
-        Some(generated),
     )
 }
 
-fn generate_word_matrix(text: &String, max_width: u8, color: &Color, reverse: bool) -> (ColorMatrix, Option<ColorMatrix>) {
+pub fn generate_word_matrix(text: &String, max_width: u8, color: &Color, reverse: bool) -> (ColorMatrix, Option<ColorMatrix>) {
     let mut word_render_length = 0;
     for letter in text.chars() {
         word_render_length += get_letter_width(&letter);

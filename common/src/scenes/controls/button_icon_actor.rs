@@ -12,17 +12,17 @@ const RIGHT_KEYS: [Key; 2] = [Key::P1Right, Key::P2Right];
 const UP_KEYS: [Key; 2] = [Key::P1Up, Key::P2Up];
 const DOWN_KEYS: [Key; 2] = [Key::P1Down, Key::P2Down];
 
-pub fn create_button_icon_actor(world: &mut World, center: V2, size: u8, key: Key, _name: Option<&str>) -> ActorId {
-    world.add_new_actor(
-        Some(Transform::new(center, V2::one() * size as f32)),
-        None,
-        None,
-        None,
-        Some(make_matrix(size, key)),
-    )
-}
+// pub fn create_button_icon_actor(world: &mut World, center: V2, size: u8, key: Key, _name: Option<&str>) -> ActorId {
+//     world.add_new_actor(
+//         Some(Transform::new(center, V2::one() * size as f32)),
+//         None,
+//         None,
+//         None,
+//         // Some(make_matrix(size, key)),
+//     )
+// }
 
-fn make_matrix(size: u8, key: Key) -> ColorMatrix {
+pub fn make_button_matrix(size: u8, key: Key) -> ColorMatrix {
     let color = map_key_to_color(key);
     let mut color_matrix = ColorMatrix::new(size, size, Color::none());
 

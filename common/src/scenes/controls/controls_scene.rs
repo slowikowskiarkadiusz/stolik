@@ -6,14 +6,18 @@ use crate::{
     engine::{
         actor::{arrow_actor::create_arrow_actor, rectangle_actor::create_rectangle_actor, text::create_text_actor},
         color::Color,
-        components::{collider::CollisionResult, world::World},
+        color_matrix::ColorMatrix,
+        components::{camera::Camera, collider::CollisionResult, world::World},
         engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
         hash_map::HashMap,
         input::{input::Input, key::Key},
         scene::Scene,
         v2::V2,
     },
-    scenes::{controls::button_icon_actor::create_button_icon_actor, menu::menu_scene::MenuScene},
+    scenes::{
+        controls::button_icon_actor::{create_button_icon_actor, make_button_matrix},
+        menu::menu_scene::MenuScene,
+    },
 };
 
 static BUTTON_SIZE: u8 = 5;
@@ -43,7 +47,8 @@ pub struct ControlsScene {
     can_proceed: bool,
     divider_actor_id: ActorId,
     pages: Vec<Vec<ControlsData>>,
-    current_page_actors: Vec<ActorId>,
+    current_text_actors: Vec<ActorId>,
+    current_icon_actors: Vec<ActorId>,
     current_page_index: u8,
     next_scene: SceneFactory,
     #[allow(dead_code)]
@@ -60,7 +65,7 @@ impl Scene for ControlsScene {
             world,
             V2::one() * (SCREEN_SIZE / 2) as f32,
             V2::new(SCREEN_SIZE as f32, 2.0),
-            Color::white().a(127).clone(),
+            // Color::white().a(127).clone(),
             None,
             Some("divider"),
         );
@@ -104,6 +109,38 @@ impl Scene for ControlsScene {
         }
     }
 
+    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+        let mut result = ColorMatrix::new(camera.get_viewport_size().0, camera.get_viewport_size().1, Color::none());
+
+        if camera.can_see_actor(self.divider_actor_id, world) {
+            if let Some(transform) = world.get_mut_transform(&self.divider_actor_id) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        if camera.can_see_actor(self.divider_actor_id, world) {
+            if let Some(transform) = world.get_mut_transform(&self.divider_actor_id) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        result
+    }
+
     fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
@@ -119,7 +156,8 @@ impl ControlsScene {
                 POSSIBLE_CONTROL_SETS.get().get(next_scene_name).unwrap(),
                 lines_per_page.clone() as usize,
             ),
-            current_page_actors: Vec::new(),
+            current_icon_actors: Vec::new(),
+            current_text_actors: Vec::new(),
             current_page_index: 0,
             next_scene,
             lines_per_page,
@@ -166,12 +204,16 @@ impl ControlsScene {
         result
     }
 
-    fn print_page(&mut self, world: &mut World) {
+    fn print_page(&mut self, world: &mut World, result: &mut ColorMatrix, camera: &Camera) {
         if self.pages.len() == 0 {
             return;
         }
 
-        for actor_id in &self.current_page_actors {
+        for actor_id in &self.current_text_actors {
+            world.remove_actor(actor_id);
+        }
+
+        for actor_id in &self.current_icon_actors {
             world.remove_actor(actor_id);
         }
 
@@ -179,22 +221,29 @@ impl ControlsScene {
             let current_page_length = current_page.iter().len();
 
             for player_index in 0..2 {
-                let mut current_player_actors = Vec::<ActorId>::new();
                 for i in 0..current_page_length {
                     let y = (SCREEN_SIZE / 2) - (BUTTON_SIZE + 1) * (i as u8 + 1) + if player_index == 0 { 0 } else { SCREEN_SIZE / 2 };
                     let mut x = 0;
                     let current_line = &current_page[current_page_length - 1usize - i];
                     for key in &current_line.keys {
-                        let icon_actor_id = create_button_icon_actor(
-                            world,
-                            V2::new((BUTTON_SIZE / 2) as f32, y as f32),
-                            BUTTON_SIZE,
-                            key.clone(),
-                            Some("controls button"),
+                        // let icon_actor_id = create_button_icon_actor(
+                        //     world,
+                        //     V2::new((BUTTON_SIZE / 2) as f32, y as f32),
+                        //     BUTTON_SIZE,
+                        //     key.clone(),
+                        //     Some("controls button"),
+                        // );
+
+                        result.write(
+                            &make_button_matrix(BUTTON_SIZE, key.clone()),
+                            center,
+                            None,
+                            None,
+                            None,
+                            Some(camera),
                         );
 
-                        self.current_page_actors.push(icon_actor_id);
-                        current_player_actors.push(icon_actor_id);
+                        self.current_icon_actors.push(icon_actor_id);
 
                         x += BUTTON_SIZE + 1;
 
@@ -206,12 +255,10 @@ impl ControlsScene {
                                 operation_text.clone(),
                                 V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
                                 V2::new(operation_text.len() as f32 * 4.0, 5.0),
-                                Color::white(),
                                 None,
                                 Some("controls label"),
                             );
-                            self.current_page_actors.push(text_actor_id);
-                            current_player_actors.push(text_actor_id);
+                            self.current_text_actors.push(text_actor_id);
                         }
                     }
 
@@ -222,18 +269,32 @@ impl ControlsScene {
                         current_page[current_page.len() - 1usize - i].text.clone(),
                         V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
                         V2::new((SCREEN_SIZE - x) as f32, BUTTON_SIZE as f32),
-                        Color::white(),
                         None,
                         Some("controls text"),
                     );
-                    self.current_page_actors.push(text_actor_id);
-                    current_player_actors.push(text_actor_id);
+
+                    result.write(
+                        &generate_word_matrix(&self.score[i].to_string(), text_size.x as u8, &Color::blue(), false).0,
+                        &text_center,
+                        None,
+                        None,
+                        None,
+                        Some(camera),
+                    );
+
+                    self.current_text_actors.push(text_actor_id);
                 }
                 if player_index == 0 {
                     let mut pivot = V2::one() * ((SCREEN_SIZE / 2) as f32 - 1.0);
                     pivot.y -= (SCREEN_SIZE / 4) as f32;
 
-                    for actor_id in &self.current_page_actors {
+                    for actor_id in &self.current_text_actors {
+                        if let Some(actor_transform) = world.get_mut_transform(actor_id) {
+                            actor_transform.rotate_around(&pivot, &180.0);
+                        }
+                    }
+
+                    for actor_id in &self.current_icon_actors {
                         if let Some(actor_transform) = world.get_mut_transform(actor_id) {
                             actor_transform.rotate_around(&pivot, &180.0);
                         }

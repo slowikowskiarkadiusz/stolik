@@ -19,7 +19,6 @@ pub struct World {
     colliders: [Option<Collider>; MAX_ACTORS],
     physics: [Option<Physics>; MAX_ACTORS],
     pub(crate) blinkers: [Option<Blinker>; MAX_ACTORS],
-    renders: [Option<ColorMatrix>; MAX_ACTORS],
     collision_matrix: [CollisionMask; CollisionMaskId::MAX as usize],
 }
 
@@ -34,7 +33,6 @@ impl World {
             colliders: core::array::from_fn(|_| None),
             physics: core::array::from_fn(|_| None),
             blinkers: core::array::from_fn(|_| None),
-            renders: core::array::from_fn(|_| None),
             collision_matrix: [CollisionMask::MAX; CollisionMaskId::MAX as usize],
         }
     }
@@ -93,21 +91,12 @@ impl World {
         self.blinkers[*actor_id as usize].as_mut()
     }
 
-    pub fn get_render(&self, actor_id: &ActorId) -> Option<&ColorMatrix> {
-        self.renders[*actor_id as usize].as_ref()
-    }
-
-    pub fn get_mut_render(&mut self, actor_id: &ActorId) -> Option<&mut ColorMatrix> {
-        self.renders[*actor_id as usize].as_mut()
-    }
-
     pub fn add_new_actor(
         &mut self,
         transform: Option<Transform>,
         collider: Option<Collider>,
         physics: Option<Physics>,
         blinker: Option<Blinker>,
-        render: Option<ColorMatrix>,
     ) -> ActorId {
         let slot = (0..MAX_ACTORS).find(|&i| !self.actor_alive[i]).expect("MAX_ACTORS exceeded") as ActorId;
 
@@ -120,7 +109,6 @@ impl World {
         self.colliders[idx] = collider;
         self.physics[idx] = physics;
         self.blinkers[idx] = blinker;
-        self.renders[idx] = render;
 
         slot
     }
