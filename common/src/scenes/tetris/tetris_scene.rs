@@ -1,5 +1,10 @@
 use crate::{
-    engine::{components::{collider::CollisionResult, world::World}, engine::ActorId, hash_map::HashMap, scene::Scene},
+    engine::{
+        components::{collider::CollisionResult, world::World},
+        engine::ActorId,
+        hash_map::HashMap,
+        scene::Scene,
+    },
     scenes::{
         tetris::{board::create_board_actor, world::TetrisWorld},
         utils::print_victory_text,

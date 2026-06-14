@@ -146,7 +146,7 @@ impl<'a> Esp32Input<'a> {
         if (pin.clone() as u8) < 90 {
             self.gpio_buttons[&pin].is_low()
         } else {
-            (expander_state & (1 << (pin as u8 - 90))) == 0
+            (expander_state & (1 << (pin.clone() as u8 - 90))) == 0
         }
     }
 
@@ -169,7 +169,7 @@ impl<'a> Esp32Input<'a> {
 
     fn map_key(key: Key) -> Vec<IoPin> {
         match key {
-            Key::Start => vec![IoPin::Gpio1],
+            Key::Start => vec![IoPin::Gpio40],
             Key::P1Down => vec![IoPin::Gpio39],
             Key::P1Up => vec![IoPin::Gpio36],
             Key::P1Left => vec![IoPin::Gpio35],
@@ -293,48 +293,31 @@ use pcf857x::{Pcf8574, PinFlag, SlaveAddr};
 
 #[task]
 pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
-    let i2c_config = esp_hal::i2c::master::Config::default().with_software_timeout(esp_hal::i2c::master::SoftwareTimeout::Transaction(
-        esp_hal::time::Duration::from_millis(5),
-    ));
+    let i2c_config = esp_hal::i2c::master::Config::default().with_software_timeout(
+        esp_hal::i2c::master::SoftwareTimeout::Transaction(esp_hal::time::Duration::from_millis(5)),
+    );
     let mut i2c = esp_hal::i2c::master::I2c::new(setup.i2c0, i2c_config)
         .unwrap()
         .with_sda(setup.gpio19)
         .with_scl(setup.gpio20);
 
-    let i2c_compat = i2c.reverse();
-    let mut expander = Pcf8574::new(i2c_compat, SlaveAddr::default());
+    const ADDR: u8 = 0x20;
 
-    let mask =
-        PinFlag::P0
-        | PinFlag::P1
-        | PinFlag::P2
-        | PinFlag::P3
-        | PinFlag::P4
-        | PinFlag::P5
-        | PinFlag::P6
-        | PinFlag::P7;
-        // |
-        // PinFlag::P10
-        // | PinFlag::P11
-        // | PinFlag::P12
-        // | PinFlag::P13
-        // | PinFlag::P14
-        // | PinFlag::P15
-        // | PinFlag::P16
-        // | PinFlag::P17;
+    // IODIRB = wszystkie wejścia
+    let _ = i2c.write(ADDR, &[0x01, 0xFF]);
+    // GPPUB = pull-upy włączone
+    let _ = i2c.write(ADDR, &[0x0D, 0xFF]);
 
     let mut i = 0;
-
     loop {
-        if let Ok(inputs) = expander.get(&mask) {
-            EXPANDER_DATA.signal(inputs);
-            // println!("hej {}", inputs);
+        let mut data = [0xFFu8; 2];
+        if i2c.write_read(ADDR, &[0x12], &mut data).is_ok() {
+            EXPANDER_DATA.signal(data[1]); // GPIOB
         } else {
             i += 1;
             i %= 100;
-            println!("Halo {}", i);
+            // println!("Halo {}", i);
         }
-
         Timer::after_millis(10).await;
     }
 }

@@ -33,9 +33,7 @@ fn linker_be_nice() {
                 }
                 "embedded_test_linker_file_not_added_to_rustflags" => {
                     eprintln!();
-                    eprintln!(
-                        "💡 `embedded-test` not found - make sure `embedded-test.x` is added as a linker script for tests"
-                    );
+                    eprintln!("💡 `embedded-test` not found - make sure `embedded-test.x` is added as a linker script for tests");
                     eprintln!();
                 }
                 "free"
@@ -47,9 +45,7 @@ fn linker_be_nice() {
                 | "calloc_internal"
                 | "free_internal" => {
                     eprintln!();
-                    eprintln!(
-                        "💡 Did you forget the `esp-alloc` dependency or didn't enable the `compat` feature on it?"
-                    );
+                    eprintln!("💡 Did you forget the `esp-alloc` dependency or didn't enable the `compat` feature on it?");
                     eprintln!();
                 }
                 _ => (),

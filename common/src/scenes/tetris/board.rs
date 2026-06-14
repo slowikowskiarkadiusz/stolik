@@ -13,13 +13,11 @@ use crate::engine::input::key::Key;
 use crate::scenes::tetris::world::TetrisWorld;
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2},
-    scenes::tetris::{
-        block::Block,
-        garbage_bar::GarbageBar,
-        hold_logic::HoldLogic,
-        shape::Shape,
-    },
+    scenes::tetris::{block::Block, garbage_bar::GarbageBar, hold_logic::HoldLogic, shape::Shape},
 };
+
+#[cfg(feature = "esp")]
+use esp_println::println;
 
 /// Rendering scale. Logic stays at 1×; all render matrices are pre-scaled at creation.
 /// Toggle between 1 and 2 for debugging — no per-frame scaling ever happens.
@@ -102,7 +100,8 @@ impl Board {
             // For BOARD_WIDTH=10 (even): board_area_x = SCALE
             board_area_x: SCALE,
             board_area_y: (size.y as u8 - 1 - BOARD_HEIGHT) * SCALE,
-            garbage_hole: (SmallRng::from_seed([(seed % 255) as u8; core::mem::size_of::<SmallRng>()]).next_u32() % BOARD_WIDTH as u32) as u8,
+            garbage_hole: (SmallRng::from_seed([(seed % 255) as u8; core::mem::size_of::<SmallRng>()]).next_u32() % BOARD_WIDTH as u32)
+                as u8,
             continue_dropping: true,
             drop_timer: 0.0,
             lock_delay_timer: 0.0,
@@ -249,13 +248,13 @@ impl Board {
         // Top-left = center*SCALE - matrix_size/2  (integer, matches write()'s ceilf behaviour)
         {
             let m = self.garbage_bar.render();
-            let tlx = self.garbage_bar.center.x as i16 * si - m.width  as i16 / 2;
+            let tlx = self.garbage_bar.center.x as i16 * si - m.width as i16 / 2;
             let tly = self.garbage_bar.center.y as i16 * si - m.height as i16 / 2;
             dst.blit(m, tlx, tly);
         }
         {
             let m = self.hold_logic.render();
-            let tlx = self.hold_logic.center.x as i16 * si - m.width  as i16 / 2;
+            let tlx = self.hold_logic.center.x as i16 * si - m.width as i16 / 2;
             let tly = self.hold_logic.center.y as i16 * si - m.height as i16 / 2;
             dst.blit(m, tlx, tly);
         }
@@ -277,7 +276,9 @@ impl Board {
             for my in 0..scaled.height as i16 {
                 for mx in 0..scaled.width as i16 {
                     let c = *scaled.get(mx as u8, my as u8);
-                    if c.a == 0 { continue; }
+                    if c.a == 0 {
+                        continue;
+                    }
                     let px = (cx - wh) * si + mx + bx;
                     let py = (cy - hh) * si + my + by;
                     if px >= 0 && py >= 0 && px < dw && py < dh {
@@ -296,7 +297,9 @@ impl Board {
             for my in 0..scaled.height as i16 {
                 for mx in 0..scaled.width as i16 {
                     let c = *scaled.get(mx as u8, my as u8);
-                    if c.a == 0 { continue; }
+                    if c.a == 0 {
+                        continue;
+                    }
                     let px = (cx - wh) * si + mx + bx;
                     let py = (cy - hh) * si + my + by;
                     if px >= 0 && py >= 0 && px < dw && py < dh {
@@ -603,7 +606,11 @@ impl Board {
 
             for x in 0..BOARD_WIDTH {
                 self.is_cell_taken.set(x, BOARD_HEIGHT - 1, x != hole as u8);
-                let color = if x != hole as u8 { Color::white().a(127).clone() } else { Color::none() };
+                let color = if x != hole as u8 {
+                    Color::white().a(127).clone()
+                } else {
+                    Color::none()
+                };
                 for dy in 0..s {
                     for dx in 0..s {
                         self.static_buf.set(x * s + bx + dx, (BOARD_HEIGHT - 1) * s + by + dy, color);
@@ -637,7 +644,11 @@ pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_
         None,
         None,
         None,
-        Some(ColorMatrix::new(board.size.x as u8 * SCALE, board.size.y as u8 * SCALE, Color::none())),
+        Some(ColorMatrix::new(
+            board.size.x as u8 * SCALE,
+            board.size.y as u8 * SCALE,
+            Color::none(),
+        )),
     );
 
     tetris_world.add_new_actor(actor_id, Some(board));
