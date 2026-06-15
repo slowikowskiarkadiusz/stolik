@@ -6,10 +6,15 @@ use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use crate::{
     engine::{
+        actor::text::create_text_actor_at_center,
         color::Color,
         color_matrix::ColorMatrix,
         components::{
-            camera::Camera, collider::{Collider, ColliderPart, ColliderType, CollisionResult}, physics::Physics, transform::Transform, world::World
+            camera::Camera,
+            collider::{Collider, ColliderPart, ColliderType, CollisionResult},
+            physics::Physics,
+            transform::Transform,
+            world::World,
         },
         engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene},
         hash_map::HashMap,
@@ -24,17 +29,27 @@ use alloc::vec;
 static ORIGINAL_BALL_SPEED: f32 = 10.0;
 static SIZE_FACTOR: f32 = SCREEN_SIZEF32 / 32.0;
 static BALL_SIZE: f32 = 2.0 * SIZE_FACTOR;
+static CELL_SIZE: f32 = 4.0;
+
+static QBLOCKS: [V2; 4] = [V2::new(17.0, 6.0), V2::new(22.0, 6.0), V2::new(24.0, 6.0), V2::new(23.0, 10.0)];
+static BRICKS: [V2; 3] = [V2::new(21.0, 6.0), V2::new(23.0, 6.0), V2::new(25.0, 6.0)];
+static PIPES: [(f32, f32, f32); 1] = [(29.0, 2.0, 4.0)];
 
 pub struct MarioScene {
-    ball: ActorId,
+    plumber: ActorId,
     foot_sensor: ActorId,
     collides: bool,
     resize_timer: f32,
 
     walls: Vec<ActorId>,
     floors: Vec<ActorId>,
+    qblocks: Vec<ActorId>,
     pipes: Vec<ActorId>,
-    platforms: Vec<ActorId>,
+    bricks: Vec<ActorId>,
+}
+
+fn at(x: f32, y: f32) -> V2 {
+    V2::new(x * CELL_SIZE, SCREEN_SIZEF32 - (y * CELL_SIZE))
 }
 
 impl Scene for MarioScene {
@@ -42,81 +57,58 @@ impl Scene for MarioScene {
         let map_width = 128.0_f32;
         let map_height = 64.0_f32;
 
-        // podłoga
-        self.floors.push(create_rectangle_actor(
-            world,
-            V2::new(map_width / 2.0, map_height - SIZE_FACTOR / 2.0),
-            V2::new(map_width, SIZE_FACTOR),
-            // Color::white(),
-            None,
-        ));
-
-        // rury
-        let pipe_positions = [16.0, 48.0, 80.0, 112.0];
-        let pipe_height = 12.0;
-        let pipe_width = 6.0;
-        for px in pipe_positions {
-            self.pipes.push(create_rectangle_actor(
+        for x in 0..10 {
+            self.floors.push(create_rectangle_at_origin(
                 world,
-                V2::new(px, map_height - pipe_height / 2.0 - SIZE_FACTOR),
-                V2::new(pipe_width, pipe_height),
-                // Color::green(),
-                None,
+                at(x as f32 * 4.0, 0f32),
+                at((x as f32 * 4.0 + 4.0), 2.0),
+                false,
             ));
         }
 
-        // platformy nad rurami (ten sam Y)
-        let platform_y = map_height - pipe_height - SIZE_FACTOR - 8.0;
-        for px in pipe_positions {
-            self.pipes.push(create_rectangle_actor(
+        for (x0, y0, y1) in &PIPES {
+            self.pipes.push(create_rectangle_at_origin(
                 world,
-                V2::new(px - 10.0, platform_y),
-                V2::new(14.0, SIZE_FACTOR),
-                // Color::new(139, 69, 19, 255),
-                None,
+                at(x0.clone(), y0.clone()),
+                at((x0 + 2.0), y1.clone()),
+                true,
             ));
         }
 
-        // ściany
+        for point_at in &BRICKS {
+            self.bricks.push(create_rectangle_at_origin(
+                world,
+                at(point_at.x, point_at.y),
+                at((point_at.x + 1.0), (point_at.y + 1.0)),
+                true,
+            ));
+        }
+
+        for point_at in &QBLOCKS {
+            self.qblocks.push(create_rectangle_at_origin(
+                world,
+                at(point_at.x, point_at.y),
+                at((point_at.x + 1.0), (point_at.y + 1.0)),
+                true,
+            ));
+        }
+
         let wall_thickness = SIZE_FACTOR;
-        self.walls.push(create_rectangle_actor(
-            world,
-            V2::new(map_width / 2.0, wall_thickness / 2.0),
-            V2::new(map_width, wall_thickness),
-            // Color::white(),
-            None,
-        ));
         self.walls.push(create_rectangle_actor(
             world,
             V2::new(wall_thickness / 2.0, map_height / 2.0),
             V2::new(wall_thickness, map_height),
-            // Color::none(),
-            None,
+            true,
         ));
         self.walls.push(create_rectangle_actor(
             world,
-            V2::new(map_width - wall_thickness / 2.0, map_height / 2.0),
-            V2::new(wall_thickness, map_height),
-            // Color::none(),
-            None,
-        ));
-        self.walls.push(create_rectangle_actor(
-            world,
-            V2::new(map_width / 2.0, map_height - wall_thickness / 2.0),
+            V2::new(map_width / 2.0, map_height - wall_thickness / 2.0 - 6.0),
             V2::new(map_width, wall_thickness),
-            // Color::white(),
-            None,
+            true,
         ));
 
-        // ball
-        self.ball = create_rectangle_actor(
-            world,
-            V2::new(8.0, map_height * 0.5),
-            V2::one() * BALL_SIZE,
-            // Color::white(),
-            Some("ball"),
-        );
-        world.get_mut_physics(&self.ball).unwrap().with_can_move(true);
+        self.plumber = create_rectangle_actor(world, V2::new(8.0, map_height * 0.5), V2::one() * BALL_SIZE, true);
+        world.get_mut_physics(&self.plumber).unwrap().with_can_move(true);
 
         self.foot_sensor = world.add_new_actor(
             Some(Transform::new(
@@ -124,11 +116,7 @@ impl Scene for MarioScene {
                 V2::new(BALL_SIZE - 1.0, 1.0),
             )),
             Some(Collider::new(
-                vec![ColliderPart {
-                    offset: V2::zero(),
-                    extend: V2::new(BALL_SIZE - 1.0, 1.0),
-                    is_overlap: true,
-                }],
+                vec![ColliderPart::rect(V2::zero(), V2::new(BALL_SIZE - 1.0, 1.0), true)],
                 Some(0),
             )),
             None,
@@ -139,88 +127,29 @@ impl Scene for MarioScene {
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
         self.handle_input(input, world, delta_time);
 
-        let ball_center = world.get_transform(&self.ball).unwrap().center;
+        let plumber_center = world.get_transform(&self.plumber).unwrap().center;
 
         if let Some(t) = world.get_mut_transform(&self.foot_sensor) {
-            t.center = V2::new(ball_center.x, ball_center.y + BALL_SIZE / 2.0 + 0.5);
+            t.center = V2::new(plumber_center.x, plumber_center.y + BALL_SIZE / 2.0 + 0.5);
         }
         let mut camera = world.get_mut_camera();
-        camera.set_x(ball_center.x);
+        camera.set_x(plumber_center.x);
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
         let vsize = camera.get_viewport().get_size();
         let mut result = ColorMatrix::new(vsize.x as u8, vsize.y as u8, Color::none());
 
-        for actor_id in &self.walls {
-            if let Some(transform) = world.get_transform(&actor_id) {
-                result.write(
-                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
-                    &transform.center,
-                    None,
-                    None,
-                    None,
-                    Some(camera),
-                );
-            }
-        }
+        render_static_objects(&self.walls, Color::white(), world, camera, &mut result);
+        render_static_objects(&self.bricks, Color::brown(), world, camera, &mut result);
+        render_static_objects(&self.pipes, Color::green(), world, camera, &mut result);
+        render_static_objects(&self.qblocks, Color::yellow(), world, camera, &mut result);
+        render_static_objects(&self.floors, Color::brown(), world, camera, &mut result);
 
-        for actor_id in &self.platforms {
-            if let Some(transform) = world.get_transform(&actor_id) {
-                result.write(
-                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::brown()),
-                    &transform.center,
-                    None,
-                    None,
-                    None,
-                    Some(camera),
-                );
-            }
-        }
-
-        for actor_id in &self.pipes {
-            if let Some(transform) = world.get_transform(&actor_id) {
-                result.write(
-                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::green()),
-                    &transform.center,
-                    None,
-                    None,
-                    None,
-                    Some(camera),
-                );
-            }
-        }
-
-        for actor_id in &self.pipes {
-            if let Some(transform) = world.get_transform(&actor_id) {
-                result.write(
-                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::green()),
-                    &transform.center,
-                    None,
-                    None,
-                    None,
-                    Some(camera),
-                );
-            }
-        }
-
-        for actor_id in &self.floors {
-            if let Some(transform) = world.get_transform(&actor_id) {
-                result.write(
-                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::brown()),
-                    &transform.center,
-                    None,
-                    None,
-                    None,
-                    Some(camera),
-                );
-            }
-        }
-
-        if let Some(ball_transform) = world.get_transform(&self.ball) {
+        if let Some(plumber_transform) = world.get_transform(&self.plumber) {
             result.write(
-                &ColorMatrix::new(ball_transform.size.x as u8, ball_transform.size.y as u8, Color::green()),
-                &ball_transform.center,
+                &ColorMatrix::new(plumber_transform.size.x as u8, plumber_transform.size.y as u8, Color::blue()),
+                &plumber_transform.center,
                 None,
                 None,
                 None,
@@ -235,40 +164,34 @@ impl Scene for MarioScene {
         self.collides = false;
         for col in overlaps {
             if col.0 == &self.foot_sensor {
-                if col.1.iter().any(|c| c != &self.ball) {
+                if col.1.iter().any(|c| c != &self.plumber) {
                     self.collides = true;
                 }
             }
         }
     }
 
-    fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32) {
-        // self.collides = false;
-        // for col in collisions {
-        //     if col.0 == &self.ball && col.1[0].0 == self.wall_bottom {
-        //         self.collides = true;
-        //     }
-        // }
-    }
+    fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32) {}
 }
 
 impl MarioScene {
     pub fn new() -> Self {
         Self {
-            ball: 0,
+            plumber: 0,
             foot_sensor: 0,
             collides: false,
             resize_timer: 0.0,
 
             walls: Vec::new(),
+            qblocks: Vec::new(),
             floors: Vec::new(),
             pipes: Vec::new(),
-            platforms: Vec::new(),
+            bricks: Vec::new(),
         }
     }
 
     fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, delta_time: f32) {
-        if let Some(ball_physics) = world.get_mut_physics(&self.ball) {
+        if let Some(plumber_physics) = world.get_mut_physics(&self.plumber) {
             let is_left = input.is_key_press(Key::P1Left);
             let is_right = input.is_key_press(Key::P1Right);
             let is_down = input.is_key_press(Key::P1Down);
@@ -282,7 +205,7 @@ impl MarioScene {
                     0.0
                 },
                 if is_up && self.collides {
-                    -1000.0
+                    -1400.0
                 } else if is_down {
                     1.0
                 } else {
@@ -290,25 +213,76 @@ impl MarioScene {
                 },
             );
 
-            ball_physics.add_force(move_by);
+            plumber_physics.add_force(move_by);
         }
     }
 }
 
-fn create_rectangle_actor(world: &mut World, center: V2, size: V2, _name: Option<&str>) -> ActorId {
+fn create_rectangle_actor(world: &mut World, center: V2, size: V2, collides: bool) -> ActorId {
     let mut physics = Physics::new();
     physics.with_mass(1.0).with_drag(0.8);
     world.add_new_actor(
         Some(Transform::new(center, size.clone())),
-        Some(Collider::new(
-            vec![ColliderPart {
-                offset: V2::zero(),
-                extend: size.clone(),
-                is_overlap: false,
-            }],
-            Some(0),
-        )),
+        if collides {
+            Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size.clone(), false)], Some(0)))
+        } else {
+            None
+        },
         Some(physics),
         None,
     )
+}
+
+fn create_plumber(world: &mut World, center: V2, size: V2, collides: bool) -> ActorId {
+    let mut physics = Physics::new();
+    physics.with_mass(1.0).with_drag(0.8);
+    world.add_new_actor(
+        Some(Transform::new(center, size.clone())),
+        if collides {
+            Some(Collider::new(
+                vec![
+                    ColliderPart::rect(V2::new(0.0, size.y / 2.0), size.clone() / 2.0, false),
+                    ColliderPart::circle(V2::zero(), size.y, false),
+                ],
+                Some(0),
+            ))
+        } else {
+            None
+        },
+        Some(physics),
+        None,
+    )
+}
+
+fn create_rectangle_at_origin(world: &mut World, from: V2, to: V2, collides: bool) -> ActorId {
+    let center = V2::new((from.x + to.x) / 2.0, (from.y + to.y) / 2.0);
+    let size = V2::new((to.x - from.x).abs(), (to.y - from.y).abs());
+
+    let mut physics = Physics::new();
+    physics.with_mass(1.0).with_drag(0.8);
+    world.add_new_actor(
+        Some(Transform::new(center, size.clone())),
+        if collides {
+            Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size.clone(), false)], Some(0)))
+        } else {
+            None
+        },
+        Some(physics),
+        None,
+    )
+}
+
+fn render_static_objects(collection: &Vec<ActorId>, color: Color, world: &World, camera: &Camera, result: &mut ColorMatrix) {
+    for actor_id in collection {
+        if let Some(transform) = world.get_transform(&actor_id) {
+            result.write(
+                &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, color),
+                &transform.center,
+                None,
+                None,
+                None,
+                Some(camera),
+            );
+        }
+    }
 }

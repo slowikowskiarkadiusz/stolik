@@ -17,6 +17,12 @@ pub enum ColliderType {
     Overlapping,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum ColliderShape {
+    Rect,
+    Circle,
+}
+
 pub struct CollisionResult {
     pub normal: V2,
     pub penetration: f32,
@@ -28,7 +34,40 @@ pub struct CollisionResult {
 pub struct ColliderPart {
     pub offset: V2,
     pub extend: V2,
+    pub shape: ColliderShape,
     pub is_overlap: bool,
+}
+
+#[derive(Clone, Copy)]
+pub struct ColliderPartDebug {
+    pub center: V2,
+    pub extend: V2,
+    pub shape: ColliderShape,
+    pub is_overlap: bool,
+}
+
+impl ColliderPart {
+    pub fn rect(offset: V2, extend: V2, is_overlap: bool) -> Self {
+        Self {
+            offset,
+            extend,
+            shape: ColliderShape::Rect,
+            is_overlap,
+        }
+    }
+
+    pub fn circle(offset: V2, radius: f32, is_overlap: bool) -> Self {
+        Self {
+            offset,
+            extend: V2::new(radius * 2.0, radius * 2.0),
+            shape: ColliderShape::Circle,
+            is_overlap,
+        }
+    }
+
+    pub fn radius(&self) -> f32 {
+        self.extend.x / 2.0
+    }
 }
 
 pub struct Collider {
@@ -153,7 +192,66 @@ impl Collider {
         (min, max)
     }
 
+    fn part_world_center(part: &ColliderPart, center: &V2, rotation: f32) -> V2 {
+        let offset = if rotation != 0.0 {
+            part.offset.rotate(rotation)
+        } else {
+            part.offset
+        };
+        V2::new(center.x + offset.x, center.y + offset.y)
+    }
+
     fn sat_test(
+        first_part: &ColliderPart,
+        first_center: &V2,
+        first_rotation: f32,
+        second_part: &ColliderPart,
+        second_center: &V2,
+        second_rotation: f32,
+    ) -> Option<CollisionResult> {
+        match (first_part.shape, second_part.shape) {
+            (ColliderShape::Rect, ColliderShape::Rect) => Collider::sat_test_poly_poly(
+                first_part,
+                first_center,
+                first_rotation,
+                second_part,
+                second_center,
+                second_rotation,
+            ),
+            (ColliderShape::Circle, ColliderShape::Circle) => Collider::sat_test_circle_circle(
+                first_part,
+                first_center,
+                first_rotation,
+                second_part,
+                second_center,
+                second_rotation,
+            ),
+            (ColliderShape::Rect, ColliderShape::Circle) => Collider::sat_test_poly_circle(
+                first_part,
+                first_center,
+                first_rotation,
+                second_part,
+                second_center,
+                second_rotation,
+            ),
+            (ColliderShape::Circle, ColliderShape::Rect) => Collider::sat_test_poly_circle(
+                second_part,
+                second_center,
+                second_rotation,
+                first_part,
+                first_center,
+                first_rotation,
+            )
+            .map(|r| CollisionResult {
+                normal: V2::new(-r.normal.x, -r.normal.y),
+                penetration: r.penetration,
+                contact_point: r.contact_point,
+                is_overlap: r.is_overlap,
+            }),
+        }
+    }
+
+    fn sat_test_poly_poly(
         first_part: &ColliderPart,
         first_center: &V2,
         first_rotation: f32,
@@ -240,6 +338,111 @@ impl Collider {
             penetration: min_penetration,
             contact_point,
             is_overlap: first_part.is_overlap || second_part.is_overlap,
+        })
+    }
+
+    fn sat_test_circle_circle(
+        first_part: &ColliderPart,
+        first_center: &V2,
+        first_rotation: f32,
+        second_part: &ColliderPart,
+        second_center: &V2,
+        second_rotation: f32,
+    ) -> Option<CollisionResult> {
+        let c1 = Collider::part_world_center(first_part, first_center, first_rotation);
+        let c2 = Collider::part_world_center(second_part, second_center, second_rotation);
+        let r1 = first_part.radius();
+        let r2 = second_part.radius();
+
+        let dir = &c2 - &c1;
+        let dist = dir.mag();
+        let overlap = r1 + r2 - dist;
+        if overlap <= 0.0 {
+            return None;
+        }
+
+        let normal = if dist > 1e-5 { dir.norm() } else { V2::new(0.0, 1.0) };
+        let contact_point = V2::new(c1.x + normal.x * r1, c1.y + normal.y * r1);
+
+        Some(CollisionResult {
+            normal,
+            penetration: overlap,
+            contact_point,
+            is_overlap: first_part.is_overlap || second_part.is_overlap,
+        })
+    }
+
+    fn sat_test_poly_circle(
+        poly_part: &ColliderPart,
+        poly_center: &V2,
+        poly_rotation: f32,
+        circle_part: &ColliderPart,
+        circle_center: &V2,
+        circle_rotation: f32,
+    ) -> Option<CollisionResult> {
+        let poly_verts = Collider::get_parts_vertices(poly_part).map(|v| {
+            let local = &v + &poly_part.offset;
+            let rotated = if poly_rotation != 0.0 { local.rotate(poly_rotation) } else { local };
+            &rotated + poly_center
+        });
+
+        let circle_world_center = Collider::part_world_center(circle_part, circle_center, circle_rotation);
+        let radius = circle_part.radius();
+
+        let mut closest_vert = poly_verts[0];
+        let mut closest_dist = f32::MAX;
+        for v in &poly_verts {
+            let d = v.distance(&circle_world_center);
+            if d < closest_dist {
+                closest_dist = d;
+                closest_vert = *v;
+            }
+        }
+
+        let mut axes: [Option<V2>; 5] = [None; 5];
+        for i in 0..poly_verts.len() {
+            let j = (i + 1) % poly_verts.len();
+            let edge = &poly_verts[j] - &poly_verts[i];
+            axes[i] = Some(V2::new(-edge.y, edge.x).norm());
+        }
+        let axis_to_circle = &circle_world_center - &closest_vert;
+        if axis_to_circle.mag() > 1e-5 {
+            axes[4] = Some(axis_to_circle.norm());
+        }
+
+        let mut min_penetration = f32::MAX;
+        let mut best_normal = V2::new(0.0, 0.0);
+
+        for axis in axes.iter().flatten() {
+            let proj_poly = Collider::project_shape(&poly_verts, axis);
+            let center_proj = circle_world_center.dot(axis);
+            let proj_circle = (center_proj - radius, center_proj + radius);
+
+            let overlap = f32::min(proj_poly.1, proj_circle.1) - f32::max(proj_poly.0, proj_circle.0);
+            if overlap <= 0.0 {
+                return None;
+            }
+            if overlap < min_penetration {
+                min_penetration = overlap;
+                best_normal = *axis;
+            }
+        }
+
+        let dir = &circle_world_center - poly_center;
+        if dir.dot(&best_normal) < 0.0 {
+            best_normal = V2::new(-best_normal.x, -best_normal.y);
+        }
+
+        let contact_point = V2::new(
+            circle_world_center.x - best_normal.x * radius,
+            circle_world_center.y - best_normal.y * radius,
+        );
+
+        Some(CollisionResult {
+            normal: best_normal,
+            penetration: min_penetration,
+            contact_point,
+            is_overlap: poly_part.is_overlap || circle_part.is_overlap,
         })
     }
 

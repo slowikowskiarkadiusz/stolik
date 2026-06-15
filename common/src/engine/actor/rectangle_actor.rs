@@ -23,11 +23,7 @@ pub fn create_rectangle_actor(
         Some(Transform::new(center, size.clone())),
         if let Some(col_type) = collider_type {
             Some(Collider::new(
-                vec![ColliderPart {
-                    offset: V2::zero(),
-                    extend: size.clone(),
-                    is_overlap: col_type == ColliderType::Blocking,
-                }],
+                vec![ColliderPart::rect(V2::zero(), size.clone(), col_type == ColliderType::Blocking)],
                 Some(0),
             ))
         } else {

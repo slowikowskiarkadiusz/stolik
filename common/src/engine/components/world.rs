@@ -3,12 +3,16 @@ extern crate alloc;
 use crate::engine::{
     color_matrix::ColorMatrix,
     components::{
-        blinker::Blinker, camera::Camera, collider::{Collider, CollisionMask, CollisionMaskId}, physics::Physics, transform::Transform
+        blinker::Blinker,
+        camera::{Camera, Viewport},
+        collider::{Collider, ColliderPart, ColliderPartDebug, CollisionMask, CollisionMaskId},
+        physics::Physics,
+        transform::Transform,
     },
-    engine::ActorId,
+    engine::ActorId, v2::V2,
 };
 
-pub const MAX_ACTORS: usize = 32;
+pub const MAX_ACTORS: usize = 1000;
 
 pub struct World {
     camera: Camera,
@@ -77,6 +81,33 @@ impl World {
 
     pub fn get_collider(&self, actor_id: &ActorId) -> Option<&Collider> {
         self.colliders[*actor_id as usize].as_ref()
+    }
+
+    pub fn _debug_get_collider_parts(&self, viewport: Viewport) -> Vec<ColliderPartDebug> {
+        self.colliders
+            .iter()
+            .zip(self.transforms.iter())
+            .filter_map(|(c, t)| match (c, t) {
+                (Some(collider), Some(transform)) => Some((collider, transform)),
+                _ => None,
+            })
+            .flat_map(|(collider, transform)| {
+                collider.collider_parts.iter().map(move |part| {
+                    let offset = if transform.rotation != 0.0 {
+                        part.offset.rotate(transform.rotation)
+                    } else {
+                        part.offset
+                    };
+
+                    ColliderPartDebug {
+                        center: &V2::new(transform.center.x + offset.x, transform.center.y + offset.y) - &viewport.from,
+                        extend: part.extend,
+                        shape: part.shape,
+                        is_overlap: part.is_overlap,
+                    }
+                })
+            })
+            .collect()
     }
 
     pub fn get_mut_collider(&mut self, actor_id: &ActorId) -> Option<&mut Collider> {

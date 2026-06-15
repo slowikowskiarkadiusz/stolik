@@ -3,7 +3,12 @@ use crate::{
         asyncable::AsyncableStorage,
         color::Color,
         color_matrix::ColorMatrix,
-        components::{camera, collider::Collider, physics::Physics, world::World},
+        components::{
+            camera,
+            collider::{Collider, ColliderPartDebug},
+            physics::Physics,
+            world::World,
+        },
         input::input::Input,
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
@@ -52,7 +57,11 @@ impl Engine {
         }
     }
 
-    pub fn run<T: Thread>(&mut self, on_frame_finished: Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static>) {
+    pub fn run<T: Thread>(
+        &mut self,
+        on_frame_finished: Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static>,
+        colliders_debug: Option<Arc<dyn Fn(Vec<ColliderPartDebug>) + Send + Sync + 'static>>,
+    ) {
         self.ensure_scene();
 
         let mut engine_timer = 0.0;
@@ -67,6 +76,9 @@ impl Engine {
 
             if engine_timer >= 0.033 {
                 self.tick_frame(engine_timer, &on_frame_finished);
+                if let Some(ref func) = colliders_debug {
+                    func(self.world._debug_get_collider_parts(self.world.get_camera().get_viewport().clone()));
+                }
                 self.input.as_mut().late_update(dt);
                 engine_timer = 0.0;
             } else {

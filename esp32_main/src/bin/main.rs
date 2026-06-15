@@ -471,7 +471,7 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
             //println!("engine: pre-tick {}", frame_count + 1);
         }
         //println!("engine: pre-tick {}", frame_count + 1);
-        engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
+        engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func, None);
         Timer::after(Duration::from_millis(0)).await;
         //println!("engine: post-tick {}", frame_count + 1);
 
