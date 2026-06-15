@@ -1,5 +1,4 @@
 extern crate alloc;
-use std::mem::transmute;
 
 use alloc::{boxed::Box, string::ToString, vec::Vec};
 use rand::{Rng, SeedableRng, rngs::SmallRng};
@@ -31,9 +30,30 @@ static SIZE_FACTOR: f32 = SCREEN_SIZEF32 / 32.0;
 static BALL_SIZE: f32 = 2.0 * SIZE_FACTOR;
 static CELL_SIZE: f32 = 4.0;
 
-static QBLOCKS: [V2; 4] = [V2::new(17.0, 6.0), V2::new(22.0, 6.0), V2::new(24.0, 6.0), V2::new(23.0, 10.0)];
-static BRICKS: [V2; 3] = [V2::new(21.0, 6.0), V2::new(23.0, 6.0), V2::new(25.0, 6.0)];
-static PIPES: [(f32, f32, f32); 1] = [(29.0, 2.0, 4.0)];
+static QBLOCKS: [V2; 6] = [
+    V2::new(17.0, 6.0),
+    V2::new(22.0, 6.0),
+    V2::new(24.0, 6.0),
+    V2::new(23.0, 10.0),
+    V2::new(65.0, 7.0),
+    V2::new(79.0, 6.0),
+];
+static BRICKS: [V2; 12] = [
+    V2::new(21.0, 6.0),
+    V2::new(23.0, 6.0),
+    V2::new(25.0, 6.0),
+    V2::new(78.0, 6.0),
+    V2::new(80.0, 6.0),
+    V2::new(82.0, 10.0),
+    V2::new(83.0, 10.0),
+    V2::new(84.0, 10.0),
+    V2::new(85.0, 10.0),
+    V2::new(86.0, 10.0),
+    V2::new(87.0, 10.0),
+    V2::new(88.0, 10.0),
+];
+static PIPES: [(f32, f32, f32); 4] = [(29.0, 2.0, 4.0), (39.0, 2.0, 5.0), (47.0, 2.0, 6.0), (58.0, 2.0, 6.0)];
+static FLOOR: [(f32, f32); 5] = [(0.0, 30.0), (30.0, 70.0), (72.0, 87.0), (90.0, 154.0), (156.0, 200.0)];
 
 pub struct MarioScene {
     plumber: ActorId,
@@ -57,12 +77,12 @@ impl Scene for MarioScene {
         let map_width = 128.0_f32;
         let map_height = 64.0_f32;
 
-        for x in 0..10 {
+        for (from_x, to_x) in &FLOOR {
             self.floors.push(create_rectangle_at_origin(
                 world,
-                at(x as f32 * 4.0, 0f32),
-                at((x as f32 * 4.0 + 4.0), 2.0),
-                false,
+                at(from_x.clone(), 0.0),
+                at(to_x.clone(), 2.0),
+                true,
             ));
         }
 
@@ -100,14 +120,14 @@ impl Scene for MarioScene {
             V2::new(wall_thickness, map_height),
             true,
         ));
-        self.walls.push(create_rectangle_actor(
-            world,
-            V2::new(map_width / 2.0, map_height - wall_thickness / 2.0 - 6.0),
-            V2::new(map_width, wall_thickness),
-            true,
-        ));
+        // self.walls.push(create_rectangle_actor(
+        //     world,
+        //     V2::new(map_width / 2.0, map_height - wall_thickness / 2.0 - 6.0),
+        //     V2::new(map_width, wall_thickness),
+        //     true,
+        // ));
 
-        self.plumber = create_rectangle_actor(world, V2::new(8.0, map_height * 0.5), V2::one() * BALL_SIZE, true);
+        self.plumber = create_plumber(world, V2::new(8.0, map_height * 0.5), V2::one() * BALL_SIZE, true);
         world.get_mut_physics(&self.plumber).unwrap().with_can_move(true);
 
         self.foot_sensor = world.add_new_actor(
@@ -140,13 +160,16 @@ impl Scene for MarioScene {
         let vsize = camera.get_viewport().get_size();
         let mut result = ColorMatrix::new(vsize.x as u8, vsize.y as u8, Color::none());
 
-        render_static_objects(&self.walls, Color::white(), world, camera, &mut result);
-        render_static_objects(&self.bricks, Color::brown(), world, camera, &mut result);
-        render_static_objects(&self.pipes, Color::green(), world, camera, &mut result);
-        render_static_objects(&self.qblocks, Color::yellow(), world, camera, &mut result);
-        render_static_objects(&self.floors, Color::brown(), world, camera, &mut result);
+        let mut i = 0;
+
+        render_static_objects(&self.walls, Color::white(), world, camera, &mut result, &mut i);
+        render_static_objects(&self.bricks, Color::brown(), world, camera, &mut result, &mut i);
+        render_static_objects(&self.pipes, Color::green(), world, camera, &mut result, &mut i);
+        render_static_objects(&self.qblocks, Color::yellow(), world, camera, &mut result, &mut i);
+        render_static_objects(&self.floors, Color::brown(), world, camera, &mut result, &mut i);
 
         if let Some(plumber_transform) = world.get_transform(&self.plumber) {
+            i += 1;
             result.write(
                 &ColorMatrix::new(plumber_transform.size.x as u8, plumber_transform.size.y as u8, Color::blue()),
                 &plumber_transform.center,
@@ -241,8 +264,8 @@ fn create_plumber(world: &mut World, center: V2, size: V2, collides: bool) -> Ac
         if collides {
             Some(Collider::new(
                 vec![
-                    ColliderPart::rect(V2::new(0.0, size.y / 2.0), size.clone() / 2.0, false),
-                    ColliderPart::circle(V2::zero(), size.y, false),
+                    ColliderPart::rect(V2::new(0.0, -size.y / 2.0), V2::new(size.x, size.y / 2.0), false),
+                    ColliderPart::circle(V2::zero(), size.y / 2.0, false),
                 ],
                 Some(0),
             ))
@@ -272,9 +295,13 @@ fn create_rectangle_at_origin(world: &mut World, from: V2, to: V2, collides: boo
     )
 }
 
-fn render_static_objects(collection: &Vec<ActorId>, color: Color, world: &World, camera: &Camera, result: &mut ColorMatrix) {
+fn render_static_objects(collection: &Vec<ActorId>, color: Color, world: &World, camera: &Camera, result: &mut ColorMatrix, i: &mut u32) {
     for actor_id in collection {
-        if let Some(transform) = world.get_transform(&actor_id) {
+        if let Some(transform) = world.get_transform(&actor_id)
+            && camera.can_see_actor(actor_id.clone(), world)
+        {
+            *i += 1;
+
             result.write(
                 &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, color),
                 &transform.center,

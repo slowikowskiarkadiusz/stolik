@@ -14,11 +14,12 @@ use crate::{
         threading_provider::Thread,
         v2::V2,
     },
-    scenes::{mario::mario_scene::MarioScene, menu::menu_scene::MenuScene},
+    scenes::menu::menu_scene::MenuScene,
 };
 extern crate alloc;
 use alloc::boxed::Box;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Instant;

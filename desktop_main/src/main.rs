@@ -5,7 +5,10 @@ use crate::{desktop_input::DesktopInput, desktop_threading_provider::DesktopThre
 use common::engine::{
     color::Color,
     color_matrix::ColorMatrix,
-    components::{camera::Viewport, collider::{ColliderPartDebug, ColliderShape}},
+    components::{
+        camera::Viewport,
+        collider::{ColliderPartDebug, ColliderShape},
+    },
     engine::Engine,
 };
 use minifb::{Key, Window, WindowOptions};
@@ -26,6 +29,8 @@ struct Shared {
 }
 
 fn main() {
+    let debug = std::env::var("STOLIK_DEBUG").map(|v| v == "1").unwrap_or(false);
+
     panic::set_hook(Box::new(|info| {
         eprintln!("PANIC: {}", info);
         eprintln!("Backtrace:\n{:?}", std::backtrace::Backtrace::force_capture());
@@ -51,12 +56,15 @@ fn main() {
             s.color_matrix = Some(mat.clone());
         });
 
-        let debug = Arc::new(move |colliders: Vec<ColliderPartDebug>| {
-            let mut s = one_more_copy.lock().unwrap();
-            s.colliders = Some(colliders.clone());
-        });
+        let mut debug_func: Option<Arc<dyn Fn(Vec<ColliderPartDebug>) + Send + Sync + 'static>> = None;
+        if debug {
+            debug_func = Some(Arc::new(move |colliders: Vec<ColliderPartDebug>| {
+                let mut s = one_more_copy.lock().unwrap();
+                s.colliders = Some(colliders.clone());
+            }));
+        }
 
-        engine.run::<DesktopThread>(on_frame_func, Some(debug));
+        engine.run::<DesktopThread>(on_frame_func, debug_func);
     });
 
     while window.is_open() && !window.is_key_down(Key::Escape) {

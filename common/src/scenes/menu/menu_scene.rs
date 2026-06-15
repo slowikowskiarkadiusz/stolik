@@ -14,7 +14,9 @@ use crate::{
         v2::V2,
     },
     scenes::{
-        mario::mario_scene::MarioScene, pong::pong_scene::PongScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode}
+        mario::mario_scene::MarioScene,
+        pong::pong_scene::PongScene,
+        tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
     },
 };
 
@@ -55,8 +57,6 @@ impl Scene for MenuScene {
                 "tetris -- solo",
             ),
             MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario"),
-            // MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstAi))), "tetris", "tetris -- vs ai", 0),
-            // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "fong", "fong", 0),
         ];
     }
 

@@ -16,20 +16,45 @@ impl Viewport {
     }
 
     pub fn can_see_x(&self, x: f32) -> bool {
-        (self.from.x..self.to.x).contains(&x)
+        x >= self.from.x && x <= self.to.x
     }
 
     pub fn can_see_y(&self, y: f32) -> bool {
-        (self.from.y..self.to.y).contains(&y)
+        y >= self.from.y && y <= self.to.y
     }
 
     pub fn can_see(&self, point: V2) -> bool {
-        self.can_see_x(point.x) && self.can_see_x(point.y)
+        self.can_see_x(point.x) && self.can_see_y(point.y)
     }
 
     pub fn can_see_actor(&self, actor_id: ActorId, world: &World) -> bool {
         if let Some(actor_transform) = world.get_transform(&actor_id) {
-            return self.can_see(actor_transform.center);
+            let half = V2::new(actor_transform.size.x / 2.0, actor_transform.size.y / 2.0);
+            let corners = [
+                V2::new(-half.x, -half.y),
+                V2::new(half.x, -half.y),
+                V2::new(-half.x, half.y),
+                V2::new(half.x, half.y),
+            ];
+
+            let mut min = V2::new(f32::MAX, f32::MAX);
+            let mut max = V2::new(f32::MIN, f32::MIN);
+
+            for corner in corners {
+                let rotated = if actor_transform.rotation != 0.0 {
+                    corner.rotate(actor_transform.rotation)
+                } else {
+                    corner
+                };
+                let world_corner = V2::new(actor_transform.center.x + rotated.x, actor_transform.center.y + rotated.y);
+
+                min.x = min.x.min(world_corner.x);
+                min.y = min.y.min(world_corner.y);
+                max.x = max.x.max(world_corner.x);
+                max.y = max.y.max(world_corner.y);
+            }
+
+            return min.x <= self.to.x && max.x >= self.from.x && min.y <= self.to.y && max.y >= self.from.y;
         }
         false
     }

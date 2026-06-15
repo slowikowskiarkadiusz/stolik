@@ -1,4 +1,5 @@
 extern crate alloc;
+use alloc::vec::Vec;
 
 use crate::engine::{
     color_matrix::ColorMatrix,
