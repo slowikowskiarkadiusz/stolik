@@ -37,8 +37,8 @@ impl World {
         }
     }
 
-    pub fn get_camera(&self) -> &Camera {
-        &self.camera
+    pub fn get_camera(&self) -> Camera {
+        self.camera.clone()
     }
 
     pub fn get_mut_camera(&mut self) -> &mut Camera {
@@ -120,7 +120,6 @@ impl World {
         self.colliders[idx] = None;
         self.physics[idx] = None;
         self.blinkers[idx] = None;
-        self.renders[idx] = None;
 
         if let Some(pos) = self.all_actors[..self.actor_count].iter().position(|&id| id == *actor_id) {
             self.actor_count -= 1;
@@ -136,7 +135,6 @@ impl World {
             self.colliders[i] = None;
             self.physics[i] = None;
             self.blinkers[i] = None;
-            self.renders[i] = None;
         }
     }
 

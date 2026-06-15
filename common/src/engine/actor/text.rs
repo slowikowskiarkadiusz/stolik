@@ -1,10 +1,10 @@
 extern crate alloc;
-use alloc::{string::String};
+use alloc::string::String;
 
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
-    components::{transform::Transform, world::World},
+    components::{camera::Camera, transform::Transform, world::World},
     engine::ActorId,
     matrix::Matrix,
     v2::V2,
@@ -37,7 +37,9 @@ pub fn create_text_actor(
     top_left: V2,
     container_size: V2,
     options: Option<TextActorOptions>,
-    _name: Option<&str>,
+    color: Color,
+    camera: &Camera,
+    result: &mut ColorMatrix,
 ) -> ActorId {
     let mut reverse = false;
     if let Some(opt) = options {
@@ -46,17 +48,12 @@ pub fn create_text_actor(
     let bottom_right = &top_left + &container_size;
     let center = (&top_left + &bottom_right) / 2.0;
 
-    // let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
+    let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
 
-    world.add_new_actor(
-        Some(Transform::new(center, container_size.clone())),
-        None,
-        None,
-        None,
-    )
+    result.write(&generated, &center, None, None, None, Some(camera));
+
+    world.add_new_actor(Some(Transform::new(center, container_size.clone())), None, None, None)
 }
-
-// pub fn
 
 pub fn create_text_actor_at_center(
     world: &mut World,
@@ -64,20 +61,20 @@ pub fn create_text_actor_at_center(
     center: V2,
     container_size: V2,
     options: Option<TextActorOptions>,
-    _name: Option<&str>,
+    rotation: Option<f32>,
+    color: Color,
+    camera: &Camera,
+    result: &mut ColorMatrix,
 ) -> ActorId {
     let mut reverse = false;
     if let Some(opt) = options {
         reverse = opt.reverse;
     }
-    // let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
+    let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
 
-    world.add_new_actor(
-        Some(Transform::new(center, container_size)),
-        None,
-        None,
-        None,
-    )
+    result.write(&generated, &center, rotation, None, None, Some(camera));
+
+    world.add_new_actor(Some(Transform::new(center, container_size)), None, None, None)
 }
 
 pub fn generate_word_matrix(text: &String, max_width: u8, color: &Color, reverse: bool) -> (ColorMatrix, Option<ColorMatrix>) {

@@ -5,7 +5,8 @@ use crate::{
     engine::{
         actor::{arrow_actor::create_arrow_actor, text::create_text_actor},
         color::Color,
-        components::{collider::CollisionResult, world::World},
+        color_matrix::ColorMatrix,
+        components::{camera::Camera, collider::CollisionResult, world::World},
         engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
         hash_map::HashMap,
         input::{input::Input, key::Key},
@@ -67,20 +68,6 @@ impl Scene for MenuScene {
             // MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstAi))), "tetris", "tetris -- vs ai", 0),
             // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "fong", "fong", 0),
         ];
-
-        for i in 0..self.options.len() {
-            self.options[i].text_actor_id = create_text_actor(
-                world,
-                String::from(self.options[i].next_scene_print_name),
-                V2::new(4.0, i as f32 * 6.0),
-                V2::new(SCREEN_SIZE as f32 - 4.0, 5.0),
-                // Color::white(),
-                None,
-                Some("scene text"),
-            );
-        }
-
-        self.cursor_actor_id = create_arrow_actor(world, V2::new(1.5, 2.5), 5, Color::white(), 500, Some("arrow"));
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, _delta_time: f32) {
@@ -123,6 +110,31 @@ impl Scene for MenuScene {
                 cursor_blinker.reset();
             }
         }
+    }
+
+    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+        let mut result = ColorMatrix::new(
+            camera.get_viewport_size().x as u8,
+            camera.get_viewport_size().y as u8,
+            Color::none(),
+        );
+
+        for i in 0..self.options.len() {
+            self.options[i].text_actor_id = create_text_actor(
+                world,
+                String::from(self.options[i].next_scene_print_name),
+                V2::new(4.0, i as f32 * 6.0),
+                V2::new(SCREEN_SIZE as f32 - 4.0, 5.0),
+                None,
+                Color::white(),
+                camera,
+                &mut result,
+            );
+        }
+
+        self.cursor_actor_id = create_arrow_actor(world, V2::new(1.5, 2.5), 5, Color::white(), 500, camera, &mut result);
+
+        result
     }
 
     fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}

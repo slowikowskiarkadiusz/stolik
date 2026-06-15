@@ -1,6 +1,11 @@
 use crate::{
     engine::{
-        color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::World}, engine::ActorId, hash_map::HashMap, scene::Scene
+        color::Color,
+        color_matrix::ColorMatrix,
+        components::{camera::Camera, collider::CollisionResult, world::World},
+        engine::ActorId,
+        hash_map::HashMap,
+        scene::Scene,
     },
     scenes::{
         tetris::{board::create_board_actor, world::TetrisWorld},
@@ -23,6 +28,7 @@ pub struct TetrisScene {
     p2_board_actor_id: ActorId,
     tetris_world: TetrisWorld,
     mode: TetrisSceneMode,
+    is_player_dead: u8,
 }
 
 impl Scene for TetrisScene {
@@ -50,14 +56,14 @@ impl Scene for TetrisScene {
 
         let mut damage_for_p1 = 0;
         let mut damage_for_p2 = 0;
-        let mut is_p1_dead = false;
-        let mut is_p2_dead = false;
 
         // println!("[Tetris] getting p1 board");
         if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
             // println!("[Tetris] ticking p1");
             damage_for_p2 = p1_board.tick(input, delta_time);
-            is_p1_dead = p1_board.is_dead;
+            if p1_board.is_dead {
+                self.is_player_dead = 1;
+            }
         }
 
         if !matches!(self.mode, TetrisSceneMode::Solo) {
@@ -65,13 +71,10 @@ impl Scene for TetrisScene {
             if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
                 // println!("[Tetris] ticking p2");
                 damage_for_p1 = p2_board.tick(input, delta_time);
-                is_p2_dead = p2_board.is_dead;
+                if p2_board.is_dead {
+                    self.is_player_dead = 2;
+                }
             }
-        }
-
-        // println!("[Tetris] checking death");
-        if is_p1_dead || is_p2_dead {
-            self.on_players_death(world, is_p1_dead);
         }
 
         // println!("[Tetris] applying damage");
@@ -87,7 +90,7 @@ impl Scene for TetrisScene {
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
-        let mut result = ColorMatrix::new(camera.get_viewport_size().0, camera.get_viewport_size().1, Color::none());
+        let mut result = ColorMatrix::new(camera.get_viewport_size().x as u8, camera.get_viewport_size().y as u8, Color::none());
 
         if camera.can_see_actor(self.p1_board_actor_id, world) {
             if let Some(p1_board) = self.tetris_world.get_board(&self.p1_board_actor_id) {
@@ -101,6 +104,8 @@ impl Scene for TetrisScene {
                 p2_board.render_into(&mut result);
             }
         }
+
+        self.on_players_death(world, camera, &mut result);
 
         result
     }
@@ -123,20 +128,25 @@ impl TetrisScene {
             p2_board_actor_id: ActorId::MAX,
             tetris_world: TetrisWorld::new(),
             mode: mode,
+            is_player_dead: 0,
         }
     }
 
-    fn on_players_death(&mut self, world: &mut World, is_p1: bool) {
-        if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
-            p1_board.stop();
-            p1_board.dim(51);
-        }
+    fn on_players_death(&mut self, world: &mut World, camera: &Camera, result: &mut ColorMatrix) {
+        if self.is_player_dead > 0 {
+            let is_p1 = self.is_player_dead == 1;
 
-        if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-            p2_board.stop();
-            p2_board.dim(51);
-        }
+            if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
+                p1_board.stop();
+                p1_board.dim(51);
+            }
 
-        print_victory_text(world, if is_p1 { 1 } else { 2 });
+            if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
+                p2_board.stop();
+                p2_board.dim(51);
+            }
+
+            print_victory_text(world, if is_p1 { 1 } else { 2 }, camera, result);
+        }
     }
 }

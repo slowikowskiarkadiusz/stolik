@@ -4,6 +4,7 @@ use crate::engine::{
     v2::V2,
 };
 
+#[derive(Clone, Copy)]
 pub struct Camera {
     viewport: (V2, V2),
 }

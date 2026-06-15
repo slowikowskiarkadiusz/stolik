@@ -3,10 +3,10 @@ use crate::{
         asyncable::AsyncableStorage,
         color::Color,
         color_matrix::ColorMatrix,
-        components::{collider::Collider, physics::Physics, world::World},
+        components::{camera, collider::Collider, physics::Physics, world::World},
         input::input::Input,
         scene::{EmptyScene, Scene},
-        threading_provider::Thread,
+        threading_provider::Thread, v2::V2,
     },
     scenes::{menu::menu_scene::MenuScene, physics_test::physics_test_scene::PhysicsTestScene},
 };
@@ -92,11 +92,15 @@ impl Engine {
             self.change_scene(factory);
         }
 
+        let frame: ColorMatrix;
+
         {
             let _time = embassy_time::Instant::now();
             let mut_scene = self.current_scene.as_mut();
             self.input.as_mut().update(delta_time);
             mut_scene.tick(&self.input, &mut self.world, delta_time);
+            let camera = self.world.get_camera();
+            frame = mut_scene.render(&camera, &mut self.world, delta_time);
             self.asyncable_storage.update(&mut self.world, delta_time);
             // println!("tick {}", _time.elapsed());
         }
@@ -116,7 +120,7 @@ impl Engine {
             let mut_scene = self.current_scene.as_mut();
             mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
 
-            self.combine_color_matrixes();
+            self.combine_color_matrixes(frame);
             on_frame_finished(&self.screen);
 
             self.input.as_mut().late_update(delta_time);
@@ -124,28 +128,11 @@ impl Engine {
         }
     }
 
-    fn combine_color_matrixes(&mut self) {
+    fn combine_color_matrixes(&mut self, frame: ColorMatrix) {
         self.screen.fill(Color::none());
         let camera = self.world.get_camera();
-        for i in 0..self.world.actor_count {
-            let actor_id = self.world.all_actors[i];
-            if let Some(render) = self.world.get_render(&actor_id)
-                && let Some(transform) = self.world.get_transform(&actor_id)
-            {
-                let mut do_render = true;
-                if let Some(blinker) = self.world.get_blinker(&actor_id) {
-                    do_render = blinker.is_on;
-                }
 
-                if do_render {
-                    let center = transform.center.clone();
-                    let rotation = transform.rotation;
-                    let anchor = transform.anchor_offset.clone();
-                    self.screen
-                        .write(render, &center, Some(rotation), Some(anchor), Some(true), Some(camera));
-                }
-            }
-        }
+        self.screen.write(&frame, &V2::zero(), None, None, None, None);
 
         let size = 1.0 / camera.get_viewport_size_relative_to_screen();
         self.screen.scale(size, Color::none(), false);

@@ -38,6 +38,10 @@ impl Color {
         Color::new(255, 0, 255, 255)
     }
 
+    pub fn brown() -> Color {
+        Color::new(139, 69, 19, 255)
+    }
+
     pub fn white() -> Color {
         Color::new(255, 255, 255, 255)
     }

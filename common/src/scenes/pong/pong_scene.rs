@@ -12,7 +12,9 @@ use crate::{
         color::Color,
         color_matrix::ColorMatrix,
         components::{
-            camera::Camera, collider::{ColliderType, CollisionResult}, world::World
+            camera::Camera,
+            collider::{ColliderType, CollisionResult},
+            world::World,
         },
         engine::{ActorId, SCREEN_SIZE, open_scene},
         hash_map::HashMap,
@@ -95,7 +97,7 @@ impl Scene for PongScene {
             Some("ball"),
         ));
 
-        self.print_score(world);
+        // self.print_score(world);
 
         self.reset_ball(world);
     }
@@ -112,13 +114,17 @@ impl Scene for PongScene {
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
-        let mut result = ColorMatrix::new(camera.get_viewport_size().0, camera.get_viewport_size().1, Color::none());
+        let mut result = ColorMatrix::new(
+            camera.get_viewport_size().x as u8,
+            camera.get_viewport_size().y as u8,
+            Color::none(),
+        );
 
         for i in 0..2 {
             if camera.can_see_actor(self.paddle[i].unwrap(), world) {
                 if let Some(transform) = world.get_mut_transform(&self.paddle[i].unwrap()) {
                     result.write(
-                        &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::wite()),
+                        &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
                         &transform.center,
                         None,
                         None,
@@ -128,16 +134,18 @@ impl Scene for PongScene {
                 }
             }
 
-            let text_center = V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 }));
-            let text_size = V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32);
-            result.write(
-                &generate_word_matrix(&self.score[i].to_string(), text_size.x as u8, &Color::blue(), false).0,
-                &text_center,
-                None,
-                None,
-                None,
-                Some(camera),
-            );
+            // let text_center = V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 }));
+            // let text_size = V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32);
+            // result.write(
+            //     &generate_word_matrix(&self.score[i].to_string(), text_size.x as u8, &Color::blue(), false).0,
+            //     &text_center,
+            //     None,
+            //     None,
+            //     None,
+            //     Some(camera),
+            // );
+
+            self.print_score(world, &mut result, camera);
         }
 
         if camera.can_see_actor(self.ball.unwrap(), world) {
@@ -259,25 +267,7 @@ impl PongScene {
             scored = true;
         }
 
-        if self.score.iter().any(|x| x == &MAX_SCORE) {
-            self.do_play = false;
-            print_victory_text(world, if self.score[0] > self.score[1] { 1 } else { 2 });
-            let play_against_ai = self.play_against_ai;
-            add_asyncable(
-                Box::new(move |_, _| {
-                    open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
-                }),
-                10.0,
-                AsyncableType::Timeout,
-            );
-
-            if let Some(ball_id) = self.ball {
-                world.remove_actor(&ball_id);
-            }
-        }
-
         if scored {
-            self.print_score(world);
             self.reset_ball(world);
         }
     }
@@ -358,7 +348,7 @@ impl PongScene {
         }
     }
 
-    fn print_score(&mut self, world: &mut World) {
+    fn print_score(&mut self, world: &mut World, result: &mut ColorMatrix, camera: &Camera) {
         for i in 0..2 {
             if let Some(score_text_actor) = self.score_text[i] {
                 world.remove_actor(&score_text_actor);
@@ -370,14 +360,34 @@ impl PongScene {
                 V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 })),
                 V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32),
                 None,
-                Some("score_text"),
+                Some(-90.0),
+                Color::white(),
+                camera,
+                result,
             );
 
-            if let Some(a) = world.get_mut_render(&score_text_actor) {
-                a.rotate(-90.0, Color::none());
-            }
+            // if let Some(a) = world.get_mut_render(&score_text_actor) {
+            //     a.rotate(-90.0, Color::none());
+            // }
 
             self.score_text[i] = Some(score_text_actor);
+        }
+
+        if self.score.iter().any(|x| x == &MAX_SCORE) {
+            self.do_play = false;
+            print_victory_text(world, if self.score[0] > self.score[1] { 1 } else { 2 }, camera, result);
+            let play_against_ai = self.play_against_ai;
+            add_asyncable(
+                Box::new(move |_, _| {
+                    open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
+                }),
+                10.0,
+                AsyncableType::Timeout,
+            );
+
+            if let Some(ball_id) = self.ball {
+                world.remove_actor(&ball_id);
+            }
         }
     }
 }

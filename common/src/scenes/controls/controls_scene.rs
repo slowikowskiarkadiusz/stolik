@@ -14,10 +14,7 @@ use crate::{
         scene::Scene,
         v2::V2,
     },
-    scenes::{
-        controls::button_icon_actor::{create_button_icon_actor, make_button_matrix},
-        menu::menu_scene::MenuScene,
-    },
+    scenes::{controls::button_icon_actor::make_button_matrix, menu::menu_scene::MenuScene},
 };
 
 static BUTTON_SIZE: u8 = 5;
@@ -47,8 +44,8 @@ pub struct ControlsScene {
     can_proceed: bool,
     divider_actor_id: ActorId,
     pages: Vec<Vec<ControlsData>>,
-    current_text_actors: Vec<ActorId>,
-    current_icon_actors: Vec<ActorId>,
+    // current_text_actors: Vec<ActorId>,
+    // current_icon_actors: Vec<ActorId>,
     current_page_index: u8,
     next_scene: SceneFactory,
     #[allow(dead_code)]
@@ -73,29 +70,11 @@ impl Scene for ControlsScene {
         // println!("[ControlsScene] divider created");
 
         // println!("[ControlsScene] arrows created");
-        self.print_page(world);
+        // self.print_page(world);
         // println!("[ControlsScene] init done");
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
-        if !self.can_proceed {
-            if self.allow_proceeding_timer_sec <= 0.0 {
-                self.can_proceed = true;
-                ControlsScene::create_arrow(world, true);
-                ControlsScene::create_arrow(world, false);
-            } else {
-                self.allow_proceeding_timer_sec = (self.allow_proceeding_timer_sec - delta_time).max(0.0);
-            }
-        }
-
-        self.print_page_timer_seconds += delta_time;
-
-        if self.print_page_timer_seconds > 1.6 {
-            self.print_page_timer_seconds = 0.0;
-            self.current_page_index = (self.current_page_index + 1) % self.pages.len() as u8;
-            self.print_page(world);
-        }
-
         // println!(
         //     "[ControlsScene] can_proceed: {}, any_key_down: {}",
         //     self.can_proceed,
@@ -110,20 +89,29 @@ impl Scene for ControlsScene {
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
-        let mut result = ColorMatrix::new(camera.get_viewport_size().0, camera.get_viewport_size().1, Color::none());
+        let mut result = ColorMatrix::new(
+            camera.get_viewport_size().x as u8,
+            camera.get_viewport_size().y as u8,
+            Color::none(),
+        );
 
-        if camera.can_see_actor(self.divider_actor_id, world) {
-            if let Some(transform) = world.get_mut_transform(&self.divider_actor_id) {
-                result.write(
-                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
-                    &transform.center,
-                    None,
-                    None,
-                    None,
-                    Some(camera),
-                );
+        if !self.can_proceed {
+            if self.allow_proceeding_timer_sec <= 0.0 {
+                self.can_proceed = true;
+                ControlsScene::create_arrow(world, true, camera, &mut result);
+                ControlsScene::create_arrow(world, false, camera, &mut result);
+            } else {
+                self.allow_proceeding_timer_sec = (self.allow_proceeding_timer_sec - delta_time).max(0.0);
             }
         }
+
+        self.print_page_timer_seconds += delta_time;
+
+        if self.print_page_timer_seconds > 1.6 {
+            self.print_page_timer_seconds = 0.0;
+            self.current_page_index = (self.current_page_index + 1) % self.pages.len() as u8;
+        }
+        self.print_page(world, &mut result, camera);
 
         if camera.can_see_actor(self.divider_actor_id, world) {
             if let Some(transform) = world.get_mut_transform(&self.divider_actor_id) {
@@ -156,8 +144,8 @@ impl ControlsScene {
                 POSSIBLE_CONTROL_SETS.get().get(next_scene_name).unwrap(),
                 lines_per_page.clone() as usize,
             ),
-            current_icon_actors: Vec::new(),
-            current_text_actors: Vec::new(),
+            // current_icon_actors: Vec::new(),
+            // current_text_actors: Vec::new(),
             current_page_index: 0,
             next_scene,
             lines_per_page,
@@ -166,13 +154,13 @@ impl ControlsScene {
         }
     }
 
-    fn create_arrow(world: &mut World, is_p1: bool) {
+    fn create_arrow(world: &mut World, is_p1: bool, camera: &Camera, result: &mut ColorMatrix) {
         let mut pos = &(V2::one() * SCREEN_SIZE as f32) - &(V2::one() * 1.5);
         if is_p1 {
             pos.y -= SCREEN_SIZE as f32 / 2.0;
         }
 
-        let arrow_actor_id = create_arrow_actor(world, pos, 3, Color::white(), 500, Some("arrow"));
+        let arrow_actor_id = create_arrow_actor(world, pos, 3, Color::white(), 500, camera, result);
 
         if is_p1 {
             let mut pivot = V2::one() * ((SCREEN_SIZE / 2) as f32 - 1.0);
@@ -209,14 +197,6 @@ impl ControlsScene {
             return;
         }
 
-        for actor_id in &self.current_text_actors {
-            world.remove_actor(actor_id);
-        }
-
-        for actor_id in &self.current_icon_actors {
-            world.remove_actor(actor_id);
-        }
-
         if let Some(current_page) = self.pages.get(self.current_page_index as usize) {
             let current_page_length = current_page.iter().len();
 
@@ -236,14 +216,12 @@ impl ControlsScene {
 
                         result.write(
                             &make_button_matrix(BUTTON_SIZE, key.clone()),
-                            center,
+                            &V2::new((BUTTON_SIZE / 2) as f32, y as f32),
                             None,
                             None,
                             None,
                             Some(camera),
                         );
-
-                        self.current_icon_actors.push(icon_actor_id);
 
                         x += BUTTON_SIZE + 1;
 
@@ -256,9 +234,10 @@ impl ControlsScene {
                                 V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
                                 V2::new(operation_text.len() as f32 * 4.0, 5.0),
                                 None,
-                                Some("controls label"),
+                                Color::white(),
+                                camera,
+                                result,
                             );
-                            self.current_text_actors.push(text_actor_id);
                         }
                     }
 
@@ -270,35 +249,22 @@ impl ControlsScene {
                         V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
                         V2::new((SCREEN_SIZE - x) as f32, BUTTON_SIZE as f32),
                         None,
-                        Some("controls text"),
+                        Color::white(),
+                        camera,
+                        result,
                     );
-
-                    result.write(
-                        &generate_word_matrix(&self.score[i].to_string(), text_size.x as u8, &Color::blue(), false).0,
-                        &text_center,
-                        None,
-                        None,
-                        None,
-                        Some(camera),
-                    );
-
-                    self.current_text_actors.push(text_actor_id);
                 }
                 if player_index == 0 {
                     let mut pivot = V2::one() * ((SCREEN_SIZE / 2) as f32 - 1.0);
                     pivot.y -= (SCREEN_SIZE / 4) as f32;
 
-                    for actor_id in &self.current_text_actors {
-                        if let Some(actor_transform) = world.get_mut_transform(actor_id) {
-                            actor_transform.rotate_around(&pivot, &180.0);
-                        }
-                    }
-
-                    for actor_id in &self.current_icon_actors {
-                        if let Some(actor_transform) = world.get_mut_transform(actor_id) {
-                            actor_transform.rotate_around(&pivot, &180.0);
-                        }
-                    }
+                    let copy = result.clone();
+                    result.write(&copy, &(copy.get_size() / 2.0), Some(180.0), None, None, Some(camera));
+                    // for actor_id in &current_icon_actors {
+                    //     if let Some(actor_transform) = world.get_mut_transform(actor_id) {
+                    //         actor_transform.rotate_around(&pivot, &180.0);
+                    //     }
+                    // }
                 }
             }
         }

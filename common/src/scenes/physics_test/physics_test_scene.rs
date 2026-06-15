@@ -1,4 +1,6 @@
 extern crate alloc;
+use std::mem::transmute;
+
 use alloc::{boxed::Box, string::ToString, vec::Vec};
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
@@ -7,10 +9,7 @@ use crate::{
         color::Color,
         color_matrix::ColorMatrix,
         components::{
-            collider::{Collider, ColliderPart, ColliderType, CollisionResult},
-            physics::Physics,
-            transform::Transform,
-            world::World,
+            camera::Camera, collider::{Collider, ColliderPart, ColliderType, CollisionResult}, physics::Physics, transform::Transform, world::World
         },
         engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene},
         hash_map::HashMap,
@@ -30,11 +29,12 @@ pub struct PhysicsTestScene {
     ball: ActorId,
     foot_sensor: ActorId,
     collides: bool,
-    wall_top: ActorId,
-    wall_bottom: ActorId,
-    wall_left: ActorId,
-    wall_right: ActorId,
     resize_timer: f32,
+
+    walls: Vec<ActorId>,
+    floors: Vec<ActorId>,
+    pipes: Vec<ActorId>,
+    platforms: Vec<ActorId>,
 }
 
 impl Scene for PhysicsTestScene {
@@ -43,77 +43,77 @@ impl Scene for PhysicsTestScene {
         let map_height = 64.0_f32;
 
         // podłoga
-        create_rectangle_actor(
+        self.floors.push(create_rectangle_actor(
             world,
             V2::new(map_width / 2.0, map_height - SIZE_FACTOR / 2.0),
             V2::new(map_width, SIZE_FACTOR),
-            Color::white(),
+            // Color::white(),
             None,
-        );
+        ));
 
         // rury
         let pipe_positions = [16.0, 48.0, 80.0, 112.0];
         let pipe_height = 12.0;
         let pipe_width = 6.0;
         for px in pipe_positions {
-            create_rectangle_actor(
+            self.pipes.push(create_rectangle_actor(
                 world,
                 V2::new(px, map_height - pipe_height / 2.0 - SIZE_FACTOR),
                 V2::new(pipe_width, pipe_height),
-                Color::green(),
+                // Color::green(),
                 None,
-            );
+            ));
         }
 
         // platformy nad rurami (ten sam Y)
         let platform_y = map_height - pipe_height - SIZE_FACTOR - 8.0;
         for px in pipe_positions {
-            create_rectangle_actor(
+            self.pipes.push(create_rectangle_actor(
                 world,
                 V2::new(px - 10.0, platform_y),
                 V2::new(14.0, SIZE_FACTOR),
-                Color::new(139, 69, 19, 255),
+                // Color::new(139, 69, 19, 255),
                 None,
-            );
+            ));
         }
 
         // ściany
         let wall_thickness = SIZE_FACTOR;
-        self.wall_top = create_rectangle_actor(
+        self.walls.push(create_rectangle_actor(
             world,
             V2::new(map_width / 2.0, wall_thickness / 2.0),
             V2::new(map_width, wall_thickness),
-            Color::white(),
+            // Color::white(),
             None,
-        );
-        self.wall_bottom = create_rectangle_actor(
-            world,
-            V2::new(map_width / 2.0, map_height - wall_thickness / 2.0),
-            V2::new(map_width, wall_thickness),
-            Color::white(),
-            None,
-        );
-        self.wall_left = create_rectangle_actor(
+        ));
+        self.walls.push(create_rectangle_actor(
             world,
             V2::new(wall_thickness / 2.0, map_height / 2.0),
             V2::new(wall_thickness, map_height),
-            Color::none(),
+            // Color::none(),
             None,
-        );
-        self.wall_right = create_rectangle_actor(
+        ));
+        self.walls.push(create_rectangle_actor(
             world,
             V2::new(map_width - wall_thickness / 2.0, map_height / 2.0),
             V2::new(wall_thickness, map_height),
-            Color::none(),
+            // Color::none(),
             None,
-        );
+        ));
+        self.walls.push(create_rectangle_actor(
+            world,
+            V2::new(map_width / 2.0, map_height - wall_thickness / 2.0),
+            V2::new(map_width, wall_thickness),
+            // Color::white(),
+            None,
+        ));
 
         // ball
         self.ball = create_rectangle_actor(
             world,
             V2::new(8.0, map_height * 0.5),
             V2::one() * BALL_SIZE,
-            Color::white(),
+            // Color::white(),
             Some("ball"),
         );
         world.get_mut_physics(&self.ball).unwrap().with_can_move(true);
@@ -133,7 +133,6 @@ impl Scene for PhysicsTestScene {
             )),
             None,
             None,
-            Some(ColorMatrix::new((BALL_SIZE - 1.0) as u8, 1, Color::new(0, 0, 0, 0))),
         );
     }
 
@@ -147,6 +146,88 @@ impl Scene for PhysicsTestScene {
         }
         let mut camera = world.get_mut_camera();
         camera.set_x(ball_center.x);
+    }
+
+    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+        let mut result = ColorMatrix::new(camera.get_viewport_size().x as u8, camera.get_viewport_size().y as u8, Color::none());
+
+        for actor_id in &self.walls {
+            if let Some(transform) = world.get_transform(&actor_id) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        for actor_id in &self.platforms {
+            if let Some(transform) = world.get_transform(&actor_id) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::brown()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        for actor_id in &self.pipes {
+            if let Some(transform) = world.get_transform(&actor_id) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::green()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        for actor_id in &self.pipes {
+            if let Some(transform) = world.get_transform(&actor_id) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::green()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        for actor_id in &self.floors {
+            if let Some(transform) = world.get_transform(&actor_id) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::brown()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        if let Some(ball_transform) = world.get_transform(&self.ball) {
+            result.write(
+                &ColorMatrix::new(ball_transform.size.x as u8, ball_transform.size.y as u8, Color::green()),
+                &ball_transform.center,
+                None,
+                None,
+                None,
+                Some(camera),
+            );
+        }
+
+        result
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {
@@ -176,11 +257,12 @@ impl PhysicsTestScene {
             ball: 0,
             foot_sensor: 0,
             collides: false,
-            wall_top: 0,
-            wall_bottom: 0,
-            wall_left: 0,
-            wall_right: 0,
             resize_timer: 0.0,
+
+            walls: Vec::new(),
+            floors: Vec::new(),
+            pipes: Vec::new(),
+            platforms: Vec::new(),
         }
     }
 
@@ -212,7 +294,7 @@ impl PhysicsTestScene {
     }
 }
 
-fn create_rectangle_actor(world: &mut World, center: V2, size: V2, color: Color, _name: Option<&str>) -> ActorId {
+fn create_rectangle_actor(world: &mut World, center: V2, size: V2, _name: Option<&str>) -> ActorId {
     let mut physics = Physics::new();
     physics.with_mass(1.0).with_drag(0.8);
     world.add_new_actor(
@@ -227,6 +309,5 @@ fn create_rectangle_actor(world: &mut World, center: V2, size: V2, color: Color,
         )),
         Some(physics),
         None,
-        Some(ColorMatrix::new(size.x as u8, size.y as u8, color)),
     )
 }

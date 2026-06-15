@@ -239,7 +239,7 @@ impl Board {
     /// Composites the board directly into `dst` (the actor's render matrix).
     /// static_buf (border + dropped blocks) is copied in one shot — never rebuilt per frame.
     /// Only active pieces are composited on top each frame.
-    pub fn render_into(&mut self, dst: &mut ColorMatrix) {
+    pub fn render_into(&self, dst: &mut ColorMatrix) {
         // One full-frame copy — replaces fill() + write(border) + write(dropped_blocks).
         dst.write_at_origin(&self.static_buf, &V2::zero());
 

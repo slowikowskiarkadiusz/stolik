@@ -3,12 +3,20 @@ use libm::ceilf;
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
-    components::{transform::Transform, world::World},
+    components::{camera::Camera, transform::Transform, world::World},
     engine::ActorId,
     v2::V2,
 };
 
-pub fn create_arrow_actor(world: &mut World, center: V2, height: u8, color: Color, _delay_ms: u32, _name: Option<&str>) -> ActorId {
+pub fn create_arrow_actor(
+    world: &mut World,
+    center: V2,
+    height: u8,
+    color: Color,
+    _delay_ms: u32,
+    camera: &Camera,
+    result: &mut ColorMatrix,
+) -> ActorId {
     let shape = make_shape(height, color);
     world.add_new_actor(
         Some(Transform::new(center, V2::new(shape.width as f32, shape.height as f32))),
@@ -16,7 +24,6 @@ pub fn create_arrow_actor(world: &mut World, center: V2, height: u8, color: Colo
         None,
         // Some(Blinker::new(delay_ms)),
         None,
-        Some(shape),
     )
 }
 
