@@ -4,7 +4,7 @@ use embassy_sync::lazy_lock::LazyLock;
 // use esp_println::println;
 use crate::{
     engine::{
-        actor::{arrow_actor::create_arrow_actor, rectangle_actor::create_rectangle_actor, text::create_text_actor},
+        actor::{arrow_actor::render_arrow, rectangle_actor::create_rectangle_actor, text::render_text},
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
@@ -90,8 +90,8 @@ impl Scene for ControlsScene {
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
         let mut result = ColorMatrix::new(
-            camera.get_viewport_size().x as u8,
-            camera.get_viewport_size().y as u8,
+            camera.get_viewport().get_size().x as u8,
+            camera.get_viewport().get_size().y as u8,
             Color::none(),
         );
 
@@ -160,15 +160,17 @@ impl ControlsScene {
             pos.y -= SCREEN_SIZE as f32 / 2.0;
         }
 
-        let arrow_actor_id = create_arrow_actor(world, pos, 3, Color::white(), 500, camera, result);
+        let arrow_actor_id = render_arrow(world, pos, 3, Color::white(), 500, camera, result);
 
-        if is_p1 {
-            let mut pivot = V2::one() * ((SCREEN_SIZE / 2) as f32 - 1.0);
-            pivot.y -= (SCREEN_SIZE / 4) as f32;
-            if let Some(arrow_transform) = world.get_mut_transform(&arrow_actor_id) {
-                arrow_transform.rotate_around(&pivot, &180.0);
-            }
-        }
+        //todo
+        //
+        // if is_p1 {
+        //     let mut pivot = V2::one() * ((SCREEN_SIZE / 2) as f32 - 1.0);
+        //     pivot.y -= (SCREEN_SIZE / 4) as f32;
+        //     if let Some(arrow_transform) = world.get_mut_transform(&arrow_actor_id) {
+        //         arrow_transform.rotate_around(&pivot, &180.0);
+        //     }
+        // }
     }
 
     fn paginate(items: &[ControlsData], lines_per_page: usize) -> Vec<Vec<ControlsData>> {
@@ -228,7 +230,7 @@ impl ControlsScene {
                         if let Some(operation_text) = &current_line.operation
                             && key.clone() != current_line.keys[current_line.keys.len() - 1]
                         {
-                            let text_actor_id = create_text_actor(
+                            let text_actor_id = render_text(
                                 world,
                                 operation_text.clone(),
                                 V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
@@ -243,7 +245,7 @@ impl ControlsScene {
 
                     x += 2;
 
-                    let text_actor_id = create_text_actor(
+                    let text_actor_id = render_text(
                         world,
                         current_page[current_page.len() - 1usize - i].text.clone(),
                         V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),

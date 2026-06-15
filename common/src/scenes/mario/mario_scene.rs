@@ -25,7 +25,7 @@ static ORIGINAL_BALL_SPEED: f32 = 10.0;
 static SIZE_FACTOR: f32 = SCREEN_SIZEF32 / 32.0;
 static BALL_SIZE: f32 = 2.0 * SIZE_FACTOR;
 
-pub struct PhysicsTestScene {
+pub struct MarioScene {
     ball: ActorId,
     foot_sensor: ActorId,
     collides: bool,
@@ -37,7 +37,7 @@ pub struct PhysicsTestScene {
     platforms: Vec<ActorId>,
 }
 
-impl Scene for PhysicsTestScene {
+impl Scene for MarioScene {
     fn init(&mut self, world: &mut World) {
         let map_width = 128.0_f32;
         let map_height = 64.0_f32;
@@ -149,7 +149,8 @@ impl Scene for PhysicsTestScene {
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
-        let mut result = ColorMatrix::new(camera.get_viewport_size().x as u8, camera.get_viewport_size().y as u8, Color::none());
+        let vsize = camera.get_viewport().get_size();
+        let mut result = ColorMatrix::new(vsize.x as u8, vsize.y as u8, Color::none());
 
         for actor_id in &self.walls {
             if let Some(transform) = world.get_transform(&actor_id) {
@@ -251,7 +252,7 @@ impl Scene for PhysicsTestScene {
     }
 }
 
-impl PhysicsTestScene {
+impl MarioScene {
     pub fn new() -> Self {
         Self {
             ball: 0,

@@ -31,7 +31,7 @@ pub fn make_text_actor_options(
     }
 }
 
-pub fn create_text_actor(
+pub fn render_text(
     world: &mut World,
     text: String,
     top_left: V2,
@@ -40,7 +40,7 @@ pub fn create_text_actor(
     color: Color,
     camera: &Camera,
     result: &mut ColorMatrix,
-) -> ActorId {
+) {
     let mut reverse = false;
     if let Some(opt) = options {
         reverse = opt.reverse;
@@ -52,7 +52,7 @@ pub fn create_text_actor(
 
     result.write(&generated, &center, None, None, None, Some(camera));
 
-    world.add_new_actor(Some(Transform::new(center, container_size.clone())), None, None, None)
+    // world.add_new_actor(Some(Transform::new(center, container_size.clone())), None, None, None)
 }
 
 pub fn create_text_actor_at_center(

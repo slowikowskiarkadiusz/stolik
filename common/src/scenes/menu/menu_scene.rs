@@ -3,7 +3,7 @@ use alloc::{boxed::Box, string::String, vec, vec::Vec};
 
 use crate::{
     engine::{
-        actor::{arrow_actor::create_arrow_actor, text::create_text_actor},
+        actor::{arrow_actor::render_arrow, text::render_text},
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
@@ -14,8 +14,7 @@ use crate::{
         v2::V2,
     },
     scenes::{
-        pong::pong_scene::PongScene,
-        tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
+        mario::mario_scene::MarioScene, pong::pong_scene::PongScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode}
     },
 };
 
@@ -23,48 +22,39 @@ struct MenuOption {
     next_scene_factory: SceneFactory,
     next_scene_code_name: &'static str,
     next_scene_print_name: &'static str,
-    text_actor_id: ActorId,
 }
 
 impl MenuOption {
-    pub fn new(
-        next_scene_factory: SceneFactory,
-        next_scene_code_name: &'static str,
-        next_scene_print_name: &'static str,
-        text_actor_id: ActorId,
-    ) -> Self {
+    pub fn new(next_scene_factory: SceneFactory, next_scene_code_name: &'static str, next_scene_print_name: &'static str) -> Self {
         Self {
             next_scene_factory,
             next_scene_code_name: next_scene_code_name,
             next_scene_print_name: next_scene_print_name,
-            text_actor_id: text_actor_id,
         }
     }
 }
 
 pub struct MenuScene {
     cursor_position: u8,
-    cursor_actor_id: ActorId,
     options: Vec<MenuOption>,
 }
 
 impl Scene for MenuScene {
     fn init(&mut self, world: &mut World) {
         self.options = vec![
-            MenuOption::new(Box::new(|| Box::new(PongScene::new(false))), "pong", "pong", 0),
-            MenuOption::new(Box::new(|| Box::new(PongScene::new(true))), "pong", "pong -- vs ai", 0),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new(false))), "pong", "pong"),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new(true))), "pong", "pong -- vs ai"),
             MenuOption::new(
                 Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))),
                 "tetris",
                 "tetris",
-                0,
             ),
             MenuOption::new(
                 Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))),
                 "tetris",
                 "tetris -- solo",
-                0,
             ),
+            MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario"),
             // MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstAi))), "tetris", "tetris -- vs ai", 0),
             // MenuOption::new(Box::new(|| Box::new(PongScene::new())), "fong", "fong", 0),
         ];
@@ -93,10 +83,6 @@ impl Scene for MenuScene {
             changed = true;
         }
 
-        if let Some(cursor_transform) = world.get_mut_transform(&self.cursor_actor_id) {
-            cursor_transform.center = V2::new(1.5, 2.5 + self.cursor_position as f32 * 6.0);
-        }
-
         if input.is_key_down(Key::Start) || input.is_key_down(Key::P1Blue) || input.is_key_down(Key::P1Green) {
             let selected = self.options.remove(self.cursor_position as usize);
             let _name = selected.next_scene_code_name;
@@ -105,22 +91,20 @@ impl Scene for MenuScene {
             // open_scene(factory);
         }
 
-        if changed {
-            if let Some(cursor_blinker) = world.get_mut_blinker(&self.cursor_actor_id) {
-                cursor_blinker.reset();
-            }
-        }
+        //todo move to render
+        // if changed {
+        //     if let Some(cursor_blinker) = world.get_mut_blinker(&self.cursor_actor_id) {
+        //         cursor_blinker.reset();
+        //     }
+        // }
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
-        let mut result = ColorMatrix::new(
-            camera.get_viewport_size().x as u8,
-            camera.get_viewport_size().y as u8,
-            Color::none(),
-        );
+        let vsize = camera.get_viewport().get_size();
+        let mut result = ColorMatrix::new(vsize.x as u8, vsize.y as u8, Color::none());
 
         for i in 0..self.options.len() {
-            self.options[i].text_actor_id = create_text_actor(
+            render_text(
                 world,
                 String::from(self.options[i].next_scene_print_name),
                 V2::new(4.0, i as f32 * 6.0),
@@ -132,7 +116,15 @@ impl Scene for MenuScene {
             );
         }
 
-        self.cursor_actor_id = create_arrow_actor(world, V2::new(1.5, 2.5), 5, Color::white(), 500, camera, &mut result);
+        render_arrow(
+            world,
+            V2::new(1.5, 2.5 + self.cursor_position as f32 * 6.0),
+            5,
+            Color::white(),
+            500,
+            camera,
+            &mut result,
+        );
 
         result
     }
@@ -146,7 +138,6 @@ impl MenuScene {
     pub fn new() -> Self {
         Self {
             cursor_position: 0,
-            cursor_actor_id: 0,
             options: vec![],
         }
     }

@@ -49,22 +49,26 @@ impl Matrix<Color> {
         let sin = sinf(rad);
 
         let (cam_offset_x, cam_offset_y, cam_scale) = if let Some(cam) = camera {
-            let viewport = cam.get_viewport_bounds();
+            let viewport = cam.get_viewport();
             let scale = cam.get_viewport_size_relative_to_screen();
-            (viewport.0.x, viewport.0.y, scale)
+            (viewport.from.x, viewport.from.y, scale)
         } else {
             (0.0, 0.0, 1.0)
         };
 
         for x in 0..other.width {
             if let Some(cam) = camera
-                && !cam.can_see_x(other_position.x + x as f32 - center.x + other_anchor_offset.x)
+                && !cam
+                    .get_viewport()
+                    .can_see_x(other_position.x + x as f32 - center.x + other_anchor_offset.x)
             {
                 continue;
             }
             for y in 0..other.height {
                 if let Some(cam) = camera
-                    && !cam.can_see_y(other_position.y + y as f32 - center.y + other_anchor_offset.y)
+                    && !cam
+                        .get_viewport()
+                        .can_see_y(other_position.y + y as f32 - center.y + other_anchor_offset.y)
                 {
                     continue;
                 }

@@ -90,7 +90,7 @@ impl Scene for TetrisScene {
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
-        let mut result = ColorMatrix::new(camera.get_viewport_size().x as u8, camera.get_viewport_size().y as u8, Color::none());
+        let mut result = ColorMatrix::new(camera.get_viewport().get_size().x as u8, camera.get_viewport().get_size().y as u8, Color::none());
 
         if camera.can_see_actor(self.p1_board_actor_id, world) {
             if let Some(p1_board) = self.tetris_world.get_board(&self.p1_board_actor_id) {

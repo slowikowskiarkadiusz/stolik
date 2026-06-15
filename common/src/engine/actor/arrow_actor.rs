@@ -8,7 +8,7 @@ use crate::engine::{
     v2::V2,
 };
 
-pub fn create_arrow_actor(
+pub fn render_arrow(
     world: &mut World,
     center: V2,
     height: u8,
@@ -16,15 +16,9 @@ pub fn create_arrow_actor(
     _delay_ms: u32,
     camera: &Camera,
     result: &mut ColorMatrix,
-) -> ActorId {
+) {
     let shape = make_shape(height, color);
-    world.add_new_actor(
-        Some(Transform::new(center, V2::new(shape.width as f32, shape.height as f32))),
-        None,
-        None,
-        // Some(Blinker::new(delay_ms)),
-        None,
-    )
+    result.write(&shape, &center, None, None, None, Some(camera));
 }
 
 fn make_shape(height: u8, color: Color) -> ColorMatrix {

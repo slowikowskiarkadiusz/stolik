@@ -6,9 +6,10 @@ use crate::{
         components::{camera, collider::Collider, physics::Physics, world::World},
         input::input::Input,
         scene::{EmptyScene, Scene},
-        threading_provider::Thread, v2::V2,
+        threading_provider::Thread,
+        v2::V2,
     },
-    scenes::{menu::menu_scene::MenuScene, physics_test::physics_test_scene::PhysicsTestScene},
+    scenes::{mario::mario_scene::MarioScene, menu::menu_scene::MenuScene},
 };
 extern crate alloc;
 use alloc::boxed::Box;
@@ -132,7 +133,7 @@ impl Engine {
         self.screen.fill(Color::none());
         let camera = self.world.get_camera();
 
-        self.screen.write(&frame, &V2::zero(), None, None, None, None);
+        self.screen.write_at_origin(&frame, &V2::zero());
 
         let size = 1.0 / camera.get_viewport_size_relative_to_screen();
         self.screen.scale(size, Color::none(), false);

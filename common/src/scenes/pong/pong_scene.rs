@@ -115,8 +115,8 @@ impl Scene for PongScene {
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
         let mut result = ColorMatrix::new(
-            camera.get_viewport_size().x as u8,
-            camera.get_viewport_size().y as u8,
+            camera.get_viewport().get_size().x as u8,
+            camera.get_viewport().get_size().y as u8,
             Color::none(),
         );
 
