@@ -199,6 +199,7 @@ impl Scene for MarioScene {
 
 impl MarioScene {
     pub fn new() -> Self {
+        Physics::set_gravity(V2::new(0.0, 2.0 * 0.981));
         Self {
             plumber: 0,
             foot_sensor: 0,
@@ -227,16 +228,13 @@ impl MarioScene {
                 } else {
                     0.0
                 },
-                if is_up && self.collides {
-                    -1400.0
-                } else if is_down {
-                    1.0
-                } else {
-                    0.0
-                },
+                0.0,
             );
-
             plumber_physics.add_force(move_by);
+
+            if is_up && self.collides {
+                plumber_physics.add_impulse(V2::new(0.0, -55.0));
+            }
         }
     }
 }

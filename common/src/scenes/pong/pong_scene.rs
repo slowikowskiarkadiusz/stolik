@@ -58,7 +58,7 @@ impl Scene for PongScene {
                 V2::new(screen_size / 2.0, 3.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
                 // Color::white(),
-                Some(ColliderType::Overlapping),
+                Some(ColliderType::Blocking),
                 Some("paddle1"),
             )),
             Some(create_rectangle_actor(
@@ -66,7 +66,7 @@ impl Scene for PongScene {
                 V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
                 // Color::white(),
-                Some(ColliderType::Overlapping),
+                Some(ColliderType::Blocking),
                 Some("paddle2"),
             )),
         ];
@@ -93,7 +93,7 @@ impl Scene for PongScene {
             V2::one() * screen_size / 2.0,
             V2::one() * 2.0 * size_factor,
             // Color::white(),
-            Some(ColliderType::Overlapping),
+            Some(ColliderType::Blocking),
             Some("ball"),
         ));
 
@@ -134,24 +134,13 @@ impl Scene for PongScene {
                 }
             }
 
-            // let text_center = V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 }));
-            // let text_size = V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32);
-            // result.write(
-            //     &generate_word_matrix(&self.score[i].to_string(), text_size.x as u8, &Color::blue(), false).0,
-            //     &text_center,
-            //     None,
-            //     None,
-            //     None,
-            //     Some(camera),
-            // );
-
             self.print_score(world, &mut result, camera);
         }
 
         if camera.can_see_actor(self.ball.unwrap(), world) {
             if let Some(transform) = world.get_mut_transform(&self.ball.unwrap()) {
                 result.write(
-                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::blue()),
                     &transform.center,
                     None,
                     None,

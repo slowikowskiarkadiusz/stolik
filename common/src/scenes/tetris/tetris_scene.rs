@@ -3,9 +3,10 @@ use crate::{
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
-        engine::ActorId,
+        engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32},
         hash_map::HashMap,
         scene::Scene,
+        v2::V2,
     },
     scenes::{
         tetris::{board::create_board_actor, world::TetrisWorld},
@@ -14,7 +15,7 @@ use crate::{
 };
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
-// use esp_println::println;
+use esp_println::println;
 use rand::{RngCore, SeedableRng, rngs::SmallRng};
 
 pub enum TetrisSceneMode {
@@ -52,7 +53,7 @@ impl Scene for TetrisScene {
         world: &mut crate::engine::components::world::World,
         delta_time: f32,
     ) {
-        // println!("[Tetris] tick start");
+        println!("[Tetris] tick start");
 
         let mut damage_for_p1 = 0;
         let mut damage_for_p2 = 0;
@@ -77,7 +78,6 @@ impl Scene for TetrisScene {
             }
         }
 
-        // println!("[Tetris] applying damage");
         if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
             p1_board.take_damage(damage_for_p2);
         }
@@ -90,22 +90,37 @@ impl Scene for TetrisScene {
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
-        let mut result = ColorMatrix::new(camera.get_viewport().get_size().x as u8, camera.get_viewport().get_size().y as u8, Color::none());
+        println!("[Tetris] render start");
+        esp_println::println!("heap free: {}", esp_alloc::HEAP.free());
+        let mut result = ColorMatrix::new(
+            camera.get_viewport().get_size().x as u8,
+            camera.get_viewport().get_size().y as u8,
+            Color::none(),
+        );
+        println!("[Tetris] render 0");
+        esp_println::println!("heap free: {}", esp_alloc::HEAP.free());
 
         if camera.can_see_actor(self.p1_board_actor_id, world) {
             if let Some(p1_board) = self.tetris_world.get_board(&self.p1_board_actor_id) {
-                p1_board.render_into(&mut result);
+                // let mut board = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
+                p1_board.render_into(V2::right() * 2.0, &mut result);
+                // result.write(&result, &(board.get_size() / 2.0), None, None, None, Some(camera));
+                // result.write(&board, &(&(board.get_size() / 2.0) - &V2::one()), Some(180.0), None, None, Some(camera));
             }
         }
+        println!("[Tetris] render 1");
 
-        // if !matches!(self.mode, TetrisSceneMode::Solo) {
-        if camera.can_see_actor(self.p2_board_actor_id, world) {
-            if let Some(p2_board) = self.tetris_world.get_board(&self.p2_board_actor_id) {
-                p2_board.render_into(&mut result);
+        if !matches!(self.mode, TetrisSceneMode::Solo) {
+            if camera.can_see_actor(self.p2_board_actor_id, world) {
+                if let Some(p2_board) = self.tetris_world.get_board(&self.p2_board_actor_id) {
+                    p2_board.render_into(V2::zero(), &mut result);
+                }
             }
         }
+        println!("[Tetris] render 2");
 
         self.on_players_death(world, camera, &mut result);
+        println!("[Tetris] render 3");
 
         result
     }

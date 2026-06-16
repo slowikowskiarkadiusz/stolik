@@ -37,6 +37,7 @@ pub fn render_text(
     top_left: V2,
     container_size: V2,
     options: Option<TextActorOptions>,
+    rotation: Option<f32>,
     color: Color,
     camera: &Camera,
     result: &mut ColorMatrix,
@@ -50,7 +51,7 @@ pub fn render_text(
 
     let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
 
-    result.write(&generated, &center, None, None, None, Some(camera));
+    result.write(&generated, &center, rotation, None, None, Some(camera));
 
     // world.add_new_actor(Some(Transform::new(center, container_size.clone())), None, None, None)
 }

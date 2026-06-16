@@ -197,6 +197,20 @@ impl Physics {
         self.force += force;
     }
 
+    /// Natychmiastowa zmiana prędkości — nie mnoży przez delta_time.
+    /// Używaj do skoków zamiast add_force.
+    pub fn add_impulse(&mut self, impulse: V2) {
+        self.velocity += impulse;
+    }
+
+    pub fn get_velocity(&self) -> &V2 {
+        &self.velocity
+    }
+
+    pub fn set_velocity(&mut self, velocity: V2) {
+        self.velocity = velocity;
+    }
+
     pub fn with_can_rotate(&mut self, can_rotate: bool) -> &mut Self {
         self.can_rotate = can_rotate;
         self

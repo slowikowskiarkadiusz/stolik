@@ -20,6 +20,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "esp-log")]
+use esp_println::println;
+
 struct MenuOption {
     next_scene_factory: SceneFactory,
     next_scene_code_name: &'static str,
@@ -97,6 +100,8 @@ impl Scene for MenuScene {
         //         cursor_blinker.reset();
         //     }
         // }
+
+        // esp_println::println!("heap free: {}", esp_alloc::HEAP.free());
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
@@ -109,6 +114,7 @@ impl Scene for MenuScene {
                 String::from(self.options[i].next_scene_print_name),
                 V2::new(4.0, i as f32 * 6.0),
                 V2::new(SCREEN_SIZE as f32 - 4.0, 5.0),
+                None,
                 None,
                 Color::white(),
                 camera,

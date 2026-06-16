@@ -236,27 +236,25 @@ impl Board {
         return damage_to_do;
     }
 
-    /// Composites the board directly into `dst` (the actor's render matrix).
-    /// static_buf (border + dropped blocks) is copied in one shot — never rebuilt per frame.
-    /// Only active pieces are composited on top each frame.
-    pub fn render_into(&self, dst: &mut ColorMatrix) {
+    pub fn render_into(&self, offset: V2, dst: &mut ColorMatrix) {
         // One full-frame copy — replaces fill() + write(border) + write(dropped_blocks).
-        dst.write_at_origin(&self.static_buf, &V2::zero());
+        dst.write_at_origin(&self.static_buf, &offset);
 
-        let si = SCALE as i16;
+        let scale = SCALE as i16;
         // Garbage bar and hold: blit() instead of write() — no sin/cos, no float math.
         // Top-left = center*SCALE - matrix_size/2  (integer, matches write()'s ceilf behaviour)
         {
-            let m = self.garbage_bar.render();
-            let tlx = self.garbage_bar.center.x as i16 * si - m.width as i16 / 2;
-            let tly = self.garbage_bar.center.y as i16 * si - m.height as i16 / 2;
-            dst.blit(m, tlx, tly);
+            let matrix = self.garbage_bar.render();
+            let tlx = self.garbage_bar.center.x as i16 * scale - matrix.width as i16 / 2;
+            let tly = self.garbage_bar.center.y as i16 * scale - matrix.height as i16 / 2;
+            dst.blit(matrix, tlx + 1, tly);
         }
+
         {
-            let m = self.hold_logic.render();
-            let tlx = self.hold_logic.center.x as i16 * si - m.width as i16 / 2;
-            let tly = self.hold_logic.center.y as i16 * si - m.height as i16 / 2;
-            dst.blit(m, tlx, tly);
+            let matrix = self.hold_logic.render();
+            let tlx = self.hold_logic.center.x as i16 * scale - matrix.width as i16 / 2;
+            let tly = self.hold_logic.center.y as i16 * scale - matrix.height as i16 / 2;
+            dst.blit(matrix, tlx, tly);
         }
 
         // Active pieces: direct set() using same integer formula as get_taken_spots().

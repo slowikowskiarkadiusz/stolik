@@ -129,8 +129,6 @@ impl Matrix<Color> {
         self
     }
 
-    /// Fast blit: copies `other` at the given top-left pixel position.
-    /// No rotation, no alpha blending, no sin/cos — pure pixel copy, skips transparent.
     pub fn blit(&mut self, other: &ColorMatrix, top_left_x: i16, top_left_y: i16) {
         let dw = self.width as i16;
         let dh = self.height as i16;
