@@ -84,6 +84,11 @@ impl Camera {
         self.viewport.clone()
     }
 
+    pub fn set_viewport(&mut self, vp: (V2, V2)) {
+        self.viewport.from = vp.0;
+        self.viewport.to = vp.1;
+    }
+
     pub fn set_center(&mut self, to: V2) {
         let size = &self.viewport.to - &self.viewport.from;
         self.viewport.from = &to - &(size / 2.0);

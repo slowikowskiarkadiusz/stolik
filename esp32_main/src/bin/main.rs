@@ -289,11 +289,6 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
         //     }
         // }
 
-        diag_count += 1;
-        if diag_count <= 5 || diag_count % 100 == 0 {
-            //println!("display: iter={} nonzero_pixels={}", diag_count, nonzero);
-        }
-
         // send the frame buffer to be rendered
         tx.signal(fb);
 

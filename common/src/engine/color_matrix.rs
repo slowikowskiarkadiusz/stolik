@@ -8,14 +8,14 @@ pub type ColorMatrix = Matrix<Color>;
 
 impl Matrix<Color> {
     pub fn write_at_origin(&mut self, other: &ColorMatrix, origin: &V2) -> &ColorMatrix {
-        if origin.x < other.width as f32 && origin.y < other.height as f32 {
+        if origin.x < self.width as f32 && origin.y < self.height as f32 {
             for x in 0..other.width {
                 for y in 0..other.height {
                     let tx = x + origin.x as u8;
                     let ty = y + origin.y as u8;
 
                     if tx < self.width && ty < self.height {
-                        self.set(x, y, other.get(x, y).clone());
+                        self.set(tx, ty, other.get(x, y).clone());
                     }
                 }
             }
@@ -126,6 +126,20 @@ impl Matrix<Color> {
                 }
             }
         }
+        self
+    }
+
+    pub fn flip(&mut self) -> &Self {
+        let size_x = self.get_size().x as u8;
+        let size_y = self.get_size().y as u8;
+        for x in 0u8..size_x {
+            for y in 0u8..(size_y / 2) {
+                let temp = self.get(x, y).clone();
+                self.set(x, y, self.get(x, size_y - y - 1).clone());
+                self.set(x, size_y - y - 1, temp);
+            }
+        }
+
         self
     }
 

@@ -25,6 +25,9 @@ use crate::{
     scenes::utils::print_victory_text,
 };
 
+#[cfg(feature = "esp")]
+use esp_println::println;
+
 static ORIGINAL_BALL_SPEED: f32 = 10.0;
 static ORIGINAL_BALL_SPEED_MULTIPLIER: f32 = 1.0;
 static MAX_SCORE: u8 = 1;
@@ -103,6 +106,8 @@ impl Scene for PongScene {
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
+        println!("{}", input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue));
+
         self.handle_input(input, world, delta_time);
         if let Some(ball) = self.ball
             && let Some(ball_transform) = world.get_mut_transform(&ball)

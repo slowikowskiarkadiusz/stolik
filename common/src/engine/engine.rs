@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Instant;
-#[cfg(feature = "esp-log")]
+#[cfg(feature = "esp")]
 use esp_println::println;
 
 pub const SCREEN_SIZE: u8 = 64;
@@ -34,6 +34,7 @@ pub type ActorId = u16;
 pub type SceneFactory = Box<dyn FnOnce() -> Box<dyn Scene> + Send + Sync>;
 
 static SCENE_CHANNEL: Channel<CriticalSectionRawMutex, SceneFactory, 1> = Channel::new();
+static TICK_COUNTER: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
 
 pub struct Engine {
     pub delta_time: f32,
@@ -65,7 +66,7 @@ impl Engine {
     ) {
         self.ensure_scene();
 
-        let mut engine_timer = 0.0;
+        const TARGET_MS: u64 = 33; // ~30 fps
         let mut last: Instant = Instant::now();
 
         loop {
@@ -73,21 +74,16 @@ impl Engine {
             let dt = frame_start.duration_since(last).as_millis() as f32 / 1000.0;
             last = frame_start;
 
-            engine_timer += dt;
-
-            if engine_timer >= 0.033 {
-                self.tick_frame(engine_timer, &on_frame_finished);
-                if let Some(ref func) = colliders_debug {
-                    func(self.world._debug_get_collider_parts(self.world.get_camera().get_viewport().clone()));
-                }
-                self.input.as_mut().late_update(dt);
-                engine_timer = 0.0;
-            } else {
-                self.input.as_mut().update(dt);
+            self.tick_frame(dt, &on_frame_finished);
+            if let Some(ref func) = colliders_debug {
+                func(self.world._debug_get_collider_parts(self.world.get_camera().get_viewport().clone()));
             }
+            self.input.as_mut().late_update(dt);
 
-            // Timer::after(Duration::from_millis(5)).await;
-            T::sleep_for(5);
+            let elapsed_ms = frame_start.elapsed().as_millis() as u64;
+            if elapsed_ms < TARGET_MS {
+                T::sleep_for(TARGET_MS - elapsed_ms);
+            }
         }
     }
 
@@ -100,45 +96,68 @@ impl Engine {
 
     pub fn tick_frame(&mut self, delta_time: f32, on_frame_finished: &Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static>) {
         self.delta_time = delta_time;
+        TICK_COUNTER.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+        let n = TICK_COUNTER.load(core::sync::atomic::Ordering::Relaxed);
+
+        #[cfg(feature = "esp")]
+        if n <= 5 { println!("[engine] tick {} start dt={}", n, delta_time); }
 
         let receiver = SCENE_CHANNEL.receiver();
         if let Ok(factory) = receiver.try_receive() {
+            #[cfg(feature = "esp")]
+            println!("[engine] tick {} change_scene", n);
             self.change_scene(factory);
         }
 
         let frame: ColorMatrix;
 
         {
-            let _time = embassy_time::Instant::now();
             let mut_scene = self.current_scene.as_mut();
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} input.update", n); }
             self.input.as_mut().update(delta_time);
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} scene.tick", n); }
             mut_scene.tick(&self.input, &mut self.world, delta_time);
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} scene.render", n); }
             let camera = self.world.get_camera();
             frame = mut_scene.render(&camera, &mut self.world, delta_time);
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} asyncable_storage.update", n); }
             self.asyncable_storage.update(&mut self.world, delta_time);
-            // println!("tick {}", _time.elapsed());
         }
 
         {
-            let _time = embassy_time::Instant::now();
             let mut_scene = self.current_scene.as_mut();
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} physics.update", n); }
             let collisions = Physics::update(&mut self.world, delta_time);
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} on_collisions", n); }
             mut_scene.on_collisions(&collisions, &mut self.world, delta_time);
-            // println!("physics {}", _time.elapsed());
         }
 
         {
-            let _time = embassy_time::Instant::now();
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} detect_overlaps", n); }
             let overlaps = Collider::detect_overlaps(&self.world);
             self.world.tick_blinkers(delta_time);
             let mut_scene = self.current_scene.as_mut();
             mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
 
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} combine_color_matrixes", n); }
             self.combine_color_matrixes(frame);
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} on_frame_finished", n); }
             on_frame_finished(&self.screen);
 
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} late_update", n); }
             self.input.as_mut().late_update(delta_time);
-            // println!("late tick {}", time.elapsed());
+            #[cfg(feature = "esp")]
+            if n <= 5 { println!("[engine] tick {} done", n); }
         }
     }
 

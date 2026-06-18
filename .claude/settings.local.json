@@ -13,7 +13,10 @@
       "Bash(ls /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/191d486/src/)",
       "Bash(cat /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/1845817/examples/hello_parl_io.rs | head -60)",
       "Bash(grep -rn \"dma_buffer_size_bytes\" /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/1845817/ | head -10)",
-      "Bash(grep \"esp-bootloader-esp-idf\" /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/191d486/Cargo.toml)"
+      "Bash(grep \"esp-bootloader-esp-idf\" /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/191d486/Cargo.toml)",
+      "Bash(xargs -I{} echo \"== {} ==\")",
+      "Bash(rustup target *)",
+      "Bash(cargo +esp check --manifest-path esp32_main/Cargo.toml --target xtensa-esp32s3-none-elf)"
     ]
   }
 }

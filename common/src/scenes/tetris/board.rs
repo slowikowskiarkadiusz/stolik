@@ -21,7 +21,7 @@ use esp_println::println;
 
 /// Rendering scale. Logic stays at 1×; all render matrices are pre-scaled at creation.
 /// Toggle between 1 and 2 for debugging — no per-frame scaling ever happens.
-pub const SCALE: u8 = 2;
+pub const SCALE: u8 = 1;
 
 const BOARD_WIDTH: u8 = 10;
 const BOARD_HEIGHT: u8 = 20;
@@ -247,14 +247,14 @@ impl Board {
             let matrix = self.garbage_bar.render();
             let tlx = self.garbage_bar.center.x as i16 * scale - matrix.width as i16 / 2;
             let tly = self.garbage_bar.center.y as i16 * scale - matrix.height as i16 / 2;
-            dst.blit(matrix, tlx + 1, tly);
+            dst.blit(matrix, tlx + offset.x as i16, tly + offset.y as i16);
         }
 
         {
             let matrix = self.hold_logic.render();
             let tlx = self.hold_logic.center.x as i16 * scale - matrix.width as i16 / 2;
             let tly = self.hold_logic.center.y as i16 * scale - matrix.height as i16 / 2;
-            dst.blit(matrix, tlx, tly);
+            dst.blit(matrix, tlx + offset.x as i16, tly + offset.y as i16);
         }
 
         // Active pieces: direct set() using same integer formula as get_taken_spots().
@@ -280,7 +280,7 @@ impl Board {
                     let px = (cx - wh) * si + mx + bx;
                     let py = (cy - hh) * si + my + by;
                     if px >= 0 && py >= 0 && px < dw && py < dh {
-                        dst.set(px as u8, py as u8, c);
+                        dst.set(px as u8 + offset.x as u8, py as u8 + offset.y as u8, c);
                     }
                 }
             }
@@ -301,7 +301,7 @@ impl Board {
                     let px = (cx - wh) * si + mx + bx;
                     let py = (cy - hh) * si + my + by;
                     if px >= 0 && py >= 0 && px < dw && py < dh {
-                        dst.set(px as u8, py as u8, c);
+                        dst.set(px as u8 + offset.x as u8, py as u8 + offset.y as u8, c);
                     }
                 }
             }
