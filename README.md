@@ -29,6 +29,10 @@ Or to build for esp32:
 cargo build --release --bin esp32_main
 ```
 
+```
+RUSTFLAGS="-A warnings" cargo build --release --bin esp32_main
+```
+
 Setting `STOLIK_DEBUG` env var to `1` will enable debug features (drawing colliders). Works only for desktop.
 
 # Common
@@ -53,6 +57,3 @@ Keymap (as per `desktop_main/src/desktop_input.rs`):
 | O            | Player 2 Blue Button  |
 | P            | Player 2 Green Button |
 
-```
-RUSTFLAGS="-A warnings" cargo build --release --bin esp32_main
-```
