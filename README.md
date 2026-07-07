@@ -6,22 +6,37 @@ I have a habit of making a game engine in every language I touch and this time I
 
 It's running at my home in my modified IKEA Lack coffee table. I mounted into it two 32x64 HUB75 screens, five arcade buttons and two arcade joysticks.
 
+<<<<<<< Updated upstream
 [[picture here]]
 
 # How to run
 
+=======
+>>>>>>> Stashed changes
 It can be run either on a desktop or on an esp32, so it has two entry points.
 
 To run on a desktop (tested only on Mac):
+
 ```
 cd desktop_main
 cargo run
 ```
 
 To run on esp32:
+
 ```
 cd esp32_main
+<<<<<<< Updated upstream
 cargo espflash flash --release --monitor --bin esp32_main
+=======
+RUSTFLAGS="-A warnings" cargo espflash flash --release --monitor --bin esp32_main
+```
+
+Setting `STOLIK_DEBUG` env var to `1` will enable debug features (drawing colliders).
+
+```
+cargo espflash flash --release
+>>>>>>> Stashed changes
 ```
 
 Or to build for esp32:
