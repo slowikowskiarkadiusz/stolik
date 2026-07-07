@@ -19,21 +19,17 @@ cd desktop_main
 cargo run
 ```
 
+Setting `STOLIK_DEBUG` env var to `1` will enable debug features (drawing colliders). Works only for desktop.
+
 To run on esp32:
 
 ```
 cd esp32_main
-<<<<<<< Updated upstream
 cargo espflash flash --release --monitor --bin esp32_main
-=======
-RUSTFLAGS="-A warnings" cargo espflash flash --release --monitor --bin esp32_main
 ```
-
-Setting `STOLIK_DEBUG` env var to `1` will enable debug features (drawing colliders).
 
 ```
 cargo espflash flash --release
->>>>>>> Stashed changes
 ```
 
 Or to build for esp32:
@@ -44,8 +40,6 @@ cargo build --release --bin esp32_main
 ```
 RUSTFLAGS="-A warnings" cargo build --release --bin esp32_main
 ```
-
-Setting `STOLIK_DEBUG` env var to `1` will enable debug features (drawing colliders). Works only for desktop.
 
 # Common
 The `common/` directory contains logic the engine logic but also the scenes. It *should* remain platform-agnostic, so for example I created an abstraction for threading so that I can use a trait `Thread` in `Engine::run` which has a method for e.g. sleeping. At the same time I'm using conditional dependencies and a cfg attribute for displaying logs while monitoring an esp32 flash, but that's temporary and will disappear in the future.
