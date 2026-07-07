@@ -5,10 +5,7 @@ use crate::{desktop_input::DesktopInput, desktop_threading_provider::DesktopThre
 use common::engine::{
     color::Color,
     color_matrix::ColorMatrix,
-    components::{
-        camera::Viewport,
-        collider::{ColliderPartDebug, ColliderShape},
-    },
+    components::collider::{ColliderPartDebug, ColliderShape},
     engine::Engine,
 };
 use minifb::{Key, Window, WindowOptions};

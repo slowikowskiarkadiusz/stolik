@@ -1,10 +1,7 @@
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
-    components::{transform::Transform, world::World},
-    engine::ActorId,
     input::key::Key,
-    v2::V2,
 };
 
 const LEFT_KEYS: [Key; 2] = [Key::P1Left, Key::P2Left];

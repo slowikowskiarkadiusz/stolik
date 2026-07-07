@@ -1,5 +1,5 @@
 use crate::engine::{
-    actor::text::{create_text_actor_at_center, render_text},
+    actor::text::render_text,
     color::Color,
     color_matrix::ColorMatrix,
     components::{camera::Camera, world::World},

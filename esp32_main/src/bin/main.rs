@@ -142,7 +142,7 @@ macro_rules! mk_static {
 
 const TRANSFER_SPEED: Rate = Rate::from_mhz(10);
 const BITS: u8 = 3;
-const BRIGHTNESS: f32 = 0.8;
+const BRIGHTNESS: f32 = 0.3;
 
 // Panel layout settings
 const TILED_COLS: usize = 1;
@@ -481,19 +481,20 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
         // esp_println::println!("CCC");
         engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
         // esp_println::println!("DDD");
+        esp_println::println!("before await0");
         Timer::after(Duration::from_millis(0)).await;
+        esp_println::println!("after await0");
         //println!("engine: post-tick {}", frame_count + 1);
-
-        frame_count += 1;
-        if frame_count <= 10 || frame_count % 100 == 0 {
-            //println!("engine: frame {}", frame_count);
-        }
 
         let elapsed = frame_start.elapsed();
         if elapsed < target_frame {
+            esp_println::println!("before await1");
             Timer::after(target_frame - elapsed).await;
+            esp_println::println!("after await1");
         } else {
+            esp_println::println!("before await2");
             Timer::after(Duration::from_millis(0)).await;
+            esp_println::println!("after await2");
         }
     }
 }

@@ -20,9 +20,6 @@ use crate::{
     },
 };
 
-#[cfg(feature = "esp-log")]
-use esp_println::println;
-
 struct MenuOption {
     next_scene_factory: SceneFactory,
     next_scene_code_name: &'static str,
@@ -45,7 +42,7 @@ pub struct MenuScene {
 }
 
 impl Scene for MenuScene {
-    fn init(&mut self, world: &mut World) {
+    fn init(&mut self, _world: &mut World) {
         self.options = vec![
             MenuOption::new(Box::new(|| Box::new(PongScene::new(false))), "pong", "pong"),
             MenuOption::new(Box::new(|| Box::new(PongScene::new(true))), "pong", "pong -- vs ai"),
@@ -63,19 +60,20 @@ impl Scene for MenuScene {
         ];
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, _delta_time: f32) {
+    fn tick(&mut self, input: &Box<dyn Input>, _world: &mut World, _delta_time: f32) {
+        #[cfg(feature = "esp")]
+        esp_println::println!("scene tick start");
+
         if self.options.len() == 0 {
             return;
         }
 
-        let mut changed = false;
         if input.is_key_down(Key::P1Up) {
             if self.cursor_position == 0 {
                 self.cursor_position = self.options.len() as u8 - 1;
             } else {
                 self.cursor_position -= 1;
             }
-            changed = true;
         }
         if input.is_key_down(Key::P1Down) {
             if self.cursor_position == self.options.len() as u8 - 1 {
@@ -83,7 +81,6 @@ impl Scene for MenuScene {
             } else {
                 self.cursor_position += 1;
             }
-            changed = true;
         }
 
         if input.is_key_down(Key::Start) || input.is_key_down(Key::P1Blue) || input.is_key_down(Key::P1Green) {
@@ -101,10 +98,11 @@ impl Scene for MenuScene {
         //     }
         // }
 
-        // esp_println::println!("heap free: {}", esp_alloc::HEAP.free());
+        #[cfg(feature = "esp")]
+        esp_println::println!("scene tick end");
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
         let vsize = camera.get_viewport().get_size();
         let mut result = ColorMatrix::new(vsize.x as u8, vsize.y as u8, Color::none());
 

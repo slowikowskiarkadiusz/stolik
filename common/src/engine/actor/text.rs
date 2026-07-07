@@ -32,7 +32,7 @@ pub fn make_text_actor_options(
 }
 
 pub fn render_text(
-    world: &mut World,
+    _world: &mut World,
     text: String,
     top_left: V2,
     container_size: V2,

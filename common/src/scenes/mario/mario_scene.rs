@@ -1,31 +1,25 @@
 extern crate alloc;
 
-use alloc::{boxed::Box, string::ToString, vec::Vec};
-use rand::{Rng, SeedableRng, rngs::SmallRng};
+use alloc::{boxed::Box, vec::Vec};
 
-use crate::{
-    engine::{
-        actor::text::create_text_actor_at_center,
-        color::Color,
-        color_matrix::ColorMatrix,
-        components::{
-            camera::Camera,
-            collider::{Collider, ColliderPart, ColliderType, CollisionResult},
-            physics::Physics,
-            transform::Transform,
-            world::World,
-        },
-        engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene},
-        hash_map::HashMap,
-        input::{input::Input, key::Key},
-        scene::Scene,
-        v2::V2,
+use crate::engine::{
+    color::Color,
+    color_matrix::ColorMatrix,
+    components::{
+        camera::Camera,
+        collider::{Collider, ColliderPart, CollisionResult},
+        physics::Physics,
+        transform::Transform,
+        world::World,
     },
-    scenes::utils::print_victory_text,
+    engine::{ActorId, SCREEN_SIZEF32},
+    hash_map::HashMap,
+    input::{input::Input, key::Key},
+    scene::Scene,
+    v2::V2,
 };
 use alloc::vec;
 
-static ORIGINAL_BALL_SPEED: f32 = 10.0;
 static SIZE_FACTOR: f32 = SCREEN_SIZEF32 / 32.0;
 static BALL_SIZE: f32 = 2.0 * SIZE_FACTOR;
 static CELL_SIZE: f32 = 4.0;
@@ -59,7 +53,6 @@ pub struct MarioScene {
     plumber: ActorId,
     foot_sensor: ActorId,
     collides: bool,
-    resize_timer: f32,
 
     walls: Vec<ActorId>,
     floors: Vec<ActorId>,
@@ -74,7 +67,7 @@ fn at(x: f32, y: f32) -> V2 {
 
 impl Scene for MarioScene {
     fn init(&mut self, world: &mut World) {
-        let map_width = 128.0_f32;
+        let _map_width = 128.0_f32;
         let map_height = 64.0_f32;
 
         for (from_x, to_x) in &FLOOR {
@@ -90,7 +83,7 @@ impl Scene for MarioScene {
             self.pipes.push(create_rectangle_at_origin(
                 world,
                 at(x0.clone(), y0.clone()),
-                at((x0 + 2.0), y1.clone()),
+                at(x0 + 2.0, y1.clone()),
                 true,
             ));
         }
@@ -99,7 +92,7 @@ impl Scene for MarioScene {
             self.bricks.push(create_rectangle_at_origin(
                 world,
                 at(point_at.x, point_at.y),
-                at((point_at.x + 1.0), (point_at.y + 1.0)),
+                at(point_at.x + 1.0, point_at.y + 1.0),
                 true,
             ));
         }
@@ -108,7 +101,7 @@ impl Scene for MarioScene {
             self.qblocks.push(create_rectangle_at_origin(
                 world,
                 at(point_at.x, point_at.y),
-                at((point_at.x + 1.0), (point_at.y + 1.0)),
+                at(point_at.x + 1.0, point_at.y + 1.0),
                 true,
             ));
         }
@@ -152,11 +145,11 @@ impl Scene for MarioScene {
         if let Some(t) = world.get_mut_transform(&self.foot_sensor) {
             t.center = V2::new(plumber_center.x, plumber_center.y + BALL_SIZE / 2.0 + 0.5);
         }
-        let mut camera = world.get_mut_camera();
+        let camera = world.get_mut_camera();
         camera.set_x(plumber_center.x);
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
         let vsize = camera.get_viewport().get_size();
         let mut result = ColorMatrix::new(vsize.x as u8, vsize.y as u8, Color::none());
 
@@ -169,7 +162,6 @@ impl Scene for MarioScene {
         render_static_objects(&self.floors, Color::brown(), world, camera, &mut result, &mut i);
 
         if let Some(plumber_transform) = world.get_transform(&self.plumber) {
-            i += 1;
             result.write(
                 &ColorMatrix::new(plumber_transform.size.x as u8, plumber_transform.size.y as u8, Color::blue()),
                 &plumber_transform.center,
@@ -183,7 +175,7 @@ impl Scene for MarioScene {
         result
     }
 
-    fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {
+    fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {
         self.collides = false;
         for col in overlaps {
             if col.0 == &self.foot_sensor {
@@ -194,7 +186,7 @@ impl Scene for MarioScene {
         }
     }
 
-    fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32) {}
+    fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 }
 
 impl MarioScene {
@@ -204,7 +196,6 @@ impl MarioScene {
             plumber: 0,
             foot_sensor: 0,
             collides: false,
-            resize_timer: 0.0,
 
             walls: Vec::new(),
             qblocks: Vec::new(),
@@ -214,11 +205,11 @@ impl MarioScene {
         }
     }
 
-    fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, delta_time: f32) {
+    fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, _delta_time: f32) {
         if let Some(plumber_physics) = world.get_mut_physics(&self.plumber) {
             let is_left = input.is_key_press(Key::P1Left);
             let is_right = input.is_key_press(Key::P1Right);
-            let is_down = input.is_key_press(Key::P1Down);
+            let _is_down = input.is_key_press(Key::P1Down);
             let is_up = input.is_key_down(Key::P1Up);
             let move_by = V2::new(
                 if is_left {

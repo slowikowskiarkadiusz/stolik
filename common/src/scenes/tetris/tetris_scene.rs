@@ -3,7 +3,7 @@ use crate::{
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
-        engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32},
+        engine::ActorId,
         hash_map::HashMap,
         scene::Scene,
         v2::V2,
@@ -51,7 +51,7 @@ impl Scene for TetrisScene {
     fn tick(
         &mut self,
         input: &Box<dyn crate::engine::input::input::Input>,
-        world: &mut crate::engine::components::world::World,
+        _world: &mut crate::engine::components::world::World,
         delta_time: f32,
     ) {
         println!("[Tetris] tick start");
@@ -92,7 +92,7 @@ impl Scene for TetrisScene {
         }
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
         world.get_mut_camera().set_viewport((V2::zero(), V2::one() * 32.0));
         // println!("[Tetris] render start");
 

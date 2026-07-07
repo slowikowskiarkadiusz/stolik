@@ -6,7 +6,7 @@ use crate::{
     engine::{
         actor::{
             rectangle_actor::create_rectangle_actor,
-            text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, create_text_actor_at_center, generate_word_matrix},
+            text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, create_text_actor_at_center},
         },
         asyncable::{AsyncableType, add_asyncable},
         color::Color,
@@ -118,7 +118,7 @@ impl Scene for PongScene {
         }
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
         let mut result = ColorMatrix::new(
             camera.get_viewport().get_size().x as u8,
             camera.get_viewport().get_size().y as u8,

@@ -4,7 +4,6 @@ use crate::{
         color::Color,
         color_matrix::ColorMatrix,
         components::{
-            camera,
             collider::{Collider, ColliderPartDebug},
             physics::Physics,
             world::World,
@@ -97,15 +96,16 @@ impl Engine {
     pub fn tick_frame(&mut self, delta_time: f32, on_frame_finished: &Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static>) {
         self.delta_time = delta_time;
         TICK_COUNTER.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+        #[cfg(feature = "esp")]
         let n = TICK_COUNTER.load(core::sync::atomic::Ordering::Relaxed);
 
-        #[cfg(feature = "esp")]
-        if n <= 5 { println!("[engine] tick {} start dt={}", n, delta_time); }
+        // #[cfg(feature = "esp")]
+        // if n <= 5 { println!("[engine] tick {} start dt={}", n, delta_time); }
 
         let receiver = SCENE_CHANNEL.receiver();
         if let Ok(factory) = receiver.try_receive() {
-            #[cfg(feature = "esp")]
-            println!("[engine] tick {} change_scene", n);
+            // #[cfg(feature = "esp")]
+            // println!("[engine] tick {} change_scene", n);
             self.change_scene(factory);
         }
 
@@ -113,51 +113,51 @@ impl Engine {
 
         {
             let mut_scene = self.current_scene.as_mut();
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} input.update", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} input.update", n); }
             self.input.as_mut().update(delta_time);
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} scene.tick", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} scene.tick", n); }
             mut_scene.tick(&self.input, &mut self.world, delta_time);
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} scene.render", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} scene.render", n); }
             let camera = self.world.get_camera();
             frame = mut_scene.render(&camera, &mut self.world, delta_time);
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} asyncable_storage.update", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} asyncable_storage.update", n); }
             self.asyncable_storage.update(&mut self.world, delta_time);
         }
 
         {
             let mut_scene = self.current_scene.as_mut();
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} physics.update", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} physics.update", n); }
             let collisions = Physics::update(&mut self.world, delta_time);
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} on_collisions", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} on_collisions", n); }
             mut_scene.on_collisions(&collisions, &mut self.world, delta_time);
         }
 
         {
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} detect_overlaps", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} detect_overlaps", n); }
             let overlaps = Collider::detect_overlaps(&self.world);
             self.world.tick_blinkers(delta_time);
             let mut_scene = self.current_scene.as_mut();
             mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
 
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} combine_color_matrixes", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} combine_color_matrixes", n); }
             self.combine_color_matrixes(frame);
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} on_frame_finished", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} on_frame_finished", n); }
             on_frame_finished(&self.screen);
 
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} late_update", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} late_update", n); }
             self.input.as_mut().late_update(delta_time);
-            #[cfg(feature = "esp")]
-            if n <= 5 { println!("[engine] tick {} done", n); }
+            // #[cfg(feature = "esp")]
+            // if n <= 5 { println!("[engine] tick {} done", n); }
         }
     }
 

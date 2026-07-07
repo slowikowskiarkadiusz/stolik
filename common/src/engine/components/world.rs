@@ -2,11 +2,10 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 use crate::engine::{
-    color_matrix::ColorMatrix,
     components::{
         blinker::Blinker,
         camera::{Camera, Viewport},
-        collider::{Collider, ColliderPart, ColliderPartDebug, CollisionMask, CollisionMaskId},
+        collider::{Collider, ColliderPartDebug, CollisionMask, CollisionMaskId},
         physics::Physics,
         transform::Transform,
     },

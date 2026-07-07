@@ -3,13 +3,12 @@ use libm::ceilf;
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
-    components::{camera::Camera, transform::Transform, world::World},
-    engine::ActorId,
+    components::{camera::Camera, world::World},
     v2::V2,
 };
 
 pub fn render_arrow(
-    world: &mut World,
+    _world: &mut World,
     center: V2,
     height: u8,
     color: Color,
