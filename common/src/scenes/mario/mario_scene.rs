@@ -224,7 +224,7 @@ impl MarioScene {
             plumber_physics.add_force(move_by);
 
             if is_up && self.collides {
-                plumber_physics.add_impulse(V2::new(0.0, -55.0));
+                plumber_physics.add_impulse(V2::new(0.0, -65.0));
             }
         }
     }
