@@ -6,13 +6,10 @@ I have a habit of making a game engine in every language I touch and this time I
 
 It's running at my home in my modified IKEA Lack coffee table. I mounted into it two 32x64 HUB75 screens, five arcade buttons and two arcade joysticks.
 
-<<<<<<< Updated upstream
 [[picture here]]
 
 # How to run
 
-=======
->>>>>>> Stashed changes
 It can be run either on a desktop or on an esp32, so it has two entry points.
 
 To run on a desktop (tested only on Mac):
