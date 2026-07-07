@@ -21,7 +21,7 @@ use esp_println::println;
 
 /// Rendering scale. Logic stays at 1×; all render matrices are pre-scaled at creation.
 /// Toggle between 1 and 2 for debugging — no per-frame scaling ever happens.
-pub const SCALE: u8 = 2;
+pub const SCALE: u8 = 1;
 
 const BOARD_WIDTH: u8 = 10;
 const BOARD_HEIGHT: u8 = 20;
@@ -236,27 +236,25 @@ impl Board {
         return damage_to_do;
     }
 
-    /// Composites the board directly into `dst` (the actor's render matrix).
-    /// static_buf (border + dropped blocks) is copied in one shot — never rebuilt per frame.
-    /// Only active pieces are composited on top each frame.
-    pub fn render_into(&mut self, dst: &mut ColorMatrix) {
+    pub fn render_into(&self, offset: V2, dst: &mut ColorMatrix) {
         // One full-frame copy — replaces fill() + write(border) + write(dropped_blocks).
-        dst.write_at_origin(&self.static_buf, &V2::zero());
+        dst.write_at_origin(&self.static_buf, &offset);
 
-        let si = SCALE as i16;
+        let scale = SCALE as i16;
         // Garbage bar and hold: blit() instead of write() — no sin/cos, no float math.
         // Top-left = center*SCALE - matrix_size/2  (integer, matches write()'s ceilf behaviour)
         {
-            let m = self.garbage_bar.render();
-            let tlx = self.garbage_bar.center.x as i16 * si - m.width as i16 / 2;
-            let tly = self.garbage_bar.center.y as i16 * si - m.height as i16 / 2;
-            dst.blit(m, tlx, tly);
+            let matrix = self.garbage_bar.render();
+            let tlx = self.garbage_bar.center.x as i16 * scale - matrix.width as i16 / 2;
+            let tly = self.garbage_bar.center.y as i16 * scale - matrix.height as i16 / 2;
+            dst.blit(matrix, tlx + offset.x as i16, tly + offset.y as i16);
         }
+
         {
-            let m = self.hold_logic.render();
-            let tlx = self.hold_logic.center.x as i16 * si - m.width as i16 / 2;
-            let tly = self.hold_logic.center.y as i16 * si - m.height as i16 / 2;
-            dst.blit(m, tlx, tly);
+            let matrix = self.hold_logic.render();
+            let tlx = self.hold_logic.center.x as i16 * scale - matrix.width as i16 / 2;
+            let tly = self.hold_logic.center.y as i16 * scale - matrix.height as i16 / 2;
+            dst.blit(matrix, tlx + offset.x as i16, tly + offset.y as i16);
         }
 
         // Active pieces: direct set() using same integer formula as get_taken_spots().
@@ -282,7 +280,7 @@ impl Board {
                     let px = (cx - wh) * si + mx + bx;
                     let py = (cy - hh) * si + my + by;
                     if px >= 0 && py >= 0 && px < dw && py < dh {
-                        dst.set(px as u8, py as u8, c);
+                        dst.set(px as u8 + offset.x as u8, py as u8 + offset.y as u8, c);
                     }
                 }
             }
@@ -303,7 +301,7 @@ impl Board {
                     let px = (cx - wh) * si + mx + bx;
                     let py = (cy - hh) * si + my + by;
                     if px >= 0 && py >= 0 && px < dw && py < dh {
-                        dst.set(px as u8, py as u8, c);
+                        dst.set(px as u8 + offset.x as u8, py as u8 + offset.y as u8, c);
                     }
                 }
             }
@@ -644,11 +642,11 @@ pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_
         None,
         None,
         None,
-        Some(ColorMatrix::new(
-            board.size.x as u8 * SCALE,
-            board.size.y as u8 * SCALE,
-            Color::none(),
-        )),
+        // Some(ColorMatrix::new(
+        //     board.size.x as u8 * SCALE,
+        //     board.size.y as u8 * SCALE,
+        //     Color::none(),
+        // )),
     );
 
     tetris_world.add_new_actor(actor_id, Some(board));

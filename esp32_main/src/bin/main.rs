@@ -94,7 +94,7 @@ use esp_hub75::framebuffer::plain::DmaFrameBuffer;
 use esp_hub75::framebuffer::tiling::ChainTopRightDown;
 use esp_hub75::framebuffer::tiling::TiledFrameBuffer;
 use esp_hub75::framebuffer::tiling::compute_tiled_cols;
-use esp_println::println;
+// use esp_println::println;
 use esp_rtos::embassy::Executor;
 use esp_rtos::embassy::InterruptExecutor;
 use esp32_main::esp32_input::Esp32Input;
@@ -142,7 +142,7 @@ macro_rules! mk_static {
 
 const TRANSFER_SPEED: Rate = Rate::from_mhz(10);
 const BITS: u8 = 3;
-const BRIGHTNESS: f32 = 0.8;
+const BRIGHTNESS: f32 = 0.3;
 
 // Panel layout settings
 const TILED_COLS: usize = 1;
@@ -289,11 +289,6 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
         //     }
         // }
 
-        diag_count += 1;
-        if diag_count <= 5 || diag_count % 100 == 0 {
-            //println!("display: iter={} nonzero_pixels={}", diag_count, nonzero);
-        }
-
         // send the frame buffer to be rendered
         tx.signal(fb);
 
@@ -328,7 +323,9 @@ unsafe extern "C" {
 
 #[esp_rtos::main]
 async fn main(_s: embassy_executor::Spawner) {
+    // esp_println::println!("ZZZZZZ3");
     esp_alloc::heap_allocator!(64 * 1024);
+    // esp_println::println!("ZZZZZZ2");
     #[cfg(feature = "log")]
     esp_println::logger::init_logger_from_env();
     // info!("Main starting!");
@@ -347,6 +344,7 @@ async fn main(_s: embassy_executor::Spawner) {
 
     let timer0 = SystemTimer::new(peripherals.SYSTIMER);
     esp_rtos::start(timer0.alarm0);
+    // esp_println::println!("ZZZZZZ1");
 
     // info!("Embassy initialized!");
 
@@ -399,32 +397,37 @@ async fn main(_s: embassy_executor::Spawner) {
     // info!("init framebuffer exchange");
     static TX: FrameBufferExchange = FrameBufferExchange::new();
     static RX: FrameBufferExchange = FrameBufferExchange::new();
-
+// esp_println::println!("ZZZZZZ0");
     let cpu1_fnctn = {
         move || {
             // Framebuffers are created here on CPU1 (128 KB stack) to avoid
             // overflowing CPU0's stack with the large TiledFrameBuffer temporary.
             let fb0 = mk_static!(TiledFBType, TiledFrameBuffer::new());
             let fb1 = mk_static!(TiledFBType, TiledFrameBuffer::new());
+// esp_println::println!("ZZZZZZ4");
 
             let hp_executor = mk_static!(InterruptExecutor<2>, InterruptExecutor::new(software_interrupt));
             let high_pri_spawner = hp_executor.start(Priority::Priority3);
+// esp_println::println!("ZZZZZZ5");
 
             // hub75 runs as high priority task
             high_pri_spawner.spawn(hub75_task(hub75_per, &RX, &TX, fb1)).ok();
+// esp_println::println!("ZZZZZZ6");
 
             let lp_executor = mk_static!(Executor, Executor::new());
             // display task runs as low priority task
             lp_executor.run(|spawner: Spawner| {
+// esp_println::println!("ZZZZZZ7");
                 spawner.spawn(run_engine(input_pin_setup)).ok();
                 spawner.spawn(esp32_main::esp32_input::read_expander_data(expander_pin_setup)).ok();
                 spawner.spawn(display_task(&TX, &RX, fb0)).ok();
             });
+// esp_println::println!("ZZZZZZ8");
         }
     };
 
     use esp_hal::system::Stack;
-    const DISPLAY_STACK_SIZE: usize = 131072;
+    const DISPLAY_STACK_SIZE: usize = 81920; // 80 KB — 28 KB TiledFBType temp + overhead, z zapasem
     let app_core_stack = mk_static!(Stack<DISPLAY_STACK_SIZE>, Stack::new());
 
     esp_rtos::start_second_core(
@@ -446,9 +449,13 @@ async fn main(_s: embassy_executor::Spawner) {
 #[task]
 async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     //println!("engine: creating input");
+    // esp_println::println!("ZZZZZZ");
     let mut engine = Engine::new(Box::new(Esp32Input::new(input_pin_setup)));
+
+    // esp_println::println!("AAAAAA");
     //println!("engine: input ok");
     let on_frame_func: Arc<dyn Fn(&ColorMatrix) + Send + Sync + 'static> = Arc::new(move |mat: &ColorMatrix| {
+        // esp_println::println!("BBBBBB");
         let mut s = SHARED.lock();
         s.data.copy_from_slice(&mat.data);
         s.valid = true;
@@ -471,20 +478,23 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
             //println!("engine: pre-tick {}", frame_count + 1);
         }
         //println!("engine: pre-tick {}", frame_count + 1);
+        // esp_println::println!("CCC");
         engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
+        // esp_println::println!("DDD");
+        esp_println::println!("before await0");
         Timer::after(Duration::from_millis(0)).await;
+        esp_println::println!("after await0");
         //println!("engine: post-tick {}", frame_count + 1);
-
-        frame_count += 1;
-        if frame_count <= 10 || frame_count % 100 == 0 {
-            //println!("engine: frame {}", frame_count);
-        }
 
         let elapsed = frame_start.elapsed();
         if elapsed < target_frame {
+            esp_println::println!("before await1");
             Timer::after(target_frame - elapsed).await;
+            esp_println::println!("after await1");
         } else {
+            esp_println::println!("before await2");
             Timer::after(Duration::from_millis(0)).await;
+            esp_println::println!("after await2");
         }
     }
 }

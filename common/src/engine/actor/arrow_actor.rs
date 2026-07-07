@@ -3,21 +3,21 @@ use libm::ceilf;
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
-    components::{transform::Transform, world::World},
-    engine::ActorId,
+    components::{camera::Camera, world::World},
     v2::V2,
 };
 
-pub fn create_arrow_actor(world: &mut World, center: V2, height: u8, color: Color, _delay_ms: u32, _name: Option<&str>) -> ActorId {
+pub fn render_arrow(
+    _world: &mut World,
+    center: V2,
+    height: u8,
+    color: Color,
+    _delay_ms: u32,
+    camera: &Camera,
+    result: &mut ColorMatrix,
+) {
     let shape = make_shape(height, color);
-    world.add_new_actor(
-        Some(Transform::new(center, V2::new(shape.width as f32, shape.height as f32))),
-        None,
-        None,
-        // Some(Blinker::new(delay_ms)),
-        None,
-        Some(shape),
-    )
+    result.write(&shape, &center, None, None, None, Some(camera));
 }
 
 fn make_shape(height: u8, color: Color) -> ColorMatrix {

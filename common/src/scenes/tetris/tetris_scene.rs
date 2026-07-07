@@ -1,9 +1,12 @@
 use crate::{
     engine::{
-        components::{collider::CollisionResult, world::World},
+        color::Color,
+        color_matrix::ColorMatrix,
+        components::{camera::Camera, collider::CollisionResult, world::World},
         engine::ActorId,
         hash_map::HashMap,
         scene::Scene,
+        v2::V2,
     },
     scenes::{
         tetris::{board::create_board_actor, world::TetrisWorld},
@@ -12,7 +15,8 @@ use crate::{
 };
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
-// use esp_println::println;
+#[cfg(feature = "esp")]
+use esp_println::println;
 use rand::{RngCore, SeedableRng, rngs::SmallRng};
 
 pub enum TetrisSceneMode {
@@ -26,6 +30,7 @@ pub struct TetrisScene {
     p2_board_actor_id: ActorId,
     tetris_world: TetrisWorld,
     mode: TetrisSceneMode,
+    is_player_dead: u8,
 }
 
 impl Scene for TetrisScene {
@@ -46,21 +51,23 @@ impl Scene for TetrisScene {
     fn tick(
         &mut self,
         input: &Box<dyn crate::engine::input::input::Input>,
-        world: &mut crate::engine::components::world::World,
+        _world: &mut crate::engine::components::world::World,
         delta_time: f32,
     ) {
-        // println!("[Tetris] tick start");
+        println!("[Tetris] tick start");
+
+        println!("{}", input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue));
 
         let mut damage_for_p1 = 0;
         let mut damage_for_p2 = 0;
-        let mut is_p1_dead = false;
-        let mut is_p2_dead = false;
 
         // println!("[Tetris] getting p1 board");
         if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
             // println!("[Tetris] ticking p1");
             damage_for_p2 = p1_board.tick(input, delta_time);
-            is_p1_dead = p1_board.is_dead;
+            if p1_board.is_dead {
+                self.is_player_dead = 1;
+            }
         }
 
         if !matches!(self.mode, TetrisSceneMode::Solo) {
@@ -68,16 +75,12 @@ impl Scene for TetrisScene {
             if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
                 // println!("[Tetris] ticking p2");
                 damage_for_p1 = p2_board.tick(input, delta_time);
-                is_p2_dead = p2_board.is_dead;
+                if p2_board.is_dead {
+                    self.is_player_dead = 2;
+                }
             }
         }
 
-        // println!("[Tetris] checking death");
-        if is_p1_dead || is_p2_dead {
-            self.on_players_death(world, is_p1_dead);
-        }
-
-        // println!("[Tetris] applying damage");
         if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
             p1_board.take_damage(damage_for_p2);
         }
@@ -87,11 +90,41 @@ impl Scene for TetrisScene {
                 p2_board.take_damage(damage_for_p1);
             }
         }
+    }
 
-        // println!("[Tetris] rendering");
-        self.render(world);
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+        world.get_mut_camera().set_viewport((V2::zero(), V2::one() * 32.0));
+        // println!("[Tetris] render start");
 
-        // println!("[Tetris] tick end");
+        #[cfg(feature = "esp")]
+        println!("heap free: {}", esp_alloc::HEAP.free());
+        let mut result = ColorMatrix::new(
+            camera.get_viewport().get_size().x as u8,
+            camera.get_viewport().get_size().y as u8,
+            Color::none(),
+        );
+        // println!("[Tetris] render 0");
+
+        #[cfg(feature = "esp")]
+        println!("heap free: {}", esp_alloc::HEAP.free());
+        // if !matches!(self.mode, TetrisSceneMode::Solo) {
+        if let Some(p2_board) = self.tetris_world.get_board(&self.p2_board_actor_id) {
+            p2_board.render_into(V2::new(18.0, 5.0), &mut result);
+            result.flip();
+        }
+        // }
+
+        if let Some(p1_board) = self.tetris_world.get_board(&self.p1_board_actor_id) {
+            p1_board.render_into(V2::new(0.0, 5.0), &mut result);
+        }
+        // println!("[Tetris] render 1");
+
+        // println!("[Tetris] render 2");
+
+        self.on_players_death(world, camera, &mut result);
+        // println!("[Tetris] render 3");
+
+        result
     }
 
     fn on_overlaps(
@@ -112,36 +145,25 @@ impl TetrisScene {
             p2_board_actor_id: ActorId::MAX,
             tetris_world: TetrisWorld::new(),
             mode: mode,
+            is_player_dead: 0,
         }
     }
 
-    fn on_players_death(&mut self, world: &mut World, is_p1: bool) {
-        if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
-            p1_board.stop();
-            p1_board.dim(51);
-        }
+    fn on_players_death(&mut self, world: &mut World, camera: &Camera, result: &mut ColorMatrix) {
+        if self.is_player_dead > 0 {
+            let is_p1 = self.is_player_dead == 1;
 
-        if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-            p2_board.stop();
-            p2_board.dim(51);
-        }
-
-        print_victory_text(world, if is_p1 { 1 } else { 2 });
-    }
-
-    fn render(&mut self, world: &mut World) {
-        if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
-            if let Some(p1_render) = world.get_mut_render(&self.p1_board_actor_id) {
-                p1_board.render_into(p1_render);
+            if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
+                p1_board.stop();
+                p1_board.dim(51);
             }
-        }
 
-        if !matches!(self.mode, TetrisSceneMode::Solo) {
             if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-                if let Some(p2_render) = world.get_mut_render(&self.p2_board_actor_id) {
-                    p2_board.render_into(p2_render);
-                }
+                p2_board.stop();
+                p2_board.dim(51);
             }
+
+            print_victory_text(world, if is_p1 { 1 } else { 2 }, camera, result);
         }
     }
 }

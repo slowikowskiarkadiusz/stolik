@@ -8,14 +8,14 @@ pub type ColorMatrix = Matrix<Color>;
 
 impl Matrix<Color> {
     pub fn write_at_origin(&mut self, other: &ColorMatrix, origin: &V2) -> &ColorMatrix {
-        if origin.x < other.width as f32 && origin.y < other.height as f32 {
+        if origin.x < self.width as f32 && origin.y < self.height as f32 {
             for x in 0..other.width {
                 for y in 0..other.height {
                     let tx = x + origin.x as u8;
                     let ty = y + origin.y as u8;
 
                     if tx < self.width && ty < self.height {
-                        self.set(x, y, other.get(x, y).clone());
+                        self.set(tx, ty, other.get(x, y).clone());
                     }
                 }
             }
@@ -49,22 +49,26 @@ impl Matrix<Color> {
         let sin = sinf(rad);
 
         let (cam_offset_x, cam_offset_y, cam_scale) = if let Some(cam) = camera {
-            let viewport = cam.get_viewport_bounds();
+            let viewport = cam.get_viewport();
             let scale = cam.get_viewport_size_relative_to_screen();
-            (viewport.0.x, viewport.0.y, scale)
+            (viewport.from.x, viewport.from.y, scale)
         } else {
             (0.0, 0.0, 1.0)
         };
 
         for x in 0..other.width {
             if let Some(cam) = camera
-                && !cam.can_see_x(other_position.x + x as f32 - center.x + other_anchor_offset.x)
+                && !cam
+                    .get_viewport()
+                    .can_see_x(other_position.x + x as f32 - center.x + other_anchor_offset.x)
             {
                 continue;
             }
             for y in 0..other.height {
                 if let Some(cam) = camera
-                    && !cam.can_see_y(other_position.y + y as f32 - center.y + other_anchor_offset.y)
+                    && !cam
+                        .get_viewport()
+                        .can_see_y(other_position.y + y as f32 - center.y + other_anchor_offset.y)
                 {
                     continue;
                 }
@@ -125,8 +129,20 @@ impl Matrix<Color> {
         self
     }
 
-    /// Fast blit: copies `other` at the given top-left pixel position.
-    /// No rotation, no alpha blending, no sin/cos — pure pixel copy, skips transparent.
+    pub fn flip(&mut self) -> &Self {
+        let size_x = self.get_size().x as u8;
+        let size_y = self.get_size().y as u8;
+        for x in 0u8..size_x {
+            for y in 0u8..(size_y / 2) {
+                let temp = self.get(x, y).clone();
+                self.set(x, y, self.get(x, size_y - y - 1).clone());
+                self.set(x, size_y - y - 1, temp);
+            }
+        }
+
+        self
+    }
+
     pub fn blit(&mut self, other: &ColorMatrix, top_left_x: i16, top_left_y: i16) {
         let dw = self.width as i16;
         let dh = self.height as i16;

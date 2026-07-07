@@ -10,7 +10,12 @@ use crate::{
         },
         asyncable::{AsyncableType, add_asyncable},
         color::Color,
-        components::{collider::{ColliderType, CollisionResult}, world::World},
+        color_matrix::ColorMatrix,
+        components::{
+            camera::Camera,
+            collider::{ColliderType, CollisionResult},
+            world::World,
+        },
         engine::{ActorId, SCREEN_SIZE, open_scene},
         hash_map::HashMap,
         input::{input::Input, key::Key},
@@ -19,6 +24,9 @@ use crate::{
     },
     scenes::utils::print_victory_text,
 };
+
+#[cfg(feature = "esp")]
+use esp_println::println;
 
 static ORIGINAL_BALL_SPEED: f32 = 10.0;
 static ORIGINAL_BALL_SPEED_MULTIPLIER: f32 = 1.0;
@@ -52,16 +60,16 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, 3.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
-                Color::white(),
-                Some(ColliderType::Overlapping),
+                // Color::white(),
+                Some(ColliderType::Blocking),
                 Some("paddle1"),
             )),
             Some(create_rectangle_actor(
                 world,
                 V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
-                Color::white(),
-                Some(ColliderType::Overlapping),
+                // Color::white(),
+                Some(ColliderType::Blocking),
                 Some("paddle2"),
             )),
         ];
@@ -70,7 +78,7 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, -4.0 * size_factor),
                 V2::new(screen_size, 10.0),
-                Color::none(),
+                // Color::none(),
                 Some(ColliderType::Overlapping),
                 Some("score_zone1"),
             )),
@@ -78,7 +86,7 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, screen_size + 4.0 * size_factor),
                 V2::new(screen_size, 10.0),
-                Color::none(),
+                // Color::none(),
                 Some(ColliderType::Overlapping),
                 Some("score_zone2"),
             )),
@@ -87,17 +95,19 @@ impl Scene for PongScene {
             world,
             V2::one() * screen_size / 2.0,
             V2::one() * 2.0 * size_factor,
-            Color::white(),
-            Some(ColliderType::Overlapping),
+            // Color::white(),
+            Some(ColliderType::Blocking),
             Some("ball"),
         ));
 
-        self.print_score(world);
+        // self.print_score(world);
 
         self.reset_ball(world);
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
+        println!("{}", input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue));
+
         self.handle_input(input, world, delta_time);
         if let Some(ball) = self.ball
             && let Some(ball_transform) = world.get_mut_transform(&ball)
@@ -106,6 +116,46 @@ impl Scene for PongScene {
             self.bounce_off_wall(world);
             self.check_scoring(world);
         }
+    }
+
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+        let mut result = ColorMatrix::new(
+            camera.get_viewport().get_size().x as u8,
+            camera.get_viewport().get_size().y as u8,
+            Color::none(),
+        );
+
+        for i in 0..2 {
+            if camera.can_see_actor(self.paddle[i].unwrap(), world) {
+                if let Some(transform) = world.get_mut_transform(&self.paddle[i].unwrap()) {
+                    result.write(
+                        &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
+                        &transform.center,
+                        None,
+                        None,
+                        None,
+                        Some(camera),
+                    );
+                }
+            }
+
+            self.print_score(world, &mut result, camera);
+        }
+
+        if camera.can_see_actor(self.ball.unwrap(), world) {
+            if let Some(transform) = world.get_mut_transform(&self.ball.unwrap()) {
+                result.write(
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::blue()),
+                    &transform.center,
+                    None,
+                    None,
+                    None,
+                    Some(camera),
+                );
+            }
+        }
+
+        result
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {
@@ -211,25 +261,7 @@ impl PongScene {
             scored = true;
         }
 
-        if self.score.iter().any(|x| x == &MAX_SCORE) {
-            self.do_play = false;
-            print_victory_text(world, if self.score[0] > self.score[1] { 1 } else { 2 });
-            let play_against_ai = self.play_against_ai;
-            add_asyncable(
-                Box::new(move |_, _| {
-                    open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
-                }),
-                10.0,
-                AsyncableType::Timeout,
-            );
-
-            if let Some(ball_id) = self.ball {
-                world.remove_actor(&ball_id);
-            }
-        }
-
         if scored {
-            self.print_score(world);
             self.reset_ball(world);
         }
     }
@@ -310,7 +342,7 @@ impl PongScene {
         }
     }
 
-    fn print_score(&mut self, world: &mut World) {
+    fn print_score(&mut self, world: &mut World, result: &mut ColorMatrix, camera: &Camera) {
         for i in 0..2 {
             if let Some(score_text_actor) = self.score_text[i] {
                 world.remove_actor(&score_text_actor);
@@ -321,16 +353,35 @@ impl PongScene {
                 self.score[i].to_string(),
                 V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 })),
                 V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32),
-                Color::blue().a(127).clone(),
                 None,
-                Some("score_text"),
+                Some(-90.0),
+                Color::white(),
+                camera,
+                result,
             );
 
-            if let Some(a) = world.get_mut_render(&score_text_actor) {
-                a.rotate(-90.0, Color::none());
-            }
+            // if let Some(a) = world.get_mut_render(&score_text_actor) {
+            //     a.rotate(-90.0, Color::none());
+            // }
 
             self.score_text[i] = Some(score_text_actor);
+        }
+
+        if self.score.iter().any(|x| x == &MAX_SCORE) {
+            self.do_play = false;
+            print_victory_text(world, if self.score[0] > self.score[1] { 1 } else { 2 }, camera, result);
+            let play_against_ai = self.play_against_ai;
+            add_asyncable(
+                Box::new(move |_, _| {
+                    open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
+                }),
+                10.0,
+                AsyncableType::Timeout,
+            );
+
+            if let Some(ball_id) = self.ball {
+                world.remove_actor(&ball_id);
+            }
         }
     }
 }

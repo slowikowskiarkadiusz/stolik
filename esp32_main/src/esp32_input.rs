@@ -83,9 +83,7 @@ pub struct Esp32Input<'a> {
     keys_down: Vec<IoPin>,
     keys_up: Vec<IoPin>,
     keys_press: Vec<IoPin>,
-    // i2c: esp_hal::i2c::master::I2c<'a, esp_hal::Blocking>,
-    // expander_present: bool,
-    // consecutive_i2c_errors: u8,
+    last_expander_data: u8,
 }
 
 pub struct Esp32InputPinSetup<'a> {
@@ -131,14 +129,12 @@ impl<'a> Esp32Input<'a> {
 
         Self {
             gestures: Gestures::new(),
-            // i2c,
             gpio_buttons,
             last_level: [false; PINS_IN_USE_LENGTH],
             keys_down: Vec::new(),
             keys_up: Vec::new(),
             keys_press: Vec::new(),
-            // expander_present,
-            // consecutive_i2c_errors: 0,
+            last_expander_data: 0xFF,
         }
     }
 
@@ -222,7 +218,10 @@ impl<'a> Input for Esp32Input<'a> {
     }
 
     fn update(&mut self, delta_time: f32) {
-        let expander_data = EXPANDER_DATA.try_take().unwrap_or(0xFF);
+        if let Some(data) = EXPANDER_DATA.try_take() {
+            self.last_expander_data = data;
+        }
+        let expander_data = self.last_expander_data;
         // let expander_data = 0;
 
         for i in 0..PINS_IN_USE.len() {
@@ -303,20 +302,13 @@ pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
 
     const ADDR: u8 = 0x20;
 
-    // IODIRB = wszystkie wejścia
-    let _ = i2c.write(ADDR, &[0x01, 0xFF]);
-    // GPPUB = pull-upy włączone
-    let _ = i2c.write(ADDR, &[0x0D, 0xFF]);
+    let _ = i2c.write(ADDR, &[0x01, 0xFF]);  // IODIRB = all inputs
+    let _ = i2c.write(ADDR, &[0x0D, 0xFF]);  // GPPUB = pull-ups enabled
 
-    let mut i = 0;
     loop {
         let mut data = [0xFFu8; 2];
         if i2c.write_read(ADDR, &[0x12], &mut data).is_ok() {
-            EXPANDER_DATA.signal(data[1]); // GPIOB
-        } else {
-            i += 1;
-            i %= 100;
-            // println!("Halo {}", i);
+            EXPANDER_DATA.signal(data[1]);
         }
         Timer::after_millis(10).await;
     }
