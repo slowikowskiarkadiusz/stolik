@@ -42,9 +42,11 @@ impl Scene for TetrisScene {
         self.p1_board_actor_id = create_board_actor(world, &mut self.tetris_world, true, seed);
         // println!("[Tetris] p1 board created: {}", self.p1_board_actor_id);
 
-        // println!("[Tetris] creating p2 board");
-        self.p2_board_actor_id = create_board_actor(world, &mut self.tetris_world, false, seed);
-        // println!("[Tetris] p2 board created: {}", self.p2_board_actor_id);
+        if !matches!(self.mode, TetrisSceneMode::Solo) {
+            // println!("[Tetris] creating p2 board");
+            self.p2_board_actor_id = create_board_actor(world, &mut self.tetris_world, false, seed);
+            // println!("[Tetris] p2 board created: {}", self.p2_board_actor_id);
+        }
         // println!("[Tetris] init done");
     }
 
@@ -56,7 +58,10 @@ impl Scene for TetrisScene {
     ) {
         println!("[Tetris] tick start");
 
-        println!("{}", input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue));
+        println!(
+            "{}",
+            input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue)
+        );
 
         let mut damage_for_p1 = 0;
         let mut damage_for_p2 = 0;

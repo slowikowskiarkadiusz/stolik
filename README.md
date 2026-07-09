@@ -6,7 +6,8 @@ I have a habit of making a game engine in every language I touch and this time I
 
 It's running at my home in my modified IKEA Lack coffee table. I mounted into it two 32x64 HUB75 screens, five arcade buttons and two arcade joysticks.
 
-[[picture here]]
+![table](./IMG_1603.JPG)
+![video](https://www.youtube.com/shorts/w5abA05vWuM)
 
 # How to run
 
@@ -62,4 +63,3 @@ Keymap (as per `desktop_main/src/desktop_input.rs`):
 | Right        | Player 2 Stick Right  |
 | O            | Player 2 Blue Button  |
 | P            | Player 2 Green Button |
-
