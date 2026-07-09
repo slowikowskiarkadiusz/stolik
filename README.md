@@ -7,9 +7,9 @@ I have a habit of making a game engine in every language I touch and this time I
 It's running at my home in my modified IKEA Lack coffee table. I mounted into it two 32x64 HUB75 screens, five arcade buttons and two arcade joysticks.
 
 ![table](./IMG_1603.JPG)
-![pong](https://www.youtube.com/watch?v=y-Q6AuwsqM4)
-![mario](https://www.youtube.com/watch?v=a6ZRBHZmRm8)
-![tetri](https://www.youtube.com/watch?v=nLQnlUtXMug)
+[![pong](https://www.youtube.com/watch?v=y-Q6AuwsqM4)]
+[![mario](https://www.youtube.com/watch?v=a6ZRBHZmRm8)]
+[![tetri](https://www.youtube.com/watch?v=nLQnlUtXMug)]
 
 # How to run
 
