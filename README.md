@@ -9,13 +9,13 @@ It's running at my home in my modified IKEA Lack coffee table. I mounted into it
 ![table](./IMG_1603.JPG)
 
 ## Pong
-https://youtube.com/watch?v=Q6AuwsqM4
+https://www.youtube.com/watch?v=y-Q6AuwsqM4
 
 ## Mario
-https://youtube.com/watch?v=a6ZRBHZmRm8
+https://www.youtube.com/watch?v=a6ZRBHZmRm8
 
 ## Tetris
-https://youtube.com/watch?v=nLQnlUtXMug
+https://www.youtube.com/watch?v=nLQnlUtXMug
 
 # How to run
 
