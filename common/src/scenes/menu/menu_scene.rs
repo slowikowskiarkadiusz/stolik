@@ -61,9 +61,6 @@ impl Scene for MenuScene {
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, _world: &mut World, _delta_time: f32) {
-        #[cfg(feature = "esp")]
-        esp_println::println!("scene tick start");
-
         if self.options.len() == 0 {
             return;
         }
@@ -97,9 +94,6 @@ impl Scene for MenuScene {
         //         cursor_blinker.reset();
         //     }
         // }
-
-        #[cfg(feature = "esp")]
-        esp_println::println!("scene tick end");
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {

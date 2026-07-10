@@ -1,15 +1,9 @@
-#![no_std]
-#![no_main]
-use core::prelude::v1::*;
-
-use core::ops::Index;
-
 use common::engine::{
     hash_map::HashMap,
     input::{
         gesture::Gestures,
         input::Input,
-        key::{KEYS_LENGTH, Key, KeyState},
+        key::{Key, KeyState},
     },
 };
 
@@ -20,13 +14,10 @@ use alloc::vec::Vec;
 use embassy_executor::task;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 use embassy_time::Timer;
-use embedded_hal::i2c::I2c;
 use esp_hal::{
-    Blocking,
-    gpio::{AnyPin, Input as GpioInput, InputConfig, Pin, Pull},
-    peripherals::{I2C0, Peripherals},
+    gpio::{AnyPin, Input as GpioInput, InputConfig, Pull},
+    peripherals::I2C0,
 };
-use esp_println::{print, println};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum IoPin {
@@ -284,11 +275,7 @@ impl<'a> Input for Esp32Input<'a> {
     }
 }
 
-use alloc::collections::btree_map::BTreeMap;
-use embedded_hal_compat::Reverse;
-use embedded_hal_compat::ReverseCompat;
 static EXPANDER_DATA: Signal<CriticalSectionRawMutex, u8> = Signal::new();
-use pcf857x::{Pcf8574, PinFlag, SlaveAddr};
 
 #[task]
 pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
@@ -314,15 +301,3 @@ pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
     }
 }
 
-fn read(addr: u8, i2c: &mut esp_hal::i2c::master::I2c<'_, esp_hal::Blocking>) -> u8 {
-    return 0xff;
-    let expander_present = i2c.write(addr, &[0x00, 0xFF]).is_ok() && i2c.write(addr, &[0x01, 0xFF]).is_ok();
-    if !expander_present {
-        return 0;
-    }
-    let mut buf = [0u8; 1];
-    if i2c.write_read(addr, &[0x12], &mut buf).is_err() {
-        return 0;
-    }
-    buf[0]
-}

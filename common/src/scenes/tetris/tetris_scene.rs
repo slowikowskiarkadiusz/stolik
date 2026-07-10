@@ -15,8 +15,6 @@ use crate::{
 };
 extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
-#[cfg(feature = "esp")]
-use esp_println::println;
 use rand::{RngCore, SeedableRng, rngs::SmallRng};
 
 pub enum TetrisSceneMode {
@@ -56,13 +54,6 @@ impl Scene for TetrisScene {
         _world: &mut crate::engine::components::world::World,
         delta_time: f32,
     ) {
-        println!("[Tetris] tick start");
-
-        println!(
-            "{}",
-            input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue)
-        );
-
         let mut damage_for_p1 = 0;
         let mut damage_for_p2 = 0;
 
@@ -101,8 +92,6 @@ impl Scene for TetrisScene {
         world.get_mut_camera().set_viewport((V2::zero(), V2::one() * 32.0));
         // println!("[Tetris] render start");
 
-        #[cfg(feature = "esp")]
-        println!("heap free: {}", esp_alloc::HEAP.free());
         let mut result = ColorMatrix::new(
             camera.get_viewport().get_size().x as u8,
             camera.get_viewport().get_size().y as u8,
@@ -110,8 +99,6 @@ impl Scene for TetrisScene {
         );
         // println!("[Tetris] render 0");
 
-        #[cfg(feature = "esp")]
-        println!("heap free: {}", esp_alloc::HEAP.free());
         // if !matches!(self.mode, TetrisSceneMode::Solo) {
         if let Some(p2_board) = self.tetris_world.get_board(&self.p2_board_actor_id) {
             p2_board.render_into(V2::new(18.0, 5.0), &mut result);

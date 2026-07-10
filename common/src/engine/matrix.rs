@@ -2,8 +2,6 @@ extern crate alloc;
 use alloc::{string::String, string::ToString, vec, vec::Vec};
 use libm::{ceilf, cosf, roundf, sinf};
 
-#[cfg(feature = "esp")]
-use esp_println::{print, println};
 
 #[derive(Clone)]
 pub struct Matrix<T: Clone> {

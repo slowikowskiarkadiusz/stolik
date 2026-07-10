@@ -45,8 +45,6 @@
 #![no_std]
 #![no_main]
 #![allow(clippy::uninlined_format_args)]
-use core::fmt;
-use core::prelude::v1::*;
 use core::sync::atomic::AtomicU32;
 use core::sync::atomic::Ordering;
 use esp_alloc;
@@ -54,11 +52,7 @@ use esp_alloc;
 use alloc::boxed::Box;
 use common::engine::color::Color;
 use common::engine::color_matrix::ColorMatrix;
-use common::engine::engine::{Engine, SCREEN_SIZE};
-#[cfg(feature = "defmt")]
-use defmt::info;
-#[cfg(feature = "defmt")]
-use defmt_rtt as _;
+use common::engine::engine::Engine;
 use embassy_executor::Spawner;
 use embassy_executor::task;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -66,20 +60,13 @@ use embassy_sync::signal::Signal;
 use embassy_time::Duration;
 use embassy_time::Instant;
 use embassy_time::Timer;
-use embedded_graphics::Drawable;
 use embedded_graphics::geometry::Point;
-use embedded_graphics::mono_font::MonoTextStyleBuilder;
-use embedded_graphics::mono_font::ascii::FONT_5X7;
-use embedded_graphics::prelude::RgbColor;
-use embedded_graphics::text::Alignment;
-use embedded_graphics::text::Text;
 use esp_backtrace as _;
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::Pin;
 use esp_hal::interrupt::Priority;
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::peripherals::LCD_CAM;
-use esp_hal::peripherals::Peripherals;
 use esp_hal::time::Rate;
 use esp_hal::timer::systimer::SystemTimer;
 extern crate alloc;
@@ -94,17 +81,11 @@ use esp_hub75::framebuffer::plain::DmaFrameBuffer;
 use esp_hub75::framebuffer::tiling::ChainTopRightDown;
 use esp_hub75::framebuffer::tiling::TiledFrameBuffer;
 use esp_hub75::framebuffer::tiling::compute_tiled_cols;
-// use esp_println::println;
 use esp_rtos::embassy::Executor;
 use esp_rtos::embassy::InterruptExecutor;
 use esp32_main::esp32_input::Esp32Input;
 use esp32_main::esp32_input::Esp32InputPinSetup;
-use esp32_main::esp32_threading_provider::Esp32Thread;
 use spin::Mutex;
-// use esp_rtos::embassy::InterruptExecutor;
-use heapless::String;
-#[cfg(feature = "log")]
-use log::info;
 
 const SCREEN_PIXELS: usize = 64 * 64;
 
@@ -152,8 +133,6 @@ const PANEL_COLS: usize = 64;
 const FB_COLS: usize = compute_tiled_cols(PANEL_COLS, TILED_ROWS, TILED_COLS);
 const NROWS: usize = compute_rows(PANEL_ROWS);
 const FRAME_COUNT: usize = compute_frame_count(BITS);
-const VIRTUAL_ROWS: usize = TILED_ROWS * PANEL_ROWS;
-const VIRTUAL_COLS: usize = TILED_COLS * PANEL_COLS;
 
 static REFRESH_RATE: AtomicU32 = AtomicU32::new(0);
 static RENDER_RATE: AtomicU32 = AtomicU32::new(0);
@@ -207,14 +186,8 @@ async fn hub75_task(
     let mut start = Instant::now();
 
     let mut fb = fb;
-    let mut iter = 0u32;
 
     loop {
-        iter += 1;
-        if iter <= 5 || iter % 100 == 0 {
-            //println!("hub75: loop iter {}", iter);
-        }
-
         // if there is a new buffer available, get it and send the old one
         if rx.signaled() {
             let new_fb = rx.wait().await;
@@ -223,13 +196,7 @@ async fn hub75_task(
         }
 
         let mut xfer = hub75.render(fb).map_err(|(e, _hub75)| e).expect("failed to start render!");
-        if iter <= 5 {
-            //println!("hub75: render started iter {}", iter);
-        }
         xfer.wait_for_done().await.expect("rendering wait_for_done failed!");
-        if iter <= 5 {
-            //println!("hub75: render done iter {}", iter);
-        }
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
         result.expect("transfer failed");
@@ -248,13 +215,9 @@ async fn hub75_task(
 async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBufferExchange, mut fb: &'static mut TiledFBType) {
     let mut count = 0u32;
     let mut start = Instant::now();
-    let mut diag_count = 0u32;
 
     loop {
-        fb.erase();
-
         // Read frame data directly from static buffer
-        let mut nonzero = 0u32;
         {
             let s = SHARED.lock();
             if s.valid {
@@ -263,15 +226,16 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
                         let (mut sample_x, mut sample_y) = if y < 32 { (63 - x, 31 - y) } else { (x, y) };
                         (sample_x, sample_y) = (63 - sample_x, 63 - sample_y);
                         let color = &s.data[sample_y as usize * 64 + sample_x as usize];
-                        if color.a > 0 {
-                            nonzero += 1;
-                            let esp32_color = Esp32Color::new(
+                        let esp32_color = if color.a > 0 {
+                            Esp32Color::new(
                                 ((color.r as u16 * color.a as u16 / 255) as f32 * BRIGHTNESS) as u8,
                                 ((color.g as u16 * color.a as u16 / 255) as f32 * BRIGHTNESS) as u8,
                                 ((color.b as u16 * color.a as u16 / 255) as f32 * BRIGHTNESS) as u8,
-                            );
-                            fb.set_pixel(Point::new(x as i32, y as i32), esp32_color);
-                        }
+                            )
+                        } else {
+                            Esp32Color::new(0, 0, 0)
+                        };
+                        fb.set_pixel(Point::new(x as i32, y as i32), esp32_color);
                     }
                 }
             }
@@ -326,8 +290,6 @@ async fn main(_s: embassy_executor::Spawner) {
     // esp_println::println!("ZZZZZZ3");
     esp_alloc::heap_allocator!(64 * 1024);
     // esp_println::println!("ZZZZZZ2");
-    #[cfg(feature = "log")]
-    esp_println::logger::init_logger_from_env();
     // info!("Main starting!");
     // info!("main: stack size:  {}", unsafe {
     // core::ptr::addr_of!(_stack_start_cpu0).offset_from(core::ptr::addr_of!(_stack_end_cpu0))
@@ -467,34 +429,17 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
 
     let target_frame = Duration::from_millis(33);
     let mut last = Instant::now();
-    let mut frame_count = 0u32;
 
     loop {
         let frame_start = Instant::now();
         let dt = frame_start.duration_since(last);
         last = frame_start;
 
-        if frame_count < 5 {
-            //println!("engine: pre-tick {}", frame_count + 1);
-        }
-        //println!("engine: pre-tick {}", frame_count + 1);
-        // esp_println::println!("CCC");
         engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
-        // esp_println::println!("DDD");
-        esp_println::println!("before await0");
-        Timer::after(Duration::from_millis(0)).await;
-        esp_println::println!("after await0");
-        //println!("engine: post-tick {}", frame_count + 1);
 
         let elapsed = frame_start.elapsed();
         if elapsed < target_frame {
-            esp_println::println!("before await1");
             Timer::after(target_frame - elapsed).await;
-            esp_println::println!("after await1");
-        } else {
-            esp_println::println!("before await2");
-            Timer::after(Duration::from_millis(0)).await;
-            esp_println::println!("after await2");
         }
     }
 }

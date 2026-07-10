@@ -16,8 +16,6 @@ use crate::{
     scenes::tetris::{block::Block, garbage_bar::GarbageBar, hold_logic::HoldLogic, shape::Shape},
 };
 
-#[cfg(feature = "esp")]
-use esp_println::println;
 
 /// Rendering scale. Logic stays at 1×; all render matrices are pre-scaled at creation.
 /// Toggle between 1 and 2 for debugging — no per-frame scaling ever happens.

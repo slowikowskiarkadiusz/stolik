@@ -1,7 +1,3 @@
-#![no_std]
-#![no_main]
-use core::prelude::v1::*;
-
 use embassy_time::Duration;
 use esp_hal as _;
 use common::engine::threading_provider::Thread;
