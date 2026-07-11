@@ -4,3 +4,4 @@ pub mod mario;
 pub mod pong;
 pub mod tetris;
 pub mod utils;
+pub mod tanks;
