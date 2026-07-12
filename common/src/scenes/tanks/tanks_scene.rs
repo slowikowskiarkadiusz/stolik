@@ -1,78 +1,105 @@
-use scene::Scene;
+extern crate alloc;
+use alloc::{boxed::Box, vec::Vec};
 
-use crate::{
-    engine::{
-        components::{camera::Camera, collider::CollisionResult, world::World},
-        engine::ActorId,
-        hash_map::HashMap,
-        input::input::Input,
-    },
-    scenes::tanks::world::TanksWorld,
+use crate::engine::{
+    color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::World}, engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene}, hash_map::HashMap, input::input::Input, scene::Scene, v2::V2,
 };
+use crate::scenes::menu::menu_scene::MenuScene;
+use super::world::TanksWorld;
 
-const SIZE: u8 = 13;
-// static uint border_size;
-const CELL_SIZE: u8 = 4;
+const GAME_OVER_DELAY: f32 = 5.0;
 
 pub struct TanksScene {
-    p1_actor_id: ActorId,
-    p2_actor_id: ActorId,
-    tanks_world: TanksWorld,
-    // mode: TanksSceneMode,
-    is_player_dead: u8,
+    world: Option<TanksWorld>,
+}
+
+impl TanksScene {
+    pub fn new() -> Self {
+        Self { world: None }
+    }
 }
 
 impl Scene for TanksScene {
-    fn new() -> Self {
-        Self {
-            p1_actor_id: 0,
-            p2_actor_id: 0,
-            tanks_world: TanksWorld {
-                bullet_p1: None,
-                bullet_p2: None,
-            },
-            is_player_dead: 0,
+    fn init(&mut self, _world: &mut World) {
+        self.world = Some(TanksWorld::new());
+    }
+
+    fn tick(&mut self, input: &Box<dyn Input>, _world: &mut World, delta_time: f32) {
+        let w = match self.world.as_mut() {
+            Some(w) => w,
+            None => return,
+        };
+
+        if w.winner.is_some() {
+            w.game_over_timer -= delta_time;
+            if w.game_over_timer <= 0.0 {
+                open_scene(Box::new(|| Box::new(MenuScene::new())));
+            }
+            return;
+        }
+
+        let spawn1 = w.tank1.tick(input.as_ref(), &w.obstacle, w.bullet_p1.is_some(), delta_time);
+        let spawn2 = w.tank2.tick(input.as_ref(), &w.obstacle, w.bullet_p2.is_some(), delta_time);
+
+        if let Some(s) = spawn1 {
+            w.bullet_p1 = Some(crate::scenes::tanks::bullet::Bullet::new(s.pos, s.dir, s.level, true));
+        }
+        if let Some(s) = spawn2 {
+            w.bullet_p2 = Some(crate::scenes::tanks::bullet::Bullet::new(s.pos, s.dir, s.level, false));
+        }
+
+        if let Some(b) = w.bullet_p1.as_mut() {
+            b.tick(&mut w.obstacle, &mut w.tank1, &mut w.tank2, delta_time);
+        }
+        if w.bullet_p1.as_ref().map(|b| !b.alive).unwrap_or(false) {
+            w.bullet_p1 = None;
+        }
+
+        if let Some(b) = w.bullet_p2.as_mut() {
+            b.tick(&mut w.obstacle, &mut w.tank1, &mut w.tank2, delta_time);
+        }
+        if w.bullet_p2.as_ref().map(|b| !b.alive).unwrap_or(false) {
+            w.bullet_p2 = None;
+        }
+
+        if !w.tank1.alive && w.winner.is_none() {
+            w.winner = Some(2);
+            w.game_over_timer = GAME_OVER_DELAY;
+        }
+        if !w.tank2.alive && w.winner.is_none() {
+            w.winner = Some(1);
+            w.game_over_timer = GAME_OVER_DELAY;
         }
     }
 
-    fn init(&mut self, world: &mut World) {
-        // engine::instantiate<border_actor>(v2::zero(), engine::screen_size - v2::one(), engine::screen_size, border_size);
-        // board_size = (size - border_size * 2) / cell_size;
+    fn render(&mut self, _camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+        world.get_mut_camera().set_viewport((V2::zero(), V2::new(SCREEN_SIZEF32, SCREEN_SIZEF32)));
 
-        // auto obstacle = engine::instantiate<obstacle_actor>(engine::screen_size / 2, 4, border_size, board_size + 1);
-        // obstacle->set_render_importance(1);
+        let w = match self.world.as_ref() {
+            Some(w) => w,
+            None => return ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none()),
+        };
 
-        // auto on_tank_killed_func = [this](tank_actor *killed_tank)
-        // { on_tank_killed(killed_tank); };
-        // ;
+        let mut result = w.obstacle.render();
 
-        // tank1 = engine::instantiate<tank_actor>(true, obstacle);
-        // tank1->rotate(180);
-        // tank1->set_anchor_offset(v2(0, -2));
-        // tank1->set_center(cell_to_pos(v2(0, 0)));
-        // tank1->on_tank_killed = on_tank_killed_func;
+        let t1_sprite = w.tank1.render();
+        result.write(&t1_sprite, &w.tank1.pos, None, None, None, None);
 
-        // tank2 = engine::instantiate<tank_actor>(false, obstacle);
-        // tank2->set_anchor_offset(v2(0, -2));
-        // tank2->set_center(cell_to_pos(v2(board_size - 1, board_size - 1)));
-        // tank2->on_tank_killed = on_tank_killed_func;
+        let t2_sprite = w.tank2.render();
+        result.write(&t2_sprite, &w.tank2.pos, None, None, None, None);
 
-        // std::srand(static_cast<unsigned>(std::time(nullptr)));
+        if let Some(b) = w.bullet_p1.as_ref() {
+            let sprite = b.render();
+            result.write(&sprite, &b.pos, None, None, None, None);
+        }
+        if let Some(b) = w.bullet_p2.as_ref() {
+            let sprite = b.render();
+            result.write(&sprite, &b.pos, None, None, None, None);
+        }
+
+        result
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
-        todo!()
-    }
-
-    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> color_matrix::ColorMatrix {
-        todo!()
-    }
-
-    fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, delta_time: f32) {
-        todo!()
-    }
-
-    fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32) {
-        todo!()
-    }
+    fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}
+    fn on_collisions(&mut self, _: &HashMap<u16, Vec<(u16, CollisionResult)>>, _: &mut World, _: f32) {}
 }

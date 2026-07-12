@@ -121,10 +121,24 @@ impl Add for &V2 {
     }
 }
 
+impl Add for V2 {
+    type Output = V2;
+    fn add(self, rhs: Self) -> Self::Output {
+        V2 { x: self.x + rhs.x, y: self.y + rhs.y }
+    }
+}
+
 impl AddAssign for V2 {
     fn add_assign(&mut self, rhs: Self) {
         self.x += rhs.x;
         self.y += rhs.y;
+    }
+}
+
+impl Sub for V2 {
+    type Output = V2;
+    fn sub(self, rhs: Self) -> Self::Output {
+        V2 { x: self.x - rhs.x, y: self.y - rhs.y }
     }
 }
 
