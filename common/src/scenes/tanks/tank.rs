@@ -1,5 +1,10 @@
-use crate::engine::{color::Color, color_matrix::ColorMatrix, input::{input::Input, key::Key}, v2::V2};
 use super::obstacle::{ObstacleMap, ObstacleType};
+use crate::engine::{
+    color::Color,
+    color_matrix::ColorMatrix,
+    input::{input::Input, key::Key},
+    v2::V2,
+};
 
 const SHOOT_COOLDOWN: f32 = 0.25;
 const MOVE_COOLDOWN: f32 = 0.05;
@@ -74,49 +79,75 @@ impl Tank {
         match rot {
             0 => {
                 // gun up
-                if self.level > 0 { m.set(1, 0, c); m.set(2, 0, c); }
-                if self.level < 2 { m.set(1, 1, c); m.set(2, 1, c); }
+                if self.level > 0 {
+                    m.set(1, 0, c);
+                    m.set(2, 0, c);
+                }
+                if self.level < 2 {
+                    m.set(1, 1, c);
+                    m.set(2, 1, c);
+                }
                 let start = if self.level >= 2 { 1u8 } else { 2u8 };
-                for x in 0..4u8 { for y in start..4u8 { m.set(x, y, c); } }
+                for x in 0..4u8 {
+                    for y in start..4u8 {
+                        m.set(x, y, c);
+                    }
+                }
             }
             90 => {
                 // gun right
                 let body_end = if self.level >= 2 { 3u8 } else { 2u8 };
-                for y in 0..4u8 { for x in 0..body_end { m.set(x, y, c); } }
-                if self.level < 2 { m.set(2, 1, c); m.set(2, 2, c); }
-                if self.level > 0 { m.set(3, 1, c); m.set(3, 2, c); }
+                for y in 0..4u8 {
+                    for x in 0..body_end {
+                        m.set(x, y, c);
+                    }
+                }
+                if self.level < 2 {
+                    m.set(2, 1, c);
+                    m.set(2, 2, c);
+                }
+                if self.level > 0 {
+                    m.set(3, 1, c);
+                    m.set(3, 2, c);
+                }
             }
             180 => {
                 // gun down
                 let body_end = if self.level >= 2 { 3u8 } else { 2u8 };
-                for x in 0..4u8 { for y in 0..body_end { m.set(x, y, c); } }
-                if self.level < 2 { m.set(1, 2, c); m.set(2, 2, c); }
-                if self.level > 0 { m.set(1, 3, c); m.set(2, 3, c); }
+                for x in 0..4u8 {
+                    for y in 0..body_end {
+                        m.set(x, y, c);
+                    }
+                }
+                if self.level < 2 {
+                    m.set(1, 2, c);
+                    m.set(2, 2, c);
+                }
+                if self.level > 0 {
+                    m.set(1, 3, c);
+                    m.set(2, 3, c);
+                }
             }
             _ => {
                 // gun left (270)
                 let body_start = if self.level >= 2 { 1u8 } else { 2u8 };
-                for y in 0..4u8 { for x in body_start..4u8 { m.set(x, y, c); } }
-                if self.level < 2 { m.set(1, 1, c); m.set(1, 2, c); }
-                if self.level > 0 { m.set(0, 1, c); m.set(0, 2, c); }
+                for y in 0..4u8 {
+                    for x in body_start..4u8 {
+                        m.set(x, y, c);
+                    }
+                }
+                if self.level < 2 {
+                    m.set(1, 1, c);
+                    m.set(1, 2, c);
+                }
+                if self.level > 0 {
+                    m.set(0, 1, c);
+                    m.set(0, 2, c);
+                }
             }
         }
         m
     }
-
-    // /// Returns the anchor_offset for write() so the tank body center maps to self.pos.
-    // /// Based on 4×4 sprite design: body spans 2 rows/cols of a 4-unit dimension,
-    // /// center at 0.5 offset from sprite center (2,2).
-    // pub fn anchor_offset(&self) -> V2 {
-    //     return V2::new( 0.0, 0.0);
-    //     let rot = ((self.rotation % 360) + 360) % 360;
-    //     match rot {
-    //         0   => V2::new( 0.0, -0.5), // body rows 2-3, center y=2.5 → push up 0.5
-    //         90  => V2::new( 1.5,  0.0), // body cols 0-1, center x=0.5 → push right 1.5
-    //         180 => V2::new( 0.0,  1.5), // body rows 0-1, center y=0.5 → push down 1.5
-    //         _   => V2::new(-0.5,  0.0), // body cols 2-3, center x=2.5 → push left 0.5
-    //     }
-    // }
 
     fn tick_move(&mut self, input: &dyn Input, obstacle: &ObstacleMap, delta_time: f32) {
         self.move_timer -= delta_time;
@@ -125,17 +156,29 @@ impl Tank {
         }
 
         let (rotation, by) = if self.is_p1 {
-            if      input.is_key_press(Key::P1Up)    { (180, V2::new(0.0,  1.0)) }
-            else if input.is_key_press(Key::P1Down)  { (  0, V2::new(0.0, -1.0)) }
-            else if input.is_key_press(Key::P1Left)  { ( 90, V2::new(1.0,  0.0)) }
-            else if input.is_key_press(Key::P1Right) { (270, V2::new(-1.0, 0.0)) }
-            else { return; }
+            if input.is_key_press(Key::P1Down) {
+                (180, V2::new(0.0, 1.0))
+            } else if input.is_key_press(Key::P1Up) {
+                (0, V2::new(0.0, -1.0))
+            } else if input.is_key_press(Key::P1Right) {
+                (90, V2::new(1.0, 0.0))
+            } else if input.is_key_press(Key::P1Left) {
+                (270, V2::new(-1.0, 0.0))
+            } else {
+                return;
+            }
         } else {
-            if      input.is_key_press(Key::P2Up)    { (  0, V2::new(0.0, -1.0)) }
-            else if input.is_key_press(Key::P2Down)  { (180, V2::new(0.0,  1.0)) }
-            else if input.is_key_press(Key::P2Left)  { (270, V2::new(-1.0, 0.0)) }
-            else if input.is_key_press(Key::P2Right) { ( 90, V2::new(1.0,  0.0)) }
-            else { return; }
+            if input.is_key_press(Key::P2Down) {
+                (0, V2::new(0.0, -1.0))
+            } else if input.is_key_press(Key::P2Up) {
+                (180, V2::new(0.0, 1.0))
+            } else if input.is_key_press(Key::P2Left) {
+                (270, V2::new(-1.0, 0.0))
+            } else if input.is_key_press(Key::P2Right) {
+                (90, V2::new(1.0, 0.0))
+            } else {
+                return;
+            }
         };
 
         self.rotation = rotation;
@@ -143,7 +186,7 @@ impl Tank {
 
         let new_pos = self.pos + by;
         let from = new_pos - V2::one() * 1.5;
-        let to   = new_pos + V2::one() * 2.5;
+        let to = new_pos + V2::one() * 2.5;
         let hit = obstacle.does_collide(from, to);
         if matches!(hit, ObstacleType::None | ObstacleType::Grass) {
             self.pos = new_pos;
@@ -156,7 +199,11 @@ impl Tank {
         if self.shoot_timer <= 0.0 && !has_bullet && input.is_key_down(shoot_key) {
             self.shoot_timer = SHOOT_COOLDOWN;
             let dir = rotation_to_dir(self.rotation);
-            Some(BulletSpawn { pos: self.pos + dir * 2.0, dir, level: self.level })
+            Some(BulletSpawn {
+                pos: self.pos + dir * 2.0,
+                dir,
+                level: self.level,
+            })
         } else {
             None
         }
@@ -175,9 +222,9 @@ impl Tank {
 
 pub fn rotation_to_dir(rotation: i32) -> V2 {
     match ((rotation % 360) + 360) % 360 {
-        90  => V2::new( 1.0,  0.0),
-        180 => V2::new( 0.0,  1.0),
-        270 => V2::new(-1.0,  0.0),
-        _   => V2::new( 0.0, -1.0),
+        90 => V2::new(1.0, 0.0),
+        180 => V2::new(0.0, 1.0),
+        270 => V2::new(-1.0, 0.0),
+        _ => V2::new(0.0, -1.0),
     }
 }

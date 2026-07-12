@@ -30,8 +30,8 @@ impl ObstacleMap {
     /// Returns the first non-None obstacle type that any pixel in [from, to] touches,
     /// or Edge if the box goes outside the board. Coordinates are screen pixels.
     pub fn does_collide(&self, from: V2, to: V2) -> ObstacleType {
-        for px in (from.x as i32)..=(to.x as i32) {
-            for py in (from.y as i32)..=(to.y as i32) {
+        for px in (from.x as i32)..(to.x as i32) {
+            for py in (from.y as i32)..(to.y as i32) {
                 match self.pixel_to_cell(px, py) {
                     None => return ObstacleType::Edge,
                     Some((cx, cy)) => {

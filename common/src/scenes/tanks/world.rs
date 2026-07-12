@@ -21,8 +21,8 @@ impl TanksWorld {
         let mut rng = SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros());
         let obstacle = ObstacleMap::new(BOARD_SIZE, &mut rng);
 
-        let p1_pos = cell_to_px(0, 0);
-        let p2_pos = cell_to_px(BOARD_SIZE - 1, BOARD_SIZE - 1);
+        let p2_pos = cell_to_px(0, 0);
+        let p1_pos = cell_to_px(BOARD_SIZE - 1, BOARD_SIZE - 1);
 
         Self {
             obstacle,
