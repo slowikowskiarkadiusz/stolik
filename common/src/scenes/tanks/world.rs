@@ -9,8 +9,8 @@ pub const BOARD_SIZE: u8 = 16;
 
 pub struct TanksWorld {
     pub obstacle: ObstacleMap,
-    pub tank1: Tank,
-    pub tank2: Tank,
+    pub tank_p1: Tank,
+    pub tank_p2: Tank,
     pub bullet_p1: Option<Bullet>,
     pub bullet_p2: Option<Bullet>,
     pub heart_p1: Heart,
@@ -29,8 +29,8 @@ impl TanksWorld {
 
         Self {
             obstacle,
-            tank1: Tank::new(true, p1_pos),
-            tank2: Tank::new(false, p2_pos),
+            tank_p1: Tank::new(true, p1_pos),
+            tank_p2: Tank::new(false, p2_pos),
             bullet_p1: None,
             bullet_p2: None,
             heart_p1: Heart::new(false),

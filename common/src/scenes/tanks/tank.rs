@@ -39,7 +39,7 @@ impl Tank {
             is_p1,
             health: 3,
             level: 1,
-            rotation: if is_p1 { 180 } else { 0 },
+            rotation: if is_p1 { 0 } else { 180 },
             alive: true,
             respawn_timer: 0.0,
             shoot_timer: 0.0,

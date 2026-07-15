@@ -53,8 +53,8 @@ impl Scene for TanksScene {
         w.heart_p1.tick(delta_time);
         w.heart_p2.tick(delta_time);
 
-        let spawn1 = w.tank1.tick(input.as_ref(), &w.obstacle, w.bullet_p1.is_some(), delta_time);
-        let spawn2 = w.tank2.tick(input.as_ref(), &w.obstacle, w.bullet_p2.is_some(), delta_time);
+        let spawn1 = w.tank_p1.tick(input.as_ref(), &w.obstacle, w.bullet_p1.is_some(), delta_time);
+        let spawn2 = w.tank_p2.tick(input.as_ref(), &w.obstacle, w.bullet_p2.is_some(), delta_time);
 
         if let Some(s) = spawn1 {
             w.bullet_p1 = Some(crate::scenes::tanks::bullet::Bullet::new(s.pos, s.dir, s.level, true));
@@ -64,7 +64,7 @@ impl Scene for TanksScene {
         }
 
         if let Some(b) = w.bullet_p1.as_mut() {
-            b.tick(&mut w.obstacle, &mut w.tank1, &mut w.tank2, delta_time);
+            b.tick(&mut w.obstacle, &mut w.tank_p1, &mut w.tank_p2, delta_time);
         }
         let p1_heart_hit = w.bullet_p1.as_ref().and_then(|b| {
             if w.heart_p1.overlaps_point(b.pos) {
@@ -90,7 +90,7 @@ impl Scene for TanksScene {
         }
 
         if let Some(b) = w.bullet_p2.as_mut() {
-            b.tick(&mut w.obstacle, &mut w.tank1, &mut w.tank2, delta_time);
+            b.tick(&mut w.obstacle, &mut w.tank_p1, &mut w.tank_p2, delta_time);
         }
         let p2_heart_hit = w.bullet_p2.as_ref().and_then(|b| {
             if !b.alive {
@@ -143,13 +143,13 @@ impl Scene for TanksScene {
         w.heart_p1.draw(&mut result);
         w.heart_p2.draw(&mut result);
 
-        if w.tank1.alive {
-            let s = w.tank1.render();
-            write_m!(&mut result, &s, &w.tank1.pos);
+        if w.tank_p1.alive {
+            let s = w.tank_p1.render();
+            write_m!(&mut result, &s, &w.tank_p1.pos);
         }
-        if w.tank2.alive {
-            let s = w.tank2.render();
-            write_m!(&mut result, &s, &w.tank2.pos);
+        if w.tank_p2.alive {
+            let s = w.tank_p2.render();
+            write_m!(&mut result, &s, &w.tank_p2.pos);
         }
 
         if let Some(b) = w.bullet_p1.as_ref() {
