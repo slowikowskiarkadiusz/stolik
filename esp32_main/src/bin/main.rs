@@ -372,16 +372,14 @@ async fn main(_s: embassy_executor::Spawner) {
             let high_pri_spawner = hp_executor.start(Priority::Priority3);
 // esp_println::println!("ZZZZZZ5");
 
-            // hub75 runs as high priority task
             high_pri_spawner.spawn(hub75_task(hub75_per, &RX, &TX, fb1)).ok();
+            high_pri_spawner.spawn(esp32_main::esp32_input::read_expander_data(expander_pin_setup)).ok();
 // esp_println::println!("ZZZZZZ6");
 
             let lp_executor = mk_static!(Executor, Executor::new());
-            // display task runs as low priority task
             lp_executor.run(|spawner: Spawner| {
 // esp_println::println!("ZZZZZZ7");
                 spawner.spawn(run_engine(input_pin_setup)).ok();
-                spawner.spawn(esp32_main::esp32_input::read_expander_data(expander_pin_setup)).ok();
                 spawner.spawn(display_task(&TX, &RX, fb0)).ok();
             });
 // esp_println::println!("ZZZZZZ8");

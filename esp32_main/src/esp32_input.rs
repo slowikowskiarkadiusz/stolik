@@ -279,9 +279,8 @@ static EXPANDER_DATA: Signal<CriticalSectionRawMutex, u8> = Signal::new();
 
 #[task]
 pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
-    let i2c_config = esp_hal::i2c::master::Config::default().with_software_timeout(
-        esp_hal::i2c::master::SoftwareTimeout::Transaction(esp_hal::time::Duration::from_millis(5)),
-    );
+    let i2c_config = esp_hal::i2c::master::Config::default()
+        .with_software_timeout(esp_hal::i2c::master::SoftwareTimeout::None);
     let mut i2c = esp_hal::i2c::master::I2c::new(setup.i2c0, i2c_config)
         .unwrap()
         .with_sda(setup.gpio19)
@@ -289,13 +288,16 @@ pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
 
     const ADDR: u8 = 0x20;
 
-    let _ = i2c.write(ADDR, &[0x01, 0xFF]);  // IODIRB = all inputs
-    let _ = i2c.write(ADDR, &[0x0D, 0xFF]);  // GPPUB = pull-ups enabled
+    let _ = i2c.write(ADDR, &[0x01, 0xFF]);
+    let _ = i2c.write(ADDR, &[0x0D, 0xFF]);
 
     loop {
         let mut data = [0xFFu8; 2];
         if i2c.write_read(ADDR, &[0x12], &mut data).is_ok() {
             EXPANDER_DATA.signal(data[1]);
+        } else {
+            let _ = i2c.apply_config(&esp_hal::i2c::master::Config::default()
+                .with_software_timeout(esp_hal::i2c::master::SoftwareTimeout::None));
         }
         Timer::after_millis(10).await;
     }
