@@ -78,12 +78,12 @@ impl Scene for TetrisScene {
         }
 
         if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
-            p1_board.take_damage(damage_for_p2);
+            p1_board.take_damage(damage_for_p1);
         }
 
         if !matches!(self.mode, TetrisSceneMode::Solo) {
             if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
-                p2_board.take_damage(damage_for_p1);
+                p2_board.take_damage(damage_for_p2);
             }
         }
     }

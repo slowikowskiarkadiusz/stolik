@@ -103,11 +103,11 @@ impl Color {
     }
 
     pub fn lerp(from: &Color, to: &Color, step: f32) -> Color {
-        let r = (from.r as f32 + to.r as f32 - from.r as f32 * step) as u8;
-        let g = (from.g as f32 + to.g as f32 - from.g as f32 * step) as u8;
-        let b = (from.b as f32 + to.b as f32 - from.b as f32 * step) as u8;
-        let a = (from.a as f32 + to.a as f32 - from.a as f32 * step) as u8;
-        Color::new(r.min(1), g.min(1), b.min(1), a.min(1))
+        let r = (from.r as f32 * (1.0 - step) + to.r as f32 * step) as u8;
+        let g = (from.g as f32 * (1.0 - step) + to.g as f32 * step) as u8;
+        let b = (from.b as f32 * (1.0 - step) + to.b as f32 * step) as u8;
+        let a = (from.a as f32 * (1.0 - step) + to.a as f32 * step) as u8;
+        Color::new(r, g, b, a)
     }
 }
 

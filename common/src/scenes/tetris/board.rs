@@ -196,11 +196,12 @@ impl Board {
                 }
             }
 
+            let mut damage_from_hard_drop = 0u8;
             if input
                 .gestures()
                 .is(if self.is_p1 { Key::P1Up } else { Key::P2Up }, State::Down, Gesture::Once, None)
             {
-                self.drop();
+                damage_from_hard_drop = self.drop();
             }
 
             if input
@@ -219,7 +220,7 @@ impl Board {
                 self.rotate_block(-1);
             }
 
-            let damage_to_deal = self.fall(delta_time);
+            let damage_to_deal = damage_from_hard_drop + self.fall(delta_time);
             damage_to_do = self.garbage_bar.decrease_and_get_left(damage_to_deal);
         }
 

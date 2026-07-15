@@ -173,11 +173,11 @@ fn generate_map(board_size: u8, rng: &mut SmallRng) -> Matrix<ObstacleType> {
                 ObstacleType::None | ObstacleType::Edge => {}
                 ObstacleType::Grass => {
                     generate_obstacle(board_size, cx, cy, ObstacleType::Grass,
-                        1, 999, 1, 999, &[ObstacleType::Brick], &mut cells, rng);
+                        1, 3, 1, 4, &[ObstacleType::Brick], &mut cells, rng);
                 }
                 ObstacleType::Brick => {
                     generate_obstacle(board_size, cx, cy, ObstacleType::Brick,
-                        1, 999, 1, 999, &[], &mut cells, rng);
+                        1, 3, 1, 2, &[], &mut cells, rng);
                 }
                 ObstacleType::Steel => {
                     generate_obstacle(board_size, cx, cy, ObstacleType::Steel,
@@ -283,7 +283,7 @@ fn generate_obstacle(
 }
 
 fn randomize_obstacle_type(rng: &mut SmallRng) -> ObstacleType {
-    let weights = [3.0f32, 0.3, 1.5, 0.4, 0.3];
+    let weights = [5.0, 0.3, 1.2, 0.3, 0.2];
     let total: f32 = weights.iter().sum();
     let mut r = rng.r#gen::<f32>() * total;
     for (i, &w) in weights.iter().enumerate() {
