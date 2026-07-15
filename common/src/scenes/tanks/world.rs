@@ -1,10 +1,11 @@
-use rand::{SeedableRng, rngs::SmallRng};
-use crate::engine::v2::V2;
-use super::obstacle::{ObstacleMap, BORDER, CELL_SIZE};
-use super::tank::Tank;
 use super::bullet::Bullet;
+use super::heart::Heart;
+use super::obstacle::{BORDER, CELL_SIZE, ObstacleMap};
+use super::tank::Tank;
+use crate::engine::v2::V2;
+use rand::{SeedableRng, rngs::SmallRng};
 
-pub const BOARD_SIZE: u8 = 11;
+pub const BOARD_SIZE: u8 = 16;
 
 pub struct TanksWorld {
     pub obstacle: ObstacleMap,
@@ -12,6 +13,8 @@ pub struct TanksWorld {
     pub tank2: Tank,
     pub bullet_p1: Option<Bullet>,
     pub bullet_p2: Option<Bullet>,
+    pub heart_p1: Heart,
+    pub heart_p2: Heart,
     pub winner: Option<u8>,
     pub game_over_timer: f32,
 }
@@ -30,6 +33,8 @@ impl TanksWorld {
             tank2: Tank::new(false, p2_pos),
             bullet_p1: None,
             bullet_p2: None,
+            heart_p1: Heart::new(false),
+            heart_p2: Heart::new(true),
             winner: None,
             game_over_timer: 0.0,
         }

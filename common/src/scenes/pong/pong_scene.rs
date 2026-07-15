@@ -30,7 +30,7 @@ use esp_println::println;
 
 static ORIGINAL_BALL_SPEED: f32 = 10.0;
 static ORIGINAL_BALL_SPEED_MULTIPLIER: f32 = 1.0;
-static MAX_SCORE: u8 = 1;
+static MAX_SCORE: u8 = 3;
 
 pub struct PongScene {
     score: [u8; 2],
@@ -106,7 +106,10 @@ impl Scene for PongScene {
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
-        println!("{}", input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue));
+        println!(
+            "{}",
+            input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue)
+        );
 
         self.handle_input(input, world, delta_time);
         if let Some(ball) = self.ball
@@ -369,7 +372,7 @@ impl PongScene {
 
         if self.score.iter().any(|x| x == &MAX_SCORE) {
             self.do_play = false;
-            print_victory_text(world, if self.score[0] > self.score[1] { 1 } else { 2 }, camera, result);
+            print_victory_text(result, if self.score[0] > self.score[1] { 1 } else { 2 });
             let play_against_ai = self.play_against_ai;
             add_asyncable(
                 Box::new(move |_, _| {

@@ -3,7 +3,7 @@ use rand::{Rng, rngs::SmallRng};
 use crate::engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2};
 
 pub const CELL_SIZE: u8 = 4;
-pub const BORDER: u8 = 10;
+pub const BORDER: u8 = 0;
 
 #[repr(u8)]
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -162,13 +162,10 @@ fn draw_cell(out: &mut ColorMatrix, cx: u8, cy: u8, t: ObstacleType) {
     }
 }
 
-// ── map generation, mirrors the C++ generate_map / generate_obstacle ─────────
-
 fn generate_map(board_size: u8, rng: &mut SmallRng) -> Matrix<ObstacleType> {
     let bs = board_size as usize;
     let mut cells = Matrix::new(board_size, board_size, ObstacleType::None);
 
-    // Fill top half only; generate_obstacle mirrors each placement to the bottom.
     for cx in 0..board_size {
         for cy in 0..(board_size / 2) {
             let obstacle = randomize_obstacle_type(rng);
@@ -196,7 +193,6 @@ fn generate_map(board_size: u8, rng: &mut SmallRng) -> Matrix<ObstacleType> {
         }
     }
 
-    // Clear spawn corners and center channel (mirrors the excluded_cells list).
     let mid = board_size / 2;
     let excluded: &[(i32, i32)] = &[
         (0, 0), (1, 0), (1, 1), (0, 1),
@@ -209,8 +205,8 @@ fn generate_map(board_size: u8, rng: &mut SmallRng) -> Matrix<ObstacleType> {
         if ex >= 0 && ey >= 0 && (ex as usize) < bs && (ey as usize) < bs {
             cells.set(ex as u8, ey as u8, ObstacleType::None);
         }
-        let mx = (board_size as i32 - 2 - ex) as usize;
-        let my = (board_size as i32 - 2 - ey) as usize;
+        let mx = (board_size as i32 - 1 - ex) as usize;
+        let my = (board_size as i32 - 1 - ey) as usize;
         if mx < bs && my < bs {
             cells.set(mx as u8, my as u8, ObstacleType::None);
         }
@@ -238,9 +234,9 @@ fn generate_obstacle(
         r.min(max_extra_rows)
     };
     let bound_for = if do_columns {
-        ((half - 1 - at_y as i32).max(1)) as u32
+        ((half - at_y as i32).max(1)) as u32
     } else {
-        ((bs - 2 - at_x as i32).max(1)) as u32
+        ((bs - 1 - at_x as i32).max(1)) as u32
     };
     let continue_for = {
         let r = rng.gen_range(0..bound_for.max(1)) + min_continue_for;
@@ -252,19 +248,18 @@ fn generate_obstacle(
             let x = (if do_columns { ii } else { i }) as i32 + at_x as i32;
             let y = (if do_columns { i } else { ii }) as i32 + at_y as i32;
 
-            if x >= bs - 1 || y >= bs - 1 {
+            if x >= bs || y >= bs {
                 continue;
             }
             let x = x as u8;
             let y = y as u8;
 
-            // Clear if overridable, then place.
             if *cells.get(x, y) != ObstacleType::None
                 && override_types.contains(cells.get(x, y))
             {
                 cells.set(x, y, ObstacleType::None);
-                let mx = (board_size as i32 - 2 - x as i32) as u8;
-                let my = (board_size as i32 - 2 - y as i32) as u8;
+                let mx = (board_size as i32 - 1 - x as i32) as u8;
+                let my = (board_size as i32 - 1 - y as i32) as u8;
                 if *cells.get(mx, my) != ObstacleType::None {
                     cells.set(mx, my, ObstacleType::None);
                 }
@@ -272,9 +267,9 @@ fn generate_obstacle(
 
             if *cells.get(x, y) == ObstacleType::None {
                 cells.set(x, y, t);
-                if (y as i32) < half - 1 {
-                    let mx = (board_size as i32 - 2 - x as i32) as u8;
-                    let my = (board_size as i32 - 2 - y as i32) as u8;
+                if (y as i32) < half {
+                    let mx = (board_size as i32 - 1 - x as i32) as u8;
+                    let my = (board_size as i32 - 1 - y as i32) as u8;
                     if (mx as i32) < bs && (my as i32) < bs {
                         if *cells.get(mx, my) != ObstacleType::None {
                             cells.set(mx, my, ObstacleType::None);
@@ -288,8 +283,7 @@ fn generate_obstacle(
 }
 
 fn randomize_obstacle_type(rng: &mut SmallRng) -> ObstacleType {
-    // Weights from C++: {none=0.1, grass=0.07, brick=5, steel=0.3, water=0.1}
-    let weights = [0.1f32, 0.07, 5.0, 0.3, 0.1];
+    let weights = [3.0f32, 0.3, 1.5, 0.4, 0.3];
     let total: f32 = weights.iter().sum();
     let mut r = rng.r#gen::<f32>() * total;
     for (i, &w) in weights.iter().enumerate() {

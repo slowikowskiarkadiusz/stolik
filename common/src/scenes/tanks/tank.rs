@@ -18,11 +18,13 @@ pub struct BulletSpawn {
 
 pub struct Tank {
     pub pos: V2,
+    pub spawn_pos: V2,
     pub is_p1: bool,
     pub health: u8,
     pub level: u8,
     pub rotation: i32,
     pub alive: bool,
+    pub respawn_timer: f32,
     shoot_timer: f32,
     move_timer: f32,
     is_visible: bool,
@@ -33,11 +35,13 @@ impl Tank {
     pub fn new(is_p1: bool, pos: V2) -> Self {
         Self {
             pos,
+            spawn_pos: pos,
             is_p1,
             health: 3,
             level: 1,
             rotation: if is_p1 { 180 } else { 0 },
             alive: true,
+            respawn_timer: 0.0,
             shoot_timer: 0.0,
             move_timer: 0.0,
             is_visible: true,
@@ -46,6 +50,19 @@ impl Tank {
     }
 
     pub fn tick(&mut self, input: &dyn Input, obstacle: &ObstacleMap, has_bullet: bool, delta_time: f32) -> Option<BulletSpawn> {
+        if !self.alive {
+            self.respawn_timer -= delta_time;
+            if self.respawn_timer <= 0.0 {
+                self.health = 3;
+                self.level = 1;
+                self.pos = self.spawn_pos;
+                self.rotation = if self.is_p1 { 180 } else { 0 };
+                self.alive = true;
+                self.is_visible = true;
+                self.blink_timer = 0.0;
+            }
+            return None;
+        }
         self.tick_move(input, obstacle, delta_time);
         let bullet = self.tick_shoot(input, has_bullet, delta_time);
         self.tick_blink(delta_time);
@@ -53,9 +70,11 @@ impl Tank {
     }
 
     pub fn take_damage(&mut self) {
+        if !self.alive { return; }
         self.health = self.health.saturating_sub(1);
         if self.health == 0 {
             self.alive = false;
+            self.respawn_timer = 3.0;
         }
     }
 
@@ -73,9 +92,6 @@ impl Tank {
         let mut m = ColorMatrix::new(4, 4, Color::none());
         let rot = ((self.rotation % 360) + 360) % 360;
 
-        // level 0: stub gun (1 unit), 2-unit body
-        // level 1: 2-unit gun, 2-unit body
-        // level 2: 1-unit gun, 3-unit body
         match rot {
             0 => {
                 // gun up

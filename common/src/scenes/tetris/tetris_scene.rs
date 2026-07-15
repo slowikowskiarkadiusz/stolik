@@ -141,7 +141,7 @@ impl TetrisScene {
         }
     }
 
-    fn on_players_death(&mut self, world: &mut World, camera: &Camera, result: &mut ColorMatrix) {
+    fn on_players_death(&mut self, _world: &mut World, _camera: &Camera, result: &mut ColorMatrix) {
         if self.is_player_dead > 0 {
             let is_p1 = self.is_player_dead == 1;
 
@@ -155,7 +155,7 @@ impl TetrisScene {
                 p2_board.dim(51);
             }
 
-            print_victory_text(world, if is_p1 { 1 } else { 2 }, camera, result);
+            print_victory_text(result, if is_p1 { 1 } else { 2 });
         }
     }
 }

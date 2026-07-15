@@ -27,12 +27,12 @@ impl Bullet {
 
         match hit {
             ObstacleType::None => {
-                // Check enemy tank overlap.
-                if !self.from_p1 && overlaps(self.pos, tank1.pos) {
+                // Check enemy tank overlap (skip dead/respawning tanks).
+                if !self.from_p1 && tank1.alive && overlaps(self.pos, tank1.pos) {
                     tank1.take_damage();
                     self.impact(obstacle);
                     self.alive = false;
-                } else if self.from_p1 && overlaps(self.pos, tank2.pos) {
+                } else if self.from_p1 && tank2.alive && overlaps(self.pos, tank2.pos) {
                     tank2.take_damage();
                     self.impact(obstacle);
                     self.alive = false;

@@ -6,18 +6,11 @@ use crate::engine::{
     components::{camera::Camera, world::World},
     v2::V2,
 };
+use crate::write_m;
 
-pub fn render_arrow(
-    _world: &mut World,
-    center: V2,
-    height: u8,
-    color: Color,
-    _delay_ms: u32,
-    camera: &Camera,
-    result: &mut ColorMatrix,
-) {
+pub fn render_arrow(_world: &mut World, center: V2, height: u8, color: Color, _delay_ms: u32, camera: &Camera, result: &mut ColorMatrix) {
     let shape = make_shape(height, color);
-    result.write(&shape, &center, None, None, None, Some(camera));
+    write_m!(result, &shape, &center, camera);
 }
 
 fn make_shape(height: u8, color: Color) -> ColorMatrix {

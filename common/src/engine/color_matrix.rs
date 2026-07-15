@@ -4,6 +4,16 @@ use libm::{cosf, roundf, sinf};
 
 use crate::engine::{color::Color, components::camera::Camera, matrix::Matrix, v2::V2};
 
+#[macro_export]
+macro_rules! write_m {
+    ($matrix:expr, $other:expr, $other_position:expr) => {
+        $matrix.write($other, $other_position, None, None, None, None);
+    };
+    ($matrix:expr, $other:expr, $other_position:expr, $camera:expr) => {
+        $matrix.write($other, $other_position, None, None, None, Some($camera));
+    };
+}
+
 pub type ColorMatrix = Matrix<Color>;
 
 impl Matrix<Color> {
