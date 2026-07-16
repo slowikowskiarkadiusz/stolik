@@ -26,7 +26,9 @@ impl Heart {
     }
 
     pub fn take_hit(&mut self, damage: u8) {
-        if !self.alive { return; }
+        if !self.alive {
+            return;
+        }
         self.health = self.health.saturating_sub(damage);
         if self.health == 0 {
             self.alive = false;
@@ -37,7 +39,9 @@ impl Heart {
     }
 
     pub fn tick(&mut self, delta_time: f32) {
-        if !self.alive { return; }
+        if !self.alive {
+            return;
+        }
         self.blink_timer -= delta_time;
         if self.blink_timer <= 0.0 {
             self.is_visible = !self.is_visible;
@@ -53,32 +57,32 @@ impl Heart {
     fn y_range(&self) -> (u8, u8) {
         let r = self.rows();
         if self.is_bottom {
-            (SCREEN_H - r, SCREEN_H - 1)
+            (SCREEN_H - r + 1, SCREEN_H - 1)
         } else {
             (0, r - 1)
         }
     }
 
     pub fn blocker_box(&self) -> Option<(V2, V2)> {
-        if !self.alive { return None; }
+        if !self.alive {
+            return None;
+        }
         let (y0, y1) = self.y_range();
-        Some((
-            V2::new(HEART_X as f32, y0 as f32),
-            V2::new((HEART_X + HEART_W) as f32, y1 as f32 + 1.0),
-        ))
+        Some((V2::new(HEART_X as f32 + 1.0, y0 as f32), V2::new((HEART_X + HEART_W) as f32, y1 as f32)))
     }
 
     pub fn overlaps_point(&self, p: V2) -> bool {
-        if !self.alive { return false; }
+        if !self.alive {
+            return false;
+        }
         let (y0, y1) = self.y_range();
-        p.x >= HEART_X as f32 - 1.0
-            && p.x < (HEART_X + HEART_W) as f32 + 1.0
-            && p.y >= y0 as f32 - 1.0
-            && p.y <= y1 as f32 + 1.0
+        p.x >= HEART_X as f32 - 1.0 && p.x < (HEART_X + HEART_W) as f32 + 1.0 && p.y >= y0 as f32 - 1.0 && p.y <= y1 as f32 + 1.0
     }
 
     pub fn draw(&self, out: &mut ColorMatrix) {
-        if !self.alive || !self.is_visible { return; }
+        if !self.alive || !self.is_visible {
+            return;
+        }
         let c = Color::new(255, 255, 255, 255);
         for i in 0..self.health {
             let row = i / HEART_W;
