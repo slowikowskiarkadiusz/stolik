@@ -176,7 +176,17 @@ impl Scene for AstroDuelScene {
         result
     }
 
-    fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}
+    fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _: f32) {
+        for bullet_id in self.bullets.iter().map(|f| &f.actor_id) {
+            if let Some(list) = overlaps.get(bullet_id) {
+                for overlapped_id in list {
+                    if self.obstacle.as_ref().unwrap().is_destroyable_obstacle(overlapped_id) {
+                        world.murder(overlapped_id);
+                    }
+                }
+            }
+        }
+    }
 
     fn on_collisions(&mut self, _: &HashMap<u16, Vec<(u16, CollisionResult)>>, _: &mut World, _: f32) {}
 }

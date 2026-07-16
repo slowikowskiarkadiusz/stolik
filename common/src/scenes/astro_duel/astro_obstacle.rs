@@ -1,5 +1,7 @@
 extern crate alloc;
 
+use alloc::collections::BTreeMap;
+
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
@@ -9,7 +11,6 @@ use crate::engine::{
         world::World,
     },
     engine::ActorId,
-    matrix::Matrix,
     v2::V2,
 };
 use rand::{Rng, rngs::SmallRng};
@@ -24,9 +25,6 @@ const OPENING_END: u8 = OPENING_START + OPENING_CELLS;
 pub const OPENING_PX_START: f32 = (OPENING_START * CELL_SIZE) as f32;
 pub const OPENING_PX_END: f32 = (OPENING_END * CELL_SIZE) as f32;
 
-const SHIP_RADIUS: f32 = 2.0;
-const BOUNCE: f32 = 0.8;
-
 #[repr(u8)]
 #[derive(PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Ord)]
 pub enum AstroObstacleType {
@@ -37,7 +35,7 @@ pub enum AstroObstacleType {
 }
 
 pub struct AstroObstacleMap {
-    map: Vec<(AstroObstacleType, ActorId)>,
+    map: BTreeMap<ActorId, AstroObstacleType>,
 }
 
 impl AstroObstacleMap {
@@ -47,23 +45,26 @@ impl AstroObstacleMap {
         }
     }
 
+    pub fn is_destroyable_obstacle(&self, actor_id: &ActorId) -> bool {
+        if let Some(obstacle_type) = self.map.get(actor_id) {
+            return obstacle_type != &AstroObstacleType::Steel;
+        }
+        false
+    }
+
     pub fn render(&self, world: &mut World) -> ColorMatrix {
         let total = BOARD_CELLS as u16 * CELL_SIZE as u16;
         let mut out = ColorMatrix::new(total as u8, total as u8, Color::black());
         for pair in &self.map {
-            if let Some(transform) = world.get_transform(&pair.1) {
-                draw_cell(&mut out, (transform.center.x / 4.0) as u8, (transform.center.y / 4.0) as u8, pair.0);
+            if let Some(transform) = world.get_transform(&pair.0) {
+                draw_cell(&mut out, (transform.center.x / 4.0) as u8, (transform.center.y / 4.0) as u8, pair.1);
             }
         }
         out
     }
 }
 
-fn draw_cell(out: &mut ColorMatrix, cx: u8, cy: u8, t: AstroObstacleType) {
-    let px0 = cx * CELL_SIZE;
-    let py0 = cy * CELL_SIZE;
-    let s = CELL_SIZE as usize;
-
+fn draw_cell(out: &mut ColorMatrix, cx: u8, cy: u8, t: &AstroObstacleType) {
     match t {
         AstroObstacleType::None => {}
 
@@ -109,13 +110,13 @@ fn draw_cell(out: &mut ColorMatrix, cx: u8, cy: u8, t: AstroObstacleType) {
 }
 
 fn is_cell_forbidden(x: u8, y: u8) -> bool {
-    x >= (BOARD_CELLS / 2 - 2) && x <= (BOARD_CELLS / 2 + 2) && y >= 0 && y <= 2
+    x >= (BOARD_CELLS / 2 - 2) && x <= (BOARD_CELLS / 2 + 1) && y <= 2
 }
 
-fn generate_interior(rng: &mut SmallRng, world: &mut World) -> Vec<(AstroObstacleType, ActorId)> {
+fn generate_interior(rng: &mut SmallRng, world: &mut World) -> BTreeMap<ActorId, AstroObstacleType> {
     let size = INTERIOR;
     let half = INTERIOR_HALF;
-    let mut cells: Vec<(AstroObstacleType, ActorId)> = vec![];
+    let mut cells: BTreeMap<ActorId, AstroObstacleType> = BTreeMap::new();
 
     for cy in 0..half {
         for cx in 0..size {
@@ -131,26 +132,26 @@ fn generate_interior(rng: &mut SmallRng, world: &mut World) -> Vec<(AstroObstacl
                     let nx = (cx + dx).min(size - 1);
                     let ny = (cy + dy).min(half - 1);
                     if !is_cell_forbidden(nx, ny) {
-                        cells.push((
-                            AstroObstacleType::Brick,
+                        cells.insert(
                             create_collider_actor(
                                 V2::new(nx as f32, ny as f32) * CELL_SIZE as f32,
                                 V2::one() * CELL_SIZE as f32,
                                 world,
                             ),
-                        ));
+                            AstroObstacleType::Brick,
+                        );
 
                         //rotate
                         let mx = size - 1 - nx;
                         let my = size - 1 - ny;
-                        cells.push((
-                            AstroObstacleType::Brick,
+                        cells.insert(
                             create_collider_actor(
                                 V2::new(mx as f32, my as f32) * CELL_SIZE as f32,
                                 V2::one() * CELL_SIZE as f32,
                                 world,
                             ),
-                        ));
+                            AstroObstacleType::Brick,
+                        );
                     }
                 }
             }
@@ -158,35 +159,35 @@ fn generate_interior(rng: &mut SmallRng, world: &mut World) -> Vec<(AstroObstacl
     }
 
     for dy in 0..=size {
-        cells.push((
-            AstroObstacleType::Steel,
+        cells.insert(
             create_collider_actor(V2::new(0 as f32, dy as f32) * CELL_SIZE as f32, V2::one() * CELL_SIZE as f32, world),
-        ));
-
-        cells.push((
             AstroObstacleType::Steel,
+        );
+
+        cells.insert(
             create_collider_actor(
                 V2::new(BOARD_CELLS as f32 - 1.0, dy as f32) * CELL_SIZE as f32,
                 V2::one() * CELL_SIZE as f32,
                 world,
             ),
-        ));
+            AstroObstacleType::Steel,
+        );
     }
 
-    for dx in 0..=size {
+    for dx in 0..=size + 1 {
         if !is_cell_forbidden(dx, 0) {
-            cells.push((
-                AstroObstacleType::Steel,
+            cells.insert(
                 create_collider_actor(V2::new(dx as f32, 0.0) * CELL_SIZE as f32, V2::one() * CELL_SIZE as f32, world),
-            ));
-            cells.push((
                 AstroObstacleType::Steel,
+            );
+            cells.insert(
                 create_collider_actor(
                     V2::new(dx as f32, BOARD_CELLS as f32 - 1.0) * CELL_SIZE as f32,
                     V2::one() * CELL_SIZE as f32,
                     world,
                 ),
-            ));
+                AstroObstacleType::Steel,
+            );
         }
     }
 

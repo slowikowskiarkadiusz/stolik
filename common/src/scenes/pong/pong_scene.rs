@@ -348,7 +348,7 @@ impl PongScene {
     fn print_score(&mut self, world: &mut World, result: &mut ColorMatrix, camera: &Camera) {
         for i in 0..2 {
             if let Some(score_text_actor) = self.score_text[i] {
-                world.remove_actor(&score_text_actor);
+                world.murder(&score_text_actor);
             }
 
             let score_text_actor = create_text_actor_at_center(
@@ -383,7 +383,7 @@ impl PongScene {
             );
 
             if let Some(ball_id) = self.ball {
-                world.remove_actor(&ball_id);
+                world.murder(&ball_id);
             }
         }
     }

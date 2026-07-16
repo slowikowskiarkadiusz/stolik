@@ -40,7 +40,7 @@ impl Bullet {
     }
 
     /// Returns true if bullet should be destroyed.
-    pub fn tick(&mut self, world: &mut World, obstacle: &AstroObstacleMap, delta_time: f32) -> bool {
+    pub fn tick(&mut self, world: &mut World, _obstacle: &AstroObstacleMap, delta_time: f32) -> bool {
         self.lifetime -= delta_time;
         wrap_center(world, self.actor_id);
         self.lifetime <= 0.0
@@ -51,7 +51,7 @@ impl Bullet {
     }
 
     pub fn destroy(&self, world: &mut World) {
-        world.remove_actor(&self.actor_id);
+        world.murder(&self.actor_id);
     }
 
     pub fn render(&self, world: &World, _camera: &Camera, result: &mut ColorMatrix) {

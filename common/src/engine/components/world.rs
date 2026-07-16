@@ -12,7 +12,7 @@ use crate::engine::{
     engine::ActorId, v2::V2,
 };
 
-pub const MAX_ACTORS: usize = 500;
+pub const MAX_ACTORS: usize = 200;
 
 pub struct World {
     camera: Camera,
@@ -144,7 +144,7 @@ impl World {
         slot
     }
 
-    pub fn remove_actor(&mut self, actor_id: &ActorId) {
+    pub fn murder(&mut self, actor_id: &ActorId) {
         let idx = *actor_id as usize;
         self.actor_alive[idx] = false;
         self.transforms[idx] = None;

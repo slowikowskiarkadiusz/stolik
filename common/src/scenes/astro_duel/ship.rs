@@ -57,7 +57,7 @@ impl Ship {
         }
     }
 
-    pub fn tick(&mut self, input: &dyn Input, world: &mut World, obstacle: &AstroObstacleMap, delta_time: f32) -> Option<BulletSpawn> {
+    pub fn tick(&mut self, input: &dyn Input, world: &mut World, _obstacle: &AstroObstacleMap, delta_time: f32) -> Option<BulletSpawn> {
         if !self.alive {
             if self.lives > 0 {
                 self.respawn_timer -= delta_time;
@@ -110,7 +110,7 @@ impl Ship {
         }
         self.lives = self.lives.saturating_sub(1);
         self.alive = false;
-        world.remove_actor(&self.actor_id);
+        world.murder(&self.actor_id);
         if self.lives > 0 {
             self.respawn_timer = RESPAWN_TIME;
         }
