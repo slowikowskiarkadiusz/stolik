@@ -200,74 +200,60 @@ impl ControlsScene {
         }
 
         if let Some(current_page) = self.pages.get(self.current_page_index as usize) {
-            let current_page_length = current_page.iter().len();
+            let current_page_length = current_page.len();
+            let half = SCREEN_SIZE / 2;
 
-            for player_index in 0..2 {
-                for i in 0..current_page_length {
-                    let y = (SCREEN_SIZE / 2) - (BUTTON_SIZE + 1) * (i as u8 + 1) + if player_index == 0 { 0 } else { SCREEN_SIZE / 2 };
-                    let mut x = 0;
-                    let current_line = &current_page[current_page_length - 1usize - i];
-                    for key in &current_line.keys {
-                        // let icon_actor_id = create_button_icon_actor(
-                        //     world,
-                        //     V2::new((BUTTON_SIZE / 2) as f32, y as f32),
-                        //     BUTTON_SIZE,
-                        //     key.clone(),
-                        //     Some("controls button"),
-                        // );
+            for i in 0..current_page_length {
+                let y = half + (BUTTON_SIZE + 1) * (i as u8 + 1);
+                let mut x = 0;
+                let current_line = &current_page[i];
 
-                        result.write(
-                            &make_button_matrix(BUTTON_SIZE, key.clone()),
-                            &V2::new((BUTTON_SIZE / 2) as f32, y as f32),
-                            None,
-                            None,
-                            None,
-                            Some(camera),
-                        );
-
-                        x += BUTTON_SIZE + 1;
-
-                        if let Some(operation_text) = &current_line.operation
-                            && key.clone() != current_line.keys[current_line.keys.len() - 1]
-                        {
-                            let _text_actor_id = render_text(
-                                world,
-                                operation_text.clone(),
-                                V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
-                                V2::new(operation_text.len() as f32 * 4.0, 5.0),
-                                None,
-                                None,
-                                Color::white(),
-                                camera,
-                                result,
-                            );
-                        }
-                    }
-
-                    x += 2;
-
-                    let _text_actor_id = render_text(
-                        world,
-                        current_page[current_page.len() - 1usize - i].text.clone(),
-                        V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
-                        V2::new((SCREEN_SIZE - x) as f32, BUTTON_SIZE as f32),
+                for key in &current_line.keys {
+                    result.write(
+                        &make_button_matrix(BUTTON_SIZE, key.clone()),
+                        &V2::new((BUTTON_SIZE / 2) as f32, y as f32),
                         None,
                         None,
-                        Color::white(),
-                        camera,
-                        result,
+                        None,
+                        Some(camera),
                     );
+
+                    x += BUTTON_SIZE + 1;
+
+                    if let Some(operation_text) = &current_line.operation
+                        && key.clone() != current_line.keys[current_line.keys.len() - 1]
+                    {
+                        let _text_actor_id = render_text(
+                            world,
+                            operation_text.clone(),
+                            V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
+                            V2::new(operation_text.len() as f32 * 4.0, 5.0),
+                            None,
+                            None,
+                            Color::white(),
+                            camera,
+                            result,
+                        );
+                    }
                 }
-                if player_index == 0 {
-                    let copy = result.clone();
-                    result.write(&copy, &(copy.get_size() / 2.0), Some(180.0), None, None, Some(camera));
-                    // for actor_id in &current_icon_actors {
-                    //     if let Some(actor_transform) = world.get_mut_transform(actor_id) {
-                    //         actor_transform.rotate_around(&pivot, &180.0);
-                    //     }
-                    // }
-                }
+
+                x += 2;
+
+                let _text_actor_id = render_text(
+                    world,
+                    current_line.text.clone(),
+                    V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
+                    V2::new((SCREEN_SIZE - x) as f32, BUTTON_SIZE as f32),
+                    None,
+                    None,
+                    Color::white(),
+                    camera,
+                    result,
+                );
             }
+
+            let copy = result.clone();
+            result.write(&copy, &V2::new(half as f32, half as f32), Some(180.0), None, None, Some(camera));
         }
     }
 }

@@ -1,19 +1,21 @@
 extern crate alloc;
-use rand::{Rng, rngs::SmallRng};
+use std::collections::BTreeMap;
+
 use crate::engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2};
+use rand::{Rng, rngs::SmallRng};
 
 pub const CELL_SIZE: u8 = 4;
 pub const BORDER: u8 = 0;
 
 #[repr(u8)]
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Ord)]
 pub enum ObstacleType {
-    None  = 0,
+    None = 0,
     Grass = 1,
     Brick = 2,
     Steel = 3,
     Water = 4,
-    Edge  = 5,
+    Edge = 5,
 }
 
 pub struct ObstacleMap {
@@ -27,23 +29,21 @@ impl ObstacleMap {
         Self { cells, board_size }
     }
 
-    /// Returns the first non-None obstacle type that any pixel in [from, to] touches,
-    /// or Edge if the box goes outside the board. Coordinates are screen pixels.
-    pub fn does_collide(&self, from: V2, to: V2) -> ObstacleType {
+    pub fn blockers_at(&self, from: V2, to: V2) -> BTreeMap<ObstacleType, bool> {
+        let mut result: BTreeMap<ObstacleType, bool> = BTreeMap::new();
+
         for px in (from.x as i32)..(to.x as i32) {
             for py in (from.y as i32)..(to.y as i32) {
-                match self.pixel_to_cell(px, py) {
-                    None => return ObstacleType::Edge,
-                    Some((cx, cy)) => {
-                        let t = *self.cells.get(cx, cy);
-                        if t != ObstacleType::None {
-                            return t;
-                        }
-                    }
+                if let Some((cx, cy)) = self.pixel_to_cell(px, py) {
+                    let t = *self.cells.get(cx, cy);
+                    result.insert(t, true);
+                } else {
+                    result.insert(ObstacleType::Edge, true);
                 }
             }
         }
-        ObstacleType::None
+
+        result
     }
 
     pub fn remove_at(&mut self, from: V2, to: V2, level: u8) {
@@ -114,9 +114,9 @@ fn draw_cell(out: &mut ColorMatrix, cx: u8, cy: u8, t: ObstacleType) {
         }
 
         ObstacleType::Brick => {
-            let light  = Color::new(156, 90, 60, 255);
-            let dark   = Color::new(138, 63, 30, 255);
-            let third  = Color::new(138, 87, 65, 255);
+            let light = Color::new(156, 90, 60, 255);
+            let dark = Color::new(138, 63, 30, 255);
+            let third = Color::new(138, 87, 65, 255);
             for dy in 0..s {
                 let is_odd = dy % 2 == 1;
                 for dx in 0..s {
@@ -134,7 +134,7 @@ fn draw_cell(out: &mut ColorMatrix, cx: u8, cy: u8, t: ObstacleType) {
 
         ObstacleType::Steel => {
             let light = Color::new(180, 180, 180, 255);
-            let dark  = Color::new(70, 70, 70, 255);
+            let dark = Color::new(70, 70, 70, 255);
             for dy in 0..s {
                 for dx in 0..s {
                     let c = if dx == 0 || dx == s - 1 || dy == 0 || dy == s - 1 {
@@ -149,7 +149,7 @@ fn draw_cell(out: &mut ColorMatrix, cx: u8, cy: u8, t: ObstacleType) {
 
         ObstacleType::Water => {
             let light = Color::new(153, 217, 234, 255);
-            let dark  = Color::new(77, 109, 243, 255);
+            let dark = Color::new(77, 109, 243, 255);
             for dy in 0..s {
                 for dx in 0..s {
                     let c = if (dy % 2 == 0) == (dx % 2 == 0) { light } else { dark };
@@ -172,22 +172,52 @@ fn generate_map(board_size: u8, rng: &mut SmallRng) -> Matrix<ObstacleType> {
             match obstacle {
                 ObstacleType::None | ObstacleType::Edge => {}
                 ObstacleType::Grass => {
-                    generate_obstacle(board_size, cx, cy, ObstacleType::Grass,
-                        1, 3, 1, 4, &[ObstacleType::Brick], &mut cells, rng);
+                    generate_obstacle(
+                        board_size,
+                        cx,
+                        cy,
+                        ObstacleType::Grass,
+                        1,
+                        3,
+                        1,
+                        4,
+                        &[ObstacleType::Brick],
+                        &mut cells,
+                        rng,
+                    );
                 }
                 ObstacleType::Brick => {
-                    generate_obstacle(board_size, cx, cy, ObstacleType::Brick,
-                        1, 3, 1, 2, &[], &mut cells, rng);
+                    generate_obstacle(board_size, cx, cy, ObstacleType::Brick, 1, 3, 1, 2, &[], &mut cells, rng);
                 }
                 ObstacleType::Steel => {
-                    generate_obstacle(board_size, cx, cy, ObstacleType::Steel,
-                        0, 3, 0, 3, &[ObstacleType::Brick, ObstacleType::Grass], &mut cells, rng);
+                    generate_obstacle(
+                        board_size,
+                        cx,
+                        cy,
+                        ObstacleType::Steel,
+                        0,
+                        3,
+                        0,
+                        3,
+                        &[ObstacleType::Brick, ObstacleType::Grass],
+                        &mut cells,
+                        rng,
+                    );
                 }
                 ObstacleType::Water => {
-                    generate_obstacle(board_size, cx, cy, ObstacleType::Water,
-                        1, 3, 1, 3,
+                    generate_obstacle(
+                        board_size,
+                        cx,
+                        cy,
+                        ObstacleType::Water,
+                        1,
+                        3,
+                        1,
+                        3,
                         &[ObstacleType::Brick, ObstacleType::Grass, ObstacleType::Steel],
-                        &mut cells, rng);
+                        &mut cells,
+                        rng,
+                    );
                 }
             }
         }
@@ -195,11 +225,20 @@ fn generate_map(board_size: u8, rng: &mut SmallRng) -> Matrix<ObstacleType> {
 
     let mid = board_size / 2;
     let excluded: &[(i32, i32)] = &[
-        (0, 0), (1, 0), (1, 1), (0, 1),
-        (mid as i32, 0), (mid as i32 - 1, 0), (mid as i32 + 1, 0),
-        (mid as i32 + 2, 0), (mid as i32 - 2, 0),
-        (mid as i32, 1), (mid as i32 - 1, 1), (mid as i32 + 1, 1),
-        (mid as i32 + 2, 1), (mid as i32 - 2, 1),
+        (0, 0),
+        (1, 0),
+        (1, 1),
+        (0, 1),
+        (mid as i32, 0),
+        (mid as i32 - 1, 0),
+        (mid as i32 + 1, 0),
+        (mid as i32 + 2, 0),
+        (mid as i32 - 2, 0),
+        (mid as i32, 1),
+        (mid as i32 - 1, 1),
+        (mid as i32 + 1, 1),
+        (mid as i32 + 2, 1),
+        (mid as i32 - 2, 1),
     ];
     for &(ex, ey) in excluded {
         if ex >= 0 && ey >= 0 && (ex as usize) < bs && (ey as usize) < bs {
@@ -217,10 +256,13 @@ fn generate_map(board_size: u8, rng: &mut SmallRng) -> Matrix<ObstacleType> {
 
 fn generate_obstacle(
     board_size: u8,
-    at_x: u8, at_y: u8,
+    at_x: u8,
+    at_y: u8,
     t: ObstacleType,
-    min_extra_rows: u32, max_extra_rows: u32,
-    min_continue_for: u32, max_continue_for: u32,
+    min_extra_rows: u32,
+    max_extra_rows: u32,
+    min_continue_for: u32,
+    max_continue_for: u32,
     override_types: &[ObstacleType],
     cells: &mut Matrix<ObstacleType>,
     rng: &mut SmallRng,
@@ -254,9 +296,7 @@ fn generate_obstacle(
             let x = x as u8;
             let y = y as u8;
 
-            if *cells.get(x, y) != ObstacleType::None
-                && override_types.contains(cells.get(x, y))
-            {
+            if *cells.get(x, y) != ObstacleType::None && override_types.contains(cells.get(x, y)) {
                 cells.set(x, y, ObstacleType::None);
                 let mx = (board_size as i32 - 1 - x as i32) as u8;
                 let my = (board_size as i32 - 1 - y as i32) as u8;

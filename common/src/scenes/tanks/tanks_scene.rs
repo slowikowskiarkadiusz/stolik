@@ -53,8 +53,26 @@ impl Scene for TanksScene {
         w.heart_p1.tick(delta_time);
         w.heart_p2.tick(delta_time);
 
-        let spawn1 = w.tank_p1.tick(input.as_ref(), &w.obstacle, w.bullet_p1.is_some(), delta_time);
-        let spawn2 = w.tank_p2.tick(input.as_ref(), &w.obstacle, w.bullet_p2.is_some(), delta_time);
+        let p1_blockers = {
+            let mut b: [Option<(crate::engine::v2::V2, crate::engine::v2::V2)>; 3] = [None; 3];
+            if w.tank_p2.alive { b[0] = Some((w.tank_p2.pos - crate::engine::v2::V2::new(1.5, 1.5), w.tank_p2.pos + crate::engine::v2::V2::new(2.5, 2.5))); }
+            b[1] = w.heart_p1.blocker_box();
+            b[2] = w.heart_p2.blocker_box();
+            b
+        };
+        let p1_blockers_slice: alloc::vec::Vec<_> = p1_blockers.iter().filter_map(|x| *x).collect();
+
+        let p2_blockers = {
+            let mut b: [Option<(crate::engine::v2::V2, crate::engine::v2::V2)>; 3] = [None; 3];
+            if w.tank_p1.alive { b[0] = Some((w.tank_p1.pos - crate::engine::v2::V2::new(1.5, 1.5), w.tank_p1.pos + crate::engine::v2::V2::new(2.5, 2.5))); }
+            b[1] = w.heart_p1.blocker_box();
+            b[2] = w.heart_p2.blocker_box();
+            b
+        };
+        let p2_blockers_slice: alloc::vec::Vec<_> = p2_blockers.iter().filter_map(|x| *x).collect();
+
+        let spawn1 = w.tank_p1.tick(input.as_ref(), &w.obstacle, &p1_blockers_slice, w.bullet_p1.is_some(), delta_time);
+        let spawn2 = w.tank_p2.tick(input.as_ref(), &w.obstacle, &p2_blockers_slice, w.bullet_p2.is_some(), delta_time);
 
         if let Some(s) = spawn1 {
             w.bullet_p1 = Some(crate::scenes::tanks::bullet::Bullet::new(s.pos, s.dir, s.level, true));

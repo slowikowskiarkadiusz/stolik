@@ -59,6 +59,15 @@ impl Heart {
         }
     }
 
+    pub fn blocker_box(&self) -> Option<(V2, V2)> {
+        if !self.alive { return None; }
+        let (y0, y1) = self.y_range();
+        Some((
+            V2::new(HEART_X as f32, y0 as f32),
+            V2::new((HEART_X + HEART_W) as f32, y1 as f32 + 1.0),
+        ))
+    }
+
     pub fn overlaps_point(&self, p: V2) -> bool {
         if !self.alive { return false; }
         let (y0, y1) = self.y_range();

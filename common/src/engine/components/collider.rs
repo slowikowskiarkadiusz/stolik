@@ -136,6 +136,12 @@ impl Collider {
                         continue;
                     }
 
+                    let first_can_move = world.get_physics(first_actor).map_or(false, |p| p.is_movable());
+                    let second_can_move = world.get_physics(second_actor).map_or(false, |p| p.is_movable());
+                    if !first_can_move && !second_can_move {
+                        continue;
+                    }
+
                     if (world.get_collision_matrix(first_collider.mask_id) & 1 << second_collider.mask_id) == 1 {
                         if let Some(result) =
                             Collider::get_collision_result((first_collider, first_transform), (second_collider, second_transform))

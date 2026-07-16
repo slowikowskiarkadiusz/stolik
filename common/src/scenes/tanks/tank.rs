@@ -49,7 +49,14 @@ impl Tank {
         }
     }
 
-    pub fn tick(&mut self, input: &dyn Input, obstacle: &ObstacleMap, has_bullet: bool, delta_time: f32) -> Option<BulletSpawn> {
+    pub fn tick(
+        &mut self,
+        input: &dyn Input,
+        obstacle: &ObstacleMap,
+        blockers: &[(V2, V2)],
+        has_bullet: bool,
+        delta_time: f32,
+    ) -> Option<BulletSpawn> {
         if !self.alive {
             self.respawn_timer -= delta_time;
             if self.respawn_timer <= 0.0 {
@@ -63,14 +70,16 @@ impl Tank {
             }
             return None;
         }
-        self.tick_move(input, obstacle, delta_time);
+        self.tick_move(input, obstacle, blockers, delta_time);
         let bullet = self.tick_shoot(input, has_bullet, delta_time);
         self.tick_blink(delta_time);
         bullet
     }
 
     pub fn take_damage(&mut self) {
-        if !self.alive { return; }
+        if !self.alive {
+            return;
+        }
         self.health = self.health.saturating_sub(1);
         if self.health == 0 {
             self.alive = false;
@@ -165,7 +174,7 @@ impl Tank {
         m
     }
 
-    fn tick_move(&mut self, input: &dyn Input, obstacle: &ObstacleMap, delta_time: f32) {
+    fn tick_move(&mut self, input: &dyn Input, obstacle: &ObstacleMap, blockers: &[(V2, V2)], delta_time: f32) {
         self.move_timer -= delta_time;
         if self.move_timer > 0.0 {
             return;
@@ -203,10 +212,20 @@ impl Tank {
         let new_pos = self.pos + by;
         let from = new_pos - V2::one() * 1.5;
         let to = new_pos + V2::one() * 2.5;
-        let hit = obstacle.does_collide(from, to);
-        if matches!(hit, ObstacleType::None | ObstacleType::Grass) {
-            self.pos = new_pos;
+        let hit = obstacle.blockers_at(from, to);
+        if *hit.get(&ObstacleType::Edge).unwrap_or(&false)
+            || *hit.get(&ObstacleType::Brick).unwrap_or(&false)
+            || *hit.get(&ObstacleType::Water).unwrap_or(&false)
+            || *hit.get(&ObstacleType::Steel).unwrap_or(&false)
+        {
+            return;
         }
+        for &(bf, bt) in blockers {
+            if from.x < bt.x && to.x > bf.x && from.y < bt.y && to.y > bf.y {
+                return;
+            }
+        }
+        self.pos = new_pos;
     }
 
     fn tick_shoot(&mut self, input: &dyn Input, has_bullet: bool, delta_time: f32) -> Option<BulletSpawn> {

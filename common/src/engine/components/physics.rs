@@ -221,6 +221,10 @@ impl Physics {
         self
     }
 
+    pub fn is_movable(&self) -> bool {
+        self.can_move
+    }
+
     pub fn with_mass(&mut self, mass: f32) -> &mut Self {
         self.mass = mass;
         self
