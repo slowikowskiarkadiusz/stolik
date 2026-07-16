@@ -14,6 +14,7 @@ use crate::{
         v2::V2,
     },
     scenes::{
+        astro_duel::astro_scene::AstroDuelScene,
         controls::controls_scene::ControlsScene,
         mario::mario_scene::MarioScene,
         pong::pong_scene::PongScene,
@@ -60,6 +61,7 @@ impl Scene for MenuScene {
             ),
             MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario"),
             MenuOption::new(Box::new(|| Box::new(TanksScene::new())), "tanks", "tanks"),
+            MenuOption::new(Box::new(|| Box::new(AstroDuelScene::new())), "astro_duel", "astro duel"),
         ];
     }
 

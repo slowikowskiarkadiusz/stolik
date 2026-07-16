@@ -1,3 +1,4 @@
+pub mod astro_duel;
 pub mod controls;
 pub mod menu;
 pub mod mario;

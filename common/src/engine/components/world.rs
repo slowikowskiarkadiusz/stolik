@@ -12,7 +12,7 @@ use crate::engine::{
     engine::ActorId, v2::V2,
 };
 
-pub const MAX_ACTORS: usize = 64;
+pub const MAX_ACTORS: usize = 500;
 
 pub struct World {
     camera: Camera,

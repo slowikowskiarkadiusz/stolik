@@ -1,12 +1,7 @@
 extern crate alloc;
 use alloc::string::String;
 
-use crate::engine::{
-    actor::text::generate_word_matrix,
-    color::Color,
-    color_matrix::ColorMatrix,
-    v2::V2,
-};
+use crate::engine::{actor::text::generate_word_matrix, color::Color, color_matrix::ColorMatrix, v2::V2};
 
 pub fn print_victory_text(out: &mut ColorMatrix, winner: u8) {
     let text = String::from(if winner == 1 { "P1 WON" } else { "P2 WON" });
