@@ -442,8 +442,7 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
         }
 
         let elapsed = frame_start.elapsed();
-        if elapsed < target_frame {
-            Timer::after(target_frame - elapsed).await;
-        }
+        let wait = if elapsed < target_frame { target_frame - elapsed } else { Duration::from_millis(1) };
+        Timer::after(wait).await;
     }
 }

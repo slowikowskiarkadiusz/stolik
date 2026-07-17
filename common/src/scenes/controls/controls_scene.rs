@@ -217,7 +217,7 @@ impl ControlsScene {
                         && key.clone() != current_line.keys[current_line.keys.len() - 1]
                     {
                         let _text_actor_id = render_text(
-                            operation_text.clone(),
+                            operation_text.as_str(),
                             V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
                             V2::new(operation_text.len() as f32 * 4.0, 5.0),
                             None,
@@ -232,7 +232,7 @@ impl ControlsScene {
                 x += 2;
 
                 let _text_actor_id = render_text(
-                    current_line.text.clone(),
+                    current_line.text.as_str(),
                     V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
                     V2::new((SCREEN_SIZE - x) as f32, BUTTON_SIZE as f32),
                     None,
@@ -282,6 +282,7 @@ static POSSIBLE_CONTROL_SETS: LazyLock<HashMap<String, Vec<ControlsData>>> = Laz
             vec![
                 ControlsData::new(vec![Key::P1AnyDirection], "thrust", None),
                 ControlsData::new(vec![Key::P1Blue], "fire", None),
+                ControlsData::new(vec![Key::P1Green], "dash", None),
             ],
         ),
     ])

@@ -4,9 +4,7 @@ use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use crate::{
     engine::{
-        actor::
-            rectangle_actor::create_rectangle_actor
-        ,
+        actor::rectangle_actor::create_rectangle_actor,
         asyncable::{AsyncableType, add_asyncable},
         color::Color,
         color_matrix::ColorMatrix,
@@ -20,7 +18,8 @@ use crate::{
         input::{input::Input, key::Key},
         scene::Scene,
         v2::V2,
-    }, scenes::utils::{P1_COLOR, P2_COLOR, print_score, print_victory_text},
+    },
+    scenes::utils::{P1_COLOR, P2_COLOR, print_score, print_victory_text},
 };
 
 #[cfg(feature = "esp")]
@@ -55,7 +54,7 @@ impl Scene for PongScene {
         self.paddle = [
             Some(create_rectangle_actor(
                 world,
-                V2::new(screen_size / 2.0, 3.0 * size_factor),
+                V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
                 // Color::white(),
                 Some(ColliderType::Blocking),
@@ -63,7 +62,7 @@ impl Scene for PongScene {
             )),
             Some(create_rectangle_actor(
                 world,
-                V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
+                V2::new(screen_size / 2.0, 3.0 * size_factor),
                 V2::new(7.0, 1.0) * size_factor,
                 // Color::white(),
                 Some(ColliderType::Blocking),
@@ -229,7 +228,7 @@ impl PongScene {
                 let x_offset = (&ball_transform.center.x - &paddle_transform.center.x) / &paddle_transform.size.x * 2.0;
                 let new_ball_speed = V2::new(
                     x_offset * self.max_bounce_speed * self.size_factor,
-                    ORIGINAL_BALL_SPEED * self.size_factor * self.ball_speed_multiplier * if i == 0 { 1.0 } else { -1.0 },
+                    ORIGINAL_BALL_SPEED * self.size_factor * self.ball_speed_multiplier * if i == 0 { -1.0 } else { 1.0 },
                 );
 
                 self.ball_speed = new_ball_speed;

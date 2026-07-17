@@ -17,12 +17,14 @@ use crate::engine::{
 use rand::{Rng, rngs::SmallRng};
 
 pub const CELL_SIZE: u8 = 4;
+pub const CELL_SIZEF32: f32 = CELL_SIZE as f32;
 pub const BOARD_CELLS: u8 = 16;
+pub const BOARD_CELLSF32: f32 = BOARD_CELLS as f32;
 const INTERIOR: u8 = BOARD_CELLS - 2;
 const INTERIOR_HALF: u8 = INTERIOR / 2;
 const OPENING_CELLS: u8 = 6;
-const OPENING_START: u8 = (BOARD_CELLS - OPENING_CELLS) / 2;
-const OPENING_END: u8 = OPENING_START + OPENING_CELLS;
+const OPENING_START: u8 = (BOARD_CELLS - OPENING_CELLS) / 2 + 1;
+const OPENING_END: u8 = OPENING_START + OPENING_CELLS - 3;
 
 pub struct AstroObstacleMap {
     border_actors: Vec<ActorId>,
@@ -59,8 +61,8 @@ impl AstroObstacleMap {
 
         for actor_id in &self.brick_actors {
             if let Some(t) = world.get_transform(actor_id) {
-                let cx = (t.center.x / CELL_SIZE as f32) as u8;
-                let cy = (t.center.y / CELL_SIZE as f32) as u8;
+                let cx = (t.center.x / CELL_SIZEF32) as u8;
+                let cy = (t.center.y / CELL_SIZEF32) as u8;
                 draw_brick(&mut out, cx, cy);
             }
         }
@@ -70,20 +72,30 @@ impl AstroObstacleMap {
 }
 
 fn create_border_actors(world: &mut World) -> Vec<ActorId> {
-    let board = (BOARD_CELLS as f32) * (CELL_SIZE as f32);
-    let cs = CELL_SIZE as f32;
+    let cell = CELL_SIZEF32;
+    let board = BOARD_CELLSF32 * cell;
 
-    let inner_w = (OPENING_START - 1) as f32 * cs;
-    let inner_cx_l = cs + inner_w / 2.0;
-    let inner_cx_r = board - cs - inner_w / 2.0;
+    // Top solid segment: cells gy=1..OPENING_START-1
+    let top_h = (OPENING_START - 1) as f32 * cell;
+    let top_cy = cell + top_h / 2.0;
+
+    // Bottom solid segment: cells gy=OPENING_END..BOARD_CELLS-2
+    let bot_h = (BOARD_CELLS - 1 - OPENING_END) as f32 * cell;
+    let bot_cy = OPENING_END as f32 * cell + bot_h / 2.0;
 
     let segments: [(V2, V2); 6] = [
-        (V2::new(cs / 2.0, board / 2.0), V2::new(cs, board)),
-        (V2::new(board - cs / 2.0, board / 2.0), V2::new(cs, board)),
-        (V2::new(inner_cx_l, cs / 2.0), V2::new(inner_w, cs)),
-        (V2::new(inner_cx_r, cs / 2.0), V2::new(inner_w, cs)),
-        (V2::new(inner_cx_l, board - cs / 2.0), V2::new(inner_w, cs)),
-        (V2::new(inner_cx_r, board - cs / 2.0), V2::new(inner_w, cs)),
+        // top wall (full width)
+        (V2::new(board / 2.0, cell / 2.0),        V2::new(board, cell)),
+        // bottom wall (full width)
+        (V2::new(board / 2.0, board - cell / 2.0), V2::new(board, cell)),
+        // left wall — top segment
+        (V2::new(cell / 2.0,        top_cy), V2::new(cell, top_h)),
+        // right wall — top segment
+        (V2::new(board - cell / 2.0, top_cy), V2::new(cell, top_h)),
+        // left wall — bottom segment
+        (V2::new(cell / 2.0,        bot_cy), V2::new(cell, bot_h)),
+        // right wall — bottom segment
+        (V2::new(board - cell / 2.0, bot_cy), V2::new(cell, bot_h)),
     ];
 
     let mut result: Vec<ActorId> = Vec::new();
@@ -130,7 +142,6 @@ fn generate_interior(rng: &mut SmallRng, world: &mut World) -> Vec<ActorId> {
                     let mx = size - nx;
                     let my = size - ny;
 
-                    if !is_cell_forbidden(gx, gy) {
                         if !occupied[gx as usize][gy as usize] {
                             occupied[gx as usize][gy as usize] = true;
                             bricks.push(create_brick_actor(gx, gy, world));
@@ -139,7 +150,6 @@ fn generate_interior(rng: &mut SmallRng, world: &mut World) -> Vec<ActorId> {
                             occupied[mx as usize][my as usize] = true;
                             bricks.push(create_brick_actor(mx, my, world));
                         }
-                    }
                 }
             }
         }
@@ -148,14 +158,12 @@ fn generate_interior(rng: &mut SmallRng, world: &mut World) -> Vec<ActorId> {
     bricks
 }
 
-fn is_cell_forbidden(x: u8, y: u8) -> bool {
-    x >= (BOARD_CELLS / 2 - 2) && x <= (BOARD_CELLS / 2 + 1) && y <= 2
-}
-
 fn create_brick_actor(gx: u8, gy: u8, world: &mut World) -> ActorId {
-    let cs = CELL_SIZE as f32;
-    let center = V2::new(gx as f32 * cs + cs / 2.0, gy as f32 * cs + cs / 2.0);
-    let size = V2::one() * cs;
+    let center = V2::new(
+        gx as f32 * CELL_SIZEF32 + CELL_SIZEF32 / 2.0,
+        gy as f32 * CELL_SIZEF32 + CELL_SIZEF32 / 2.0,
+    );
+    let size = V2::one() * CELL_SIZEF32;
     world.add_new_actor(
         Some(Transform::new(center, size)),
         Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size, false)], Some(0), true)),
@@ -165,14 +173,14 @@ fn create_brick_actor(gx: u8, gy: u8, world: &mut World) -> ActorId {
 }
 
 fn render_border(out: &mut ColorMatrix) {
-    for gy in 0..BOARD_CELLS {
-        draw_steel(out, 0, gy);
-        draw_steel(out, BOARD_CELLS - 1, gy);
+    for gx in 0..BOARD_CELLS {
+        draw_steel(out, gx, 0);
+        draw_steel(out, gx, BOARD_CELLS - 1);
     }
-    for gx in 1..BOARD_CELLS - 1 {
-        if gx < OPENING_START || gx >= OPENING_END {
-            draw_steel(out, gx, 0);
-            draw_steel(out, gx, BOARD_CELLS - 1);
+    for gy in 1..BOARD_CELLS - 1 {
+        if gy < OPENING_START || gy >= OPENING_END {
+            draw_steel(out, 0, gy);
+            draw_steel(out, BOARD_CELLS - 1, gy);
         }
     }
 }
@@ -180,12 +188,11 @@ fn render_border(out: &mut ColorMatrix) {
 fn draw_steel(out: &mut ColorMatrix, cx: u8, cy: u8) {
     let light = Color::new(255, 255, 255, 255);
     let dark = Color::new(160, 160, 170, 255);
-    let cs = CELL_SIZE;
-    let px0 = cx * cs;
-    let py0 = cy * cs;
-    for dy in 0..cs {
-        for dx in 0..cs {
-            let c = if dx == 0 || dx == cs - 1 || dy == 0 || dy == cs - 1 {
+    let px0 = cx * CELL_SIZE;
+    let py0 = cy * CELL_SIZE;
+    for dy in 0..CELL_SIZE {
+        for dx in 0..CELL_SIZE {
+            let c = if dx == 0 || dx == CELL_SIZE - 1 || dy == 0 || dy == CELL_SIZE - 1 {
                 light
             } else {
                 dark
@@ -198,13 +205,12 @@ fn draw_steel(out: &mut ColorMatrix, cx: u8, cy: u8) {
 fn draw_brick(out: &mut ColorMatrix, cx: u8, cy: u8) {
     let light = Color::new(51, 255, 125, 255);
     let dark = Color::new(51, 255, 125, 180);
-    let cs = CELL_SIZE;
-    let px0 = cx * cs;
-    let py0 = cy * cs;
-    for dy in 0..cs {
-        for dx in 0..cs {
+    let px0 = cx * CELL_SIZE;
+    let py0 = cy * CELL_SIZE;
+    for dy in 0..CELL_SIZE {
+        for dx in 0..CELL_SIZE {
             let is_odd_row = dy % 2 == 1;
-            let c = if (is_odd_row && dx == cs - 1) || (!is_odd_row && dx == 0) {
+            let c = if (is_odd_row && dx == CELL_SIZE - 1) || (!is_odd_row && dx == 0) {
                 light
             } else {
                 dark

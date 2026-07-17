@@ -183,6 +183,8 @@ impl Scene for AstroDuelScene {
         let mut hit_p1 = false;
         let mut hit_p2 = false;
 
+        let bullet_actor_ids: Vec<ActorId> = self.bullets.iter().map(|b| b.actor_id).collect();
+
         for i in 0..self.bullets.len() {
             if self.bullets[i].hit {
                 continue;
@@ -192,7 +194,12 @@ impl Scene for AstroDuelScene {
             let Some(list) = overlaps.get(&bullet_id) else { continue };
             let overlapped: Vec<ActorId> = list.iter().copied().collect();
             for overlapped_id in overlapped {
-                if !owner_is_p1 && p1_id == Some(overlapped_id) {
+                if let Some(j) = bullet_actor_ids.iter().position(|&id| id == overlapped_id) {
+                    if j != i && !self.bullets[j].hit {
+                        self.bullets[i].hit = true;
+                        self.bullets[j].hit = true;
+                    }
+                } else if !owner_is_p1 && p1_id == Some(overlapped_id) {
                     hit_p1 = true;
                     self.bullets[i].hit = true;
                 } else if owner_is_p1 && p2_id == Some(overlapped_id) {

@@ -26,8 +26,9 @@ const BULLET_SPEED: f32 = 50.0;
 const SHOOT_COOLDOWN: f32 = 0.15;
 const MAX_AMMO: u8 = 4;
 const AMMO_REGEN_TIME: f32 = 2.5;
+const DASH_REGEN_TIME: f32 = 1.0;
+const DASH_MULTIPIER: f32 = 30.0;
 pub const MAX_LIVES: u8 = 2;
-// Half-period of blink: fewer lives → shorter → faster
 const BLINK_PERIOD_MIN: f32 = 0.07;
 const BLINK_PERIOD_MAX: f32 = 0.20;
 
@@ -45,8 +46,10 @@ pub struct Ship {
     shoot_cooldown: f32,
     ammo: u8,
     ammo_timer: f32,
+    dash_timer: f32,
     blink_timer: f32,
     is_visible: bool,
+    last_thrust: V2,
 }
 
 impl Ship {
@@ -62,13 +65,19 @@ impl Ship {
             shoot_cooldown: 0.0,
             ammo: MAX_AMMO,
             ammo_timer: AMMO_REGEN_TIME,
+            dash_timer: 0.0,
             blink_timer: 0.0,
             is_visible: true,
+            last_thrust: if is_p1 { V2::up() } else { V2::down() },
         }
     }
 
     pub fn tick(&mut self, input: &dyn Input, world: &mut World, _obstacle: &AstroObstacleMap, delta_time: f32) -> Option<BulletSpawn> {
-        let (thrust_dir, new_rotation) = get_thrust_and_rotation(input, self.is_p1);
+        let (thrust_dir, new_rotation, dashed) = get_thrust_and_rotation(self.dash_timer <= 0.0, input, self.is_p1, &mut self.last_thrust);
+
+        if dashed {
+            self.dash_timer = DASH_REGEN_TIME;
+        }
 
         if let Some(rot) = new_rotation {
             self.rotation = rot;
@@ -102,6 +111,10 @@ impl Ship {
             return None;
         }
 
+        if self.dash_timer > 0.0 {
+            self.dash_timer -= delta_time;
+        }
+
         if self.ammo < MAX_AMMO {
             self.ammo_timer -= delta_time;
             if self.ammo_timer <= 0.0 {
@@ -132,7 +145,9 @@ impl Ship {
     }
 
     pub fn take_hit(&mut self) -> bool {
-        if self.lives == 0 { return false; }
+        if self.lives == 0 {
+            return false;
+        }
         self.lives -= 1;
         self.lives == 0
     }
@@ -146,7 +161,8 @@ impl Ship {
                 &make_ship_sprite(self.ammo, self.is_p1),
                 &t.center,
                 Some(self.rotation as f32),
-                None, None,
+                None,
+                None,
                 None,
             );
         }
@@ -159,14 +175,18 @@ fn spawn_pos(is_p1: bool) -> V2 {
 
 fn create_actor(world: &mut World, pos: V2, rotation: f32) -> ActorId {
     let mut physics = Physics::new();
-    physics.with_can_move(true).with_mass(1.0).with_drag(SHIP_DRAG).with_can_rotate(false);
+    physics
+        .with_can_move(true)
+        .with_mass(1.0)
+        .with_drag(SHIP_DRAG)
+        .with_can_rotate(false);
 
     let id = world.add_new_actor(
         Some(Transform::new(pos, V2::new(SHIP_SIZE, SHIP_SIZE))),
         Some(Collider::new(
             alloc::vec![ColliderPart::circle(V2::zero(), SHIP_SIZE / 2.0, false)],
             Some(0),
-            false
+            false,
         )),
         Some(physics),
         None,
@@ -189,13 +209,15 @@ fn make_ship_sprite(ammo: u8, is_p1: bool) -> ColorMatrix {
             m.set(1, row, c);
             m.set(2, row, c);
         } else {
-            for x in 0..4u8 { m.set(x, row, c); }
+            for x in 0..4u8 {
+                m.set(x, row, c);
+            }
         }
     }
     m
 }
 
-fn get_thrust_and_rotation(input: &dyn Input, is_p1: bool) -> (V2, Option<i32>) {
+fn get_thrust_and_rotation(can_dash: bool, input: &dyn Input, is_p1: bool, last_thrust: &mut V2) -> (V2, Option<i32>, bool) {
     let (up, down, left, right) = if is_p1 {
         (
             input.is_key_press(Key::P1Up),
@@ -212,28 +234,49 @@ fn get_thrust_and_rotation(input: &dyn Input, is_p1: bool) -> (V2, Option<i32>) 
         )
     };
 
+    let dashed = can_dash && (is_p1 && input.is_key_press(Key::P1Green) || (!is_p1 && input.is_key_press(Key::P2Green)));
+
     let mut thrust = V2::zero();
-    if up { thrust.y -= 1.0; }
-    if down { thrust.y += 1.0; }
-    if left { thrust.x -= 1.0; }
-    if right { thrust.x += 1.0; }
+    if up {
+        thrust.y -= 1.0;
+    }
+    if down {
+        thrust.y += 1.0;
+    }
+    if left {
+        thrust.x -= 1.0;
+    }
+    if right {
+        thrust.x += 1.0;
+    }
 
     let mag = thrust.mag();
-    if mag > 0.0 { thrust = thrust / mag; }
+    if mag > 0.0 {
+        thrust = thrust / mag;
+    }
+
+    if !(thrust.x == 0.0 && thrust.y == 0.0) {
+        last_thrust.x = thrust.x;
+        last_thrust.y = thrust.y;
+    }
+
+    if dashed {
+        thrust += last_thrust.clone() * DASH_MULTIPIER;
+    }
 
     let new_rotation = match (up, down, left, right) {
-        (true,  false, false, false) => Some(0),
-        (true,  false, false, true)  => Some(45),
-        (false, false, false, true)  => Some(90),
-        (false, true,  false, true)  => Some(135),
-        (false, true,  false, false) => Some(180),
-        (false, true,  true,  false) => Some(225),
-        (false, false, true,  false) => Some(270),
-        (true,  false, true,  false) => Some(315),
+        (true, false, false, false) => Some(0),
+        (true, false, false, true) => Some(45),
+        (false, false, false, true) => Some(90),
+        (false, true, false, true) => Some(135),
+        (false, true, false, false) => Some(180),
+        (false, true, true, false) => Some(225),
+        (false, false, true, false) => Some(270),
+        (true, false, true, false) => Some(315),
         _ => None,
     };
 
-    (thrust, new_rotation)
+    (thrust, new_rotation, dashed)
 }
 
 fn rotation_to_dir(rotation: i32) -> V2 {

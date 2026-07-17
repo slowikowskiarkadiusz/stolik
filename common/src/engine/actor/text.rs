@@ -32,7 +32,7 @@ pub fn make_text_actor_options(
 }
 
 pub fn render_text(
-    text: String,
+    text: &str,
     top_left: V2,
     container_size: V2,
     options: Option<TextActorOptions>,
@@ -57,7 +57,7 @@ pub fn render_text(
 
 pub fn create_text_actor_at_center(
     world: &mut World,
-    text: String,
+    text: &str,
     center: V2,
     container_size: V2,
     options: Option<TextActorOptions>,
@@ -77,7 +77,7 @@ pub fn create_text_actor_at_center(
     world.add_new_actor(Some(Transform::new(center, container_size)), None, None, None)
 }
 
-pub fn generate_word_matrix(text: &String, max_width: u8, color: &Color, reverse: bool) -> (ColorMatrix, Option<ColorMatrix>) {
+pub fn generate_word_matrix(text: &str, max_width: u8, color: &Color, reverse: bool) -> (ColorMatrix, Option<ColorMatrix>) {
     let mut word_render_length = 0;
     for letter in text.chars() {
         word_render_length += get_letter_width(&letter);
