@@ -1,3 +1,4 @@
+use libm::roundf;
 use crate::engine::{
     actor::text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, generate_word_matrix, render_text},
     color::Color,
@@ -88,5 +89,5 @@ pub fn lerp_f32(from: f32, to: f32, step: f32) -> f32 {
 }
 
 pub fn lerp_u8(from: u8, to: u8, step: f32) -> u8 {
-    (from as f32 * (1.0 - step) + to as f32 * step).round() as u8
+    roundf(from as f32 * (1.0 - step) + to as f32 * step) as u8
 }

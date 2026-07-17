@@ -21,12 +21,25 @@ use crate::{
 
 const TOTAL_FADE_TIME: f32 = 2.0;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerUpType {
     Shield,
     Reflector,
     Mine,
     RayGun,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PowerUpKind {
+    Passive, // Shield, Reflector — activate automatically on pickup
+    Active,  // Mine, RayGun — activated manually by holding fire
+}
+
+pub const fn power_up_kind(t: PowerUpType) -> PowerUpKind {
+    match t {
+        PowerUpType::Shield | PowerUpType::Reflector => PowerUpKind::Passive,
+        PowerUpType::Mine   | PowerUpType::RayGun    => PowerUpKind::Active,
+    }
 }
 
 pub struct PowerUp {
@@ -54,6 +67,15 @@ impl PowerUp {
             ),
             power_up_type,
             fade_timer: TOTAL_FADE_TIME,
+        }
+    }
+
+    pub fn power_up_type(&self) -> PowerUpType {
+        match self.power_up_type {
+            PowerUpType::Shield    => PowerUpType::Shield,
+            PowerUpType::Reflector => PowerUpType::Reflector,
+            PowerUpType::Mine      => PowerUpType::Mine,
+            PowerUpType::RayGun    => PowerUpType::RayGun,
         }
     }
 
@@ -137,7 +159,7 @@ fn draw_mine(start_x: u8, start_y: u8, fade_progress: f32, result: &mut ColorMat
 }
 
 fn draw_shield(start_x: u8, start_y: u8, fade_progress: f32, result: &mut ColorMatrix) {
-    let color = Color::new(102, 102, 102, lerp_u8(255, 150, fade_progress));
+    let color = Color::new(200, 200, 200, lerp_u8(255, 150, fade_progress));
     for y in 0..CELL_SIZE {
         for x in 0..CELL_SIZE {
             if !((x == 0 && y == CELL_SIZE - 1) || (x == CELL_SIZE - 1 && y == CELL_SIZE - 1)) {
