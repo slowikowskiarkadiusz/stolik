@@ -23,6 +23,7 @@ pub fn create_rectangle_actor(
             Some(Collider::new(
                 vec![ColliderPart::rect(V2::zero(), size.clone(), col_type == ColliderType::Blocking)],
                 Some(0),
+                false
             ))
         } else {
             None

@@ -22,8 +22,13 @@ const SHIP_SIZE: f32 = 4.0;
 const THRUST_IMPULSE: f32 = 0.5;
 const SHIP_DRAG: f32 = 0.5;
 const BULLET_SPEED: f32 = 50.0;
-const SHOOT_COOLDOWN: f32 = 0.3;
-const RESPAWN_TIME: f32 = 2.0;
+const SHOOT_COOLDOWN: f32 = 0.15;
+const MAX_AMMO: u8 = 4;
+const AMMO_REGEN_TIME: f32 = 2.5;
+pub const MAX_LIVES: u8 = 2;
+// Half-period of blink: fewer lives → shorter → faster
+const BLINK_PERIOD_MIN: f32 = 0.07;
+const BLINK_PERIOD_MAX: f32 = 0.20;
 
 pub struct BulletSpawn {
     pub pos: V2,
@@ -35,10 +40,12 @@ pub struct Ship {
     pub actor_id: ActorId,
     pub is_p1: bool,
     pub rotation: i32,
-    pub alive: bool,
     pub lives: u8,
-    respawn_timer: f32,
     shoot_cooldown: f32,
+    ammo: u8,
+    ammo_timer: f32,
+    blink_timer: f32,
+    is_visible: bool,
 }
 
 impl Ship {
@@ -50,24 +57,16 @@ impl Ship {
             actor_id: id,
             is_p1,
             rotation,
-            alive: true,
-            lives: 3,
-            respawn_timer: 0.0,
+            lives: MAX_LIVES,
             shoot_cooldown: 0.0,
+            ammo: MAX_AMMO,
+            ammo_timer: AMMO_REGEN_TIME,
+            blink_timer: 0.0,
+            is_visible: true,
         }
     }
 
     pub fn tick(&mut self, input: &dyn Input, world: &mut World, _obstacle: &AstroObstacleMap, delta_time: f32) -> Option<BulletSpawn> {
-        if !self.alive {
-            if self.lives > 0 {
-                self.respawn_timer -= delta_time;
-                if self.respawn_timer <= 0.0 {
-                    self.respawn(world);
-                }
-            }
-            return None;
-        }
-
         let (thrust_dir, new_rotation) = get_thrust_and_rotation(input, self.is_p1);
 
         if let Some(rot) = new_rotation {
@@ -85,9 +84,38 @@ impl Ship {
 
         wrap_center(world, self.actor_id);
 
+        if self.lives == 0 {
+            self.is_visible = false;
+        } else if self.lives < MAX_LIVES {
+            self.blink_timer -= delta_time;
+            if self.blink_timer <= 0.0 {
+                self.is_visible = !self.is_visible;
+                let frac = self.lives as f32 / MAX_LIVES as f32;
+                self.blink_timer = BLINK_PERIOD_MIN + (BLINK_PERIOD_MAX - BLINK_PERIOD_MIN) * frac;
+            }
+        } else {
+            self.is_visible = true;
+        }
+
+        if self.lives == 0 {
+            return None;
+        }
+
+        if self.ammo < MAX_AMMO {
+            self.ammo_timer -= delta_time;
+            if self.ammo_timer <= 0.0 {
+                self.ammo += 1;
+                self.ammo_timer = AMMO_REGEN_TIME;
+            }
+        }
+
         self.shoot_cooldown -= delta_time;
         let shoot_key = if self.is_p1 { Key::P1Blue } else { Key::P2Blue };
-        let bullet = if self.shoot_cooldown <= 0.0 && input.is_key_down(shoot_key) {
+        if self.ammo > 0 && self.shoot_cooldown <= 0.0 && input.is_key_down(shoot_key) {
+            self.ammo -= 1;
+            if self.ammo < MAX_AMMO {
+                self.ammo_timer = AMMO_REGEN_TIME;
+            }
             self.shoot_cooldown = SHOOT_COOLDOWN;
             let facing = rotation_to_dir(self.rotation);
             let ship_pos = world.get_transform(&self.actor_id).map(|t| t.center).unwrap_or(V2::zero());
@@ -99,46 +127,22 @@ impl Ship {
             })
         } else {
             None
-        };
-
-        bullet
-    }
-
-    pub fn take_hit(&mut self, world: &mut World) {
-        if !self.alive {
-            return;
-        }
-        self.lives = self.lives.saturating_sub(1);
-        self.alive = false;
-        world.murder(&self.actor_id);
-        if self.lives > 0 {
-            self.respawn_timer = RESPAWN_TIME;
         }
     }
 
-    fn respawn(&mut self, world: &mut World) {
-        let pos = spawn_pos(self.is_p1);
-        self.rotation = if self.is_p1 { 0 } else { 180 };
-        self.actor_id = create_actor(world, pos, self.rotation as f32);
-        self.alive = true;
-    }
-
-    pub fn pos(&self, world: &World) -> Option<V2> {
-        world.get_transform(&self.actor_id).map(|t| t.center)
+    pub fn take_hit(&mut self) -> bool {
+        if self.lives == 0 { return false; }
+        self.lives -= 1;
+        self.lives == 0
     }
 
     pub fn render(&self, world: &World, _camera: &Camera, result: &mut ColorMatrix) {
-        if !self.alive {
+        if !self.is_visible {
             return;
         }
         if let Some(t) = world.get_transform(&self.actor_id) {
-            let color = if self.is_p1 {
-                Color::new(255, 200, 80, 255)
-            } else {
-                Color::new(80, 180, 255, 255)
-            };
             result.write(
-                &make_ship_sprite(color),
+                &make_ship_sprite(self.ammo, self.is_p1),
                 &t.center,
                 Some(self.rotation as f32),
                 None, None,
@@ -161,6 +165,7 @@ fn create_actor(world: &mut World, pos: V2, rotation: f32) -> ActorId {
         Some(Collider::new(
             alloc::vec![ColliderPart::circle(V2::zero(), SHIP_SIZE / 2.0, false)],
             Some(0),
+            false
         )),
         Some(physics),
         None,
@@ -171,24 +176,27 @@ fn create_actor(world: &mut World, pos: V2, rotation: f32) -> ActorId {
     id
 }
 
-fn make_ship_sprite(color: Color) -> ColorMatrix {
+fn make_ship_sprite(ammo: u8, is_p1: bool) -> ColorMatrix {
+    let (bright, dim) = if is_p1 {
+        (Color::new(255, 200, 80, 255), Color::new(255, 200, 80, 160))
+    } else {
+        (Color::new(80, 180, 255, 255), Color::new(80, 180, 255, 120))
+    };
+
     let mut m = ColorMatrix::new(4, 4, Color::none());
-    // gun (canonical: facing up)
-    m.set(1, 0, color);
-    m.set(2, 0, color);
-    // gun base
-    m.set(1, 1, color);
-    m.set(2, 1, color);
-    // body
-    for x in 0..4u8 {
-        m.set(x, 2, color);
-        m.set(x, 3, color);
+    for row in 0u8..4 {
+        let c = if (MAX_AMMO - row) <= ammo { bright } else { dim };
+        if row <= 1 {
+            m.set(1, row, c);
+            m.set(2, row, c);
+        } else {
+            for x in 0..4u8 { m.set(x, row, c); }
+        }
     }
     m
 }
 
 fn get_thrust_and_rotation(input: &dyn Input, is_p1: bool) -> (V2, Option<i32>) {
-    // P2 has swapped up/down (sits on the opposite side of the table)
     let (up, down, left, right) = if is_p1 {
         (
             input.is_key_press(Key::P1Up),
@@ -212,11 +220,8 @@ fn get_thrust_and_rotation(input: &dyn Input, is_p1: bool) -> (V2, Option<i32>) 
     if right { thrust.x += 1.0; }
 
     let mag = thrust.mag();
-    if mag > 0.0 {
-        thrust = thrust / mag;
-    }
+    if mag > 0.0 { thrust = thrust / mag; }
 
-    // All 8 directions snap rotation in 45° steps
     let new_rotation = match (up, down, left, right) {
         (true,  false, false, false) => Some(0),
         (true,  false, false, true)  => Some(45),

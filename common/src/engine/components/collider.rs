@@ -73,13 +73,17 @@ impl ColliderPart {
 pub struct Collider {
     pub collider_parts: Vec<ColliderPart>,
     pub mask_id: CollisionMaskId,
+    // this field indicates that there is no intention moving the collider.
+    // you can still do it, but for the sake of performance two static colliders don't interact with each other.
+    pub is_static: bool,
 }
 
 impl Collider {
-    pub fn new(collider_parts: Vec<ColliderPart>, mask_id: Option<CollisionMaskId>) -> Self {
+    pub fn new(collider_parts: Vec<ColliderPart>, mask_id: Option<CollisionMaskId>, is_static: bool) -> Self {
         Self {
             collider_parts,
             mask_id: mask_id.unwrap_or_else(|| 0),
+            is_static,
         }
     }
 
@@ -94,6 +98,7 @@ impl Collider {
                     && let Some(second_collider) = world.get_collider(second_actor)
                     && let Some(second_transform) = world.get_transform(second_actor)
                     && (!dict.contains_key(first_actor) || !dict[first_actor].contains(second_actor))
+                    && !(first_collider.is_static && second_collider.is_static)
                 {
                     let first_is_overlap = first_collider.collider_parts.iter().any(|p| p.is_overlap);
                     let second_is_overlap = second_collider.collider_parts.iter().any(|p| p.is_overlap);
@@ -129,6 +134,7 @@ impl Collider {
                     && let Some(first_transform) = world.get_transform(first_actor)
                     && let Some(second_collider) = world.get_collider(second_actor)
                     && let Some(second_transform) = world.get_transform(second_actor)
+                    && !(first_collider.is_static && second_collider.is_static)
                 {
                     let first_is_overlap = first_collider.collider_parts.iter().any(|p| p.is_overlap);
                     let second_is_overlap = second_collider.collider_parts.iter().any(|p| p.is_overlap);

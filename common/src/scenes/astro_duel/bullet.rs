@@ -3,7 +3,13 @@ extern crate alloc;
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
-    components::{camera::Camera, physics::Physics, transform::Transform, world::World},
+    components::{
+        camera::Camera,
+        collider::{Collider, ColliderPart},
+        physics::Physics,
+        transform::Transform,
+        world::World,
+    },
     engine::{ActorId, SCREEN_SIZEF32},
     v2::V2,
 };
@@ -16,6 +22,7 @@ pub const BULLET_SIZE: f32 = 2.0;
 pub struct Bullet {
     pub actor_id: ActorId,
     pub owner_is_p1: bool,
+    pub hit: bool,
     lifetime: f32,
 }
 
@@ -26,7 +33,11 @@ impl Bullet {
 
         let id = world.add_new_actor(
             Some(Transform::new(pos, V2::new(BULLET_SIZE, BULLET_SIZE))),
-            None,
+            Some(Collider::new(
+                alloc::vec![ColliderPart::rect(V2::zero(), V2::new(BULLET_SIZE, BULLET_SIZE), true)],
+                Some(0),
+                false
+            )),
             Some(physics),
             None,
         );
@@ -35,6 +46,7 @@ impl Bullet {
         Self {
             actor_id: id,
             owner_is_p1,
+            hit: false,
             lifetime: BULLET_LIFETIME,
         }
     }
@@ -43,7 +55,7 @@ impl Bullet {
     pub fn tick(&mut self, world: &mut World, _obstacle: &AstroObstacleMap, delta_time: f32) -> bool {
         self.lifetime -= delta_time;
         wrap_center(world, self.actor_id);
-        self.lifetime <= 0.0
+        self.hit || self.lifetime <= 0.0
     }
 
     pub fn pos(&self, world: &World) -> Option<V2> {

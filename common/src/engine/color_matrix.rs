@@ -49,7 +49,7 @@ impl Matrix<Color> {
         if other.width == 0 || other.height == 0 {
             return self;
         }
-        let center = V2::new(other.width as f32 / 2.0, other.height as f32 / 2.0);
+        let center = V2::new((other.width as f32 - 1.0) / 2.0, (other.height as f32 - 1.0) / 2.0);
         let mut angle: i16 = (other_rotation % 360.0) as i16;
         if angle < 0 {
             angle += 360;

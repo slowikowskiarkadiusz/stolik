@@ -427,6 +427,7 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
 
     let target_frame = Duration::from_millis(33);
     let mut last = Instant::now();
+    let mut frame_counter = 0u32;
 
     loop {
         let frame_start = Instant::now();
@@ -434,6 +435,11 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
         last = frame_start;
 
         engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
+
+        frame_counter += 1;
+        if frame_counter % 60 == 0 {
+            esp_println::println!("heap free: {} B", esp_alloc::HEAP.free());
+        }
 
         let elapsed = frame_start.elapsed();
         if elapsed < target_frame {

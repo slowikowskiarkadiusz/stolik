@@ -131,6 +131,7 @@ impl Scene for MarioScene {
             Some(Collider::new(
                 vec![ColliderPart::rect(V2::zero(), V2::new(BALL_SIZE - 1.0, 1.0), true)],
                 Some(0),
+                false
             )),
             None,
             None,
@@ -236,7 +237,7 @@ fn create_rectangle_actor(world: &mut World, center: V2, size: V2, collides: boo
     world.add_new_actor(
         Some(Transform::new(center, size.clone())),
         if collides {
-            Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size.clone(), false)], Some(0)))
+            Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size.clone(), false)], Some(0), true))
         } else {
             None
         },
@@ -257,6 +258,7 @@ fn create_plumber(world: &mut World, center: V2, size: V2, collides: bool) -> Ac
                     ColliderPart::circle(V2::zero(), size.y / 2.0, false),
                 ],
                 Some(0),
+                false
             ))
         } else {
             None
@@ -275,7 +277,7 @@ fn create_rectangle_at_origin(world: &mut World, from: V2, to: V2, collides: boo
     world.add_new_actor(
         Some(Transform::new(center, size.clone())),
         if collides {
-            Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size.clone(), false)], Some(0)))
+            Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size.clone(), false)], Some(0), true))
         } else {
             None
         },

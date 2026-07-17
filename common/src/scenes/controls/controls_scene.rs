@@ -44,14 +44,14 @@ pub struct ControlsScene {
     can_proceed: bool,
     divider_actor_id: ActorId,
     pages: Vec<Vec<ControlsData>>,
-    // current_text_actors: Vec<ActorId>,
-    // current_icon_actors: Vec<ActorId>,
     current_page_index: u8,
     next_scene: SceneFactory,
     #[allow(dead_code)]
     lines_per_page: u8,
     print_page_timer_seconds: f32,
     allow_proceeding_timer_sec: f32,
+    arrow_blink_timer: f32,
+    arrow_visible: bool,
 }
 
 impl Scene for ControlsScene {
@@ -96,12 +96,22 @@ impl Scene for ControlsScene {
         );
 
         if !self.can_proceed {
+            self.allow_proceeding_timer_sec -= delta_time;
             if self.allow_proceeding_timer_sec <= 0.0 {
+                self.allow_proceeding_timer_sec = 0.0;
                 self.can_proceed = true;
-                ControlsScene::create_arrow(world, true, camera, &mut result);
-                ControlsScene::create_arrow(world, false, camera, &mut result);
-            } else {
-                self.allow_proceeding_timer_sec = (self.allow_proceeding_timer_sec - delta_time).max(0.0);
+            }
+        }
+
+        if self.can_proceed {
+            self.arrow_blink_timer -= delta_time;
+            if self.arrow_blink_timer <= 0.0 {
+                self.arrow_visible = !self.arrow_visible;
+                self.arrow_blink_timer = 0.4;
+            }
+            if self.arrow_visible {
+                let corner = V2::new((SCREEN_SIZE - 2) as f32, (SCREEN_SIZE - 2) as f32);
+                render_arrow(world, corner, 3, Color::white(), 0, camera, &mut result);
             }
         }
 
@@ -151,26 +161,9 @@ impl ControlsScene {
             lines_per_page,
             print_page_timer_seconds: 0.0,
             allow_proceeding_timer_sec: 2.0,
+            arrow_blink_timer: 0.4,
+            arrow_visible: false,
         }
-    }
-
-    fn create_arrow(world: &mut World, is_p1: bool, camera: &Camera, result: &mut ColorMatrix) {
-        let mut pos = &(V2::one() * SCREEN_SIZE as f32) - &(V2::one() * 1.5);
-        if is_p1 {
-            pos.y -= SCREEN_SIZE as f32 / 2.0;
-        }
-
-        let _arrow_actor_id = render_arrow(world, pos, 3, Color::white(), 500, camera, result);
-
-        //todo
-        //
-        // if is_p1 {
-        //     let mut pivot = V2::one() * ((SCREEN_SIZE / 2) as f32 - 1.0);
-        //     pivot.y -= (SCREEN_SIZE / 4) as f32;
-        //     if let Some(arrow_transform) = world.get_mut_transform(&arrow_actor_id) {
-        //         arrow_transform.rotate_around(&pivot, &180.0);
-        //     }
-        // }
     }
 
     fn paginate(items: &[ControlsData], lines_per_page: usize) -> Vec<Vec<ControlsData>> {
@@ -211,7 +204,7 @@ impl ControlsScene {
                 for key in &current_line.keys {
                     result.write(
                         &make_button_matrix(BUTTON_SIZE, key.clone()),
-                        &V2::new((BUTTON_SIZE / 2) as f32, y as f32),
+                        &V2::new((BUTTON_SIZE / 2) as f32 + 1.0, y as f32),
                         None,
                         None,
                         None,
@@ -253,7 +246,7 @@ impl ControlsScene {
             }
 
             let copy = result.clone();
-            result.write(&copy, &V2::new(half as f32, half as f32), Some(180.0), None, None, Some(camera));
+            result.write(&copy, &V2::new(half as f32 - 1.0, half as f32 - 1.0), Some(180.0), None, None, Some(camera));
         }
     }
 }
