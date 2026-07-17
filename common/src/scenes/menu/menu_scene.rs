@@ -109,14 +109,13 @@ impl Scene for MenuScene {
 
         for i in 0..self.options.len() {
             render_text(
-                world,
                 String::from(self.options[i].next_scene_print_name),
                 V2::new(4.0, i as f32 * 6.0),
                 V2::new(SCREEN_SIZE as f32 - 4.0, 5.0),
                 None,
                 None,
                 Color::white(),
-                camera,
+                Some(camera),
                 &mut result,
             );
         }

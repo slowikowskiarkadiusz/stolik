@@ -1,9 +1,8 @@
 extern crate alloc;
-use alloc::{boxed::Box, string::ToString, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     engine::{
-        actor::text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, render_text},
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, physics::Physics, world::World},
@@ -13,7 +12,10 @@ use crate::{
         scene::Scene,
         v2::V2,
     },
-    scenes::{menu::menu_scene::MenuScene, utils::print_victory_text},
+    scenes::{
+        menu::menu_scene::MenuScene,
+        utils::{print_score, print_victory_text},
+    },
 };
 use rand::{SeedableRng, rngs::SmallRng};
 
@@ -111,8 +113,14 @@ impl Scene for AstroDuelScene {
             None => return,
         };
 
-        let spawn1 = self.ship_p1.as_mut().and_then(|s| s.tick(input.as_ref(), world, obstacle, delta_time));
-        let spawn2 = self.ship_p2.as_mut().and_then(|s| s.tick(input.as_ref(), world, obstacle, delta_time));
+        let spawn1 = self
+            .ship_p1
+            .as_mut()
+            .and_then(|s| s.tick(input.as_ref(), world, obstacle, delta_time));
+        let spawn2 = self
+            .ship_p2
+            .as_mut()
+            .and_then(|s| s.tick(input.as_ref(), world, obstacle, delta_time));
 
         if self.death_timer.is_none() {
             if let Some(sp) = spawn1 {
@@ -136,7 +144,9 @@ impl Scene for AstroDuelScene {
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
-        world.get_mut_camera().set_viewport((V2::zero(), V2::new(SCREEN_SIZEF32, SCREEN_SIZEF32)));
+        world
+            .get_mut_camera()
+            .set_viewport((V2::zero(), V2::new(SCREEN_SIZEF32, SCREEN_SIZEF32)));
 
         let mut result = self
             .obstacle
@@ -144,11 +154,17 @@ impl Scene for AstroDuelScene {
             .map(|o| o.render(world))
             .unwrap_or_else(|| ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::black()));
 
-        if let Some(s) = self.ship_p1.as_ref() { s.render(world, camera, &mut result); }
-        if let Some(s) = self.ship_p2.as_ref() { s.render(world, camera, &mut result); }
-        for b in &self.bullets { b.render(world, camera, &mut result); }
+        if let Some(s) = self.ship_p1.as_ref() {
+            s.render(world, camera, &mut result);
+        }
+        if let Some(s) = self.ship_p2.as_ref() {
+            s.render(world, camera, &mut result);
+        }
+        for b in &self.bullets {
+            b.render(world, camera, &mut result);
+        }
 
-        self.render_score(world, camera, &mut result);
+        print_score(self.score[0], self.score[1], &mut result);
 
         if let Some(winner) = self.winner {
             print_victory_text(&mut result, winner);
@@ -158,7 +174,9 @@ impl Scene for AstroDuelScene {
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _: f32) {
-        if self.death_timer.is_some() || self.winner.is_some() { return; }
+        if self.death_timer.is_some() || self.winner.is_some() {
+            return;
+        }
 
         let p1_id = self.ship_p1.as_ref().filter(|s| s.lives > 0).map(|s| s.actor_id);
         let p2_id = self.ship_p2.as_ref().filter(|s| s.lives > 0).map(|s| s.actor_id);
@@ -166,7 +184,9 @@ impl Scene for AstroDuelScene {
         let mut hit_p2 = false;
 
         for i in 0..self.bullets.len() {
-            if self.bullets[i].hit { continue; }
+            if self.bullets[i].hit {
+                continue;
+            }
             let bullet_id = self.bullets[i].actor_id;
             let owner_is_p1 = self.bullets[i].owner_is_p1;
             let Some(list) = overlaps.get(&bullet_id) else { continue };
@@ -179,20 +199,28 @@ impl Scene for AstroDuelScene {
                     hit_p2 = true;
                     self.bullets[i].hit = true;
                 } else {
-                    let is_destroyable = self.obstacle.as_ref()
+                    let is_destroyable = self
+                        .obstacle
+                        .as_ref()
                         .map(|o| o.is_destroyable_obstacle(&overlapped_id))
                         .unwrap_or(false);
                     if is_destroyable {
-                        if let Some(o) = self.obstacle.as_mut() { o.remove(&overlapped_id); }
+                        if let Some(o) = self.obstacle.as_mut() {
+                            o.remove(&overlapped_id);
+                        }
                         world.murder(&overlapped_id);
                         self.bullets[i].hit = true;
                     }
 
-                    let is_border = self.obstacle.as_ref()
+                    let is_border = self
+                        .obstacle
+                        .as_ref()
                         .map(|o| o.is_border_obstacle(&overlapped_id))
                         .unwrap_or(false);
                     if is_border {
-                        if let Some(o) = self.obstacle.as_mut() { o.remove(&overlapped_id); }
+                        if let Some(o) = self.obstacle.as_mut() {
+                            o.remove(&overlapped_id);
+                        }
                         self.bullets[i].hit = true;
                     }
                 }
@@ -218,37 +246,4 @@ impl Scene for AstroDuelScene {
     }
 
     fn on_collisions(&mut self, _: &HashMap<u16, Vec<(u16, CollisionResult)>>, _: &mut World, _: f32) {}
-}
-
-impl AstroDuelScene {
-    fn render_score(&self, world: &mut World, camera: &Camera, result: &mut ColorMatrix) {
-        let lw = MAX_LETTER_WIDTH as f32;
-        let lh = LETTER_HEIGHT as f32;
-        let cx = SCREEN_SIZEF32 / 2.0;
-
-        // P1 score — bottom border, normal orientation
-        render_text(
-            world,
-            self.score[0].to_string(),
-            V2::new(cx - lw / 2.0, SCREEN_SIZEF32 - 2.0 - lh / 2.0),
-            V2::new(lw, lh),
-            None,
-            None,
-            Color::new(255, 200, 80, 255),
-            camera,
-            result,
-        );
-        // P2 score — top border, upside-down (facing P2)
-        render_text(
-            world,
-            self.score[1].to_string(),
-            V2::new(cx - lw / 2.0, 2.0 - lh / 2.0),
-            V2::new(lw, lh),
-            None,
-            Some(180.0),
-            Color::new(80, 180, 255, 255),
-            camera,
-            result,
-        );
-    }
 }

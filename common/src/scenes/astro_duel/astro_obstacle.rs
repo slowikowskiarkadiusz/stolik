@@ -196,8 +196,8 @@ fn draw_steel(out: &mut ColorMatrix, cx: u8, cy: u8) {
 }
 
 fn draw_brick(out: &mut ColorMatrix, cx: u8, cy: u8) {
-    let light = Color::new(80, 140, 255, 255);
-    let dark = Color::new(25, 60, 190, 255);
+    let light = Color::new(51, 255, 125, 255);
+    let dark = Color::new(51, 255, 125, 180);
     let cs = CELL_SIZE;
     let px0 = cx * cs;
     let py0 = cy * cs;

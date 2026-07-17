@@ -108,8 +108,8 @@ impl Matrix<Color> {
                         ry = dy;
                     }
                 }
-                let final_x = roundf((rx + other_position.x - cam_offset_x) / cam_scale);
-                let final_y = roundf((ry + other_position.y - cam_offset_y) / cam_scale);
+                let final_x = roundf((rx + other_position.x - 0.5 - cam_offset_x) / cam_scale);
+                let final_y = roundf((ry + other_position.y - 0.5 - cam_offset_y) / cam_scale);
 
                 if final_x >= 0.0 && final_y >= 0.0 && final_x < self.width as f32 && final_y < self.height as f32 {
                     if blend_colors {

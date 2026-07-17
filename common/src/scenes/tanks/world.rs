@@ -33,8 +33,8 @@ impl TanksWorld {
             tank_p2: Tank::new(false, p2_pos),
             bullet_p1: None,
             bullet_p2: None,
-            heart_p1: Heart::new(false),
-            heart_p2: Heart::new(true),
+            heart_p1: Heart::new(true, true),
+            heart_p2: Heart::new(false, false),
             winner: None,
             game_over_timer: 0.0,
         }

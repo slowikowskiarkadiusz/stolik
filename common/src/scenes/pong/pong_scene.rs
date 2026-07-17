@@ -1,13 +1,12 @@
 extern crate alloc;
-use alloc::{boxed::Box, string::ToString, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use crate::{
     engine::{
-        actor::{
-            rectangle_actor::create_rectangle_actor,
-            text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, create_text_actor_at_center},
-        },
+        actor::
+            rectangle_actor::create_rectangle_actor
+        ,
         asyncable::{AsyncableType, add_asyncable},
         color::Color,
         color_matrix::ColorMatrix,
@@ -21,8 +20,7 @@ use crate::{
         input::{input::Input, key::Key},
         scene::Scene,
         v2::V2,
-    },
-    scenes::utils::print_victory_text,
+    }, scenes::utils::{P1_COLOR, P2_COLOR, print_score, print_victory_text},
 };
 
 #[cfg(feature = "esp")]
@@ -36,7 +34,6 @@ pub struct PongScene {
     score: [u8; 2],
     paddle: [Option<ActorId>; 2],
     score_zone: [Option<ActorId>; 2],
-    score_text: [Option<ActorId>; 2],
     ball: Option<ActorId>,
     paddle_speed: f32,
     max_bounce_speed: f32,
@@ -131,8 +128,9 @@ impl Scene for PongScene {
         for i in 0..2 {
             if camera.can_see_actor(self.paddle[i].unwrap(), world) {
                 if let Some(transform) = world.get_mut_transform(&self.paddle[i].unwrap()) {
+                    let color = if i == 0 { P1_COLOR } else { P2_COLOR };
                     result.write(
-                        &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
+                        &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, color),
                         &transform.center,
                         None,
                         None,
@@ -142,13 +140,30 @@ impl Scene for PongScene {
                 }
             }
 
-            self.print_score(world, &mut result, camera);
+            print_score(self.score[0], self.score[1], &mut result);
+
+            if self.score.iter().any(|x| x == &MAX_SCORE) {
+                self.do_play = false;
+                print_victory_text(&mut result, if self.score[0] > self.score[1] { 1 } else { 2 });
+                let play_against_ai = self.play_against_ai;
+                add_asyncable(
+                    Box::new(move |_, _| {
+                        open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
+                    }),
+                    10.0,
+                    AsyncableType::Timeout,
+                );
+
+                if let Some(ball_id) = self.ball {
+                    world.murder(&ball_id);
+                }
+            }
         }
 
         if camera.can_see_actor(self.ball.unwrap(), world) {
             if let Some(transform) = world.get_mut_transform(&self.ball.unwrap()) {
                 result.write(
-                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::blue()),
+                    &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
                     &transform.center,
                     None,
                     None,
@@ -174,7 +189,6 @@ impl PongScene {
             score: [0, 0],
             paddle: [None, None],
             score_zone: [None, None],
-            score_text: [None, None],
             ball: None,
             paddle_speed: 15.0,
             max_bounce_speed: 10.0,
@@ -345,46 +359,46 @@ impl PongScene {
         }
     }
 
-    fn print_score(&mut self, world: &mut World, result: &mut ColorMatrix, camera: &Camera) {
-        for i in 0..2 {
-            if let Some(score_text_actor) = self.score_text[i] {
-                world.murder(&score_text_actor);
-            }
+    // fn print_score(&mut self, world: &mut World, result: &mut ColorMatrix, camera: &Camera) {
+    //     for i in 0..2 {
+    //         if let Some(score_text_actor) = self.score_text[i] {
+    //             world.murder(&score_text_actor);
+    //         }
 
-            let score_text_actor = create_text_actor_at_center(
-                world,
-                self.score[i].to_string(),
-                V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 })),
-                V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32),
-                None,
-                Some(-90.0),
-                Color::white(),
-                camera,
-                result,
-            );
+    //         let score_text_actor = create_text_actor_at_center(
+    //             world,
+    //             self.score[i].to_string(),
+    //             V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 })),
+    //             V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32),
+    //             None,
+    //             Some(-90.0),
+    //             Color::white(),
+    //             camera,
+    //             result,
+    //         );
 
-            // if let Some(a) = world.get_mut_render(&score_text_actor) {
-            //     a.rotate(-90.0, Color::none());
-            // }
+    //         // if let Some(a) = world.get_mut_render(&score_text_actor) {
+    //         //     a.rotate(-90.0, Color::none());
+    //         // }
 
-            self.score_text[i] = Some(score_text_actor);
-        }
+    //         self.score_text[i] = Some(score_text_actor);
+    //     }
 
-        if self.score.iter().any(|x| x == &MAX_SCORE) {
-            self.do_play = false;
-            print_victory_text(result, if self.score[0] > self.score[1] { 1 } else { 2 });
-            let play_against_ai = self.play_against_ai;
-            add_asyncable(
-                Box::new(move |_, _| {
-                    open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
-                }),
-                10.0,
-                AsyncableType::Timeout,
-            );
+    //     if self.score.iter().any(|x| x == &MAX_SCORE) {
+    //         self.do_play = false;
+    //         print_victory_text(result, if self.score[0] > self.score[1] { 1 } else { 2 });
+    //         let play_against_ai = self.play_against_ai;
+    //         add_asyncable(
+    //             Box::new(move |_, _| {
+    //                 open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
+    //             }),
+    //             10.0,
+    //             AsyncableType::Timeout,
+    //         );
 
-            if let Some(ball_id) = self.ball {
-                world.murder(&ball_id);
-            }
-        }
-    }
+    //         if let Some(ball_id) = self.ball {
+    //             world.murder(&ball_id);
+    //         }
+    //     }
+    // }
 }

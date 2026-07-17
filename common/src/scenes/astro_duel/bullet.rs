@@ -1,7 +1,6 @@
 extern crate alloc;
 
 use crate::engine::{
-    color::Color,
     color_matrix::ColorMatrix,
     components::{
         camera::Camera,
@@ -15,6 +14,7 @@ use crate::engine::{
 };
 
 use super::astro_obstacle::AstroObstacleMap;
+use crate::scenes::utils::{P1_COLOR, P2_COLOR};
 
 const BULLET_LIFETIME: f32 = 2.5;
 pub const BULLET_SIZE: f32 = 2.0;
@@ -58,21 +58,13 @@ impl Bullet {
         self.hit || self.lifetime <= 0.0
     }
 
-    pub fn pos(&self, world: &World) -> Option<V2> {
-        world.get_transform(&self.actor_id).map(|t| t.center)
-    }
-
     pub fn destroy(&self, world: &mut World) {
         world.murder(&self.actor_id);
     }
 
     pub fn render(&self, world: &World, _camera: &Camera, result: &mut ColorMatrix) {
         if let Some(t) = world.get_transform(&self.actor_id) {
-            let color = if self.owner_is_p1 {
-                Color::new(255, 255, 80, 255)
-            } else {
-                Color::new(80, 200, 255, 255)
-            };
+            let color = if self.owner_is_p1 { P1_COLOR } else { P2_COLOR };
             result.write(
                 &ColorMatrix::new(BULLET_SIZE as u8, BULLET_SIZE as u8, color),
                 &t.center,

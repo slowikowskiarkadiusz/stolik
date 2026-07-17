@@ -17,6 +17,7 @@ use crate::engine::{
 
 use super::astro_obstacle::AstroObstacleMap;
 use super::bullet::wrap_center;
+use crate::scenes::utils::{P1_COLOR, P2_COLOR};
 
 const SHIP_SIZE: f32 = 4.0;
 const THRUST_IMPULSE: f32 = 0.5;
@@ -177,11 +178,9 @@ fn create_actor(world: &mut World, pos: V2, rotation: f32) -> ActorId {
 }
 
 fn make_ship_sprite(ammo: u8, is_p1: bool) -> ColorMatrix {
-    let (bright, dim) = if is_p1 {
-        (Color::new(255, 200, 80, 255), Color::new(255, 200, 80, 160))
-    } else {
-        (Color::new(80, 180, 255, 255), Color::new(80, 180, 255, 120))
-    };
+    let base = if is_p1 { P1_COLOR } else { P2_COLOR };
+    let bright = base;
+    let dim = Color::new(base.r, base.g, base.b, 120);
 
     let mut m = ColorMatrix::new(4, 4, Color::none());
     for row in 0u8..4 {

@@ -121,7 +121,7 @@ impl Scene for ControlsScene {
             self.print_page_timer_seconds = 0.0;
             self.current_page_index = (self.current_page_index + 1) % self.pages.len() as u8;
         }
-        self.print_page(world, &mut result, camera);
+        self.print_page(&mut result, camera);
 
         if camera.can_see_actor(self.divider_actor_id, world) {
             if let Some(transform) = world.get_mut_transform(&self.divider_actor_id) {
@@ -187,7 +187,7 @@ impl ControlsScene {
         result
     }
 
-    fn print_page(&mut self, world: &mut World, result: &mut ColorMatrix, camera: &Camera) {
+    fn print_page(&mut self, result: &mut ColorMatrix, camera: &Camera) {
         if self.pages.len() == 0 {
             return;
         }
@@ -217,14 +217,13 @@ impl ControlsScene {
                         && key.clone() != current_line.keys[current_line.keys.len() - 1]
                     {
                         let _text_actor_id = render_text(
-                            world,
                             operation_text.clone(),
                             V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
                             V2::new(operation_text.len() as f32 * 4.0, 5.0),
                             None,
                             None,
                             Color::white(),
-                            camera,
+                            Some(camera),
                             result,
                         );
                     }
@@ -233,14 +232,13 @@ impl ControlsScene {
                 x += 2;
 
                 let _text_actor_id = render_text(
-                    world,
                     current_line.text.clone(),
                     V2::new(x as f32, (y - (BUTTON_SIZE / 2)) as f32),
                     V2::new((SCREEN_SIZE - x) as f32, BUTTON_SIZE as f32),
                     None,
                     None,
                     Color::white(),
-                    camera,
+                    Some(camera),
                     result,
                 );
             }

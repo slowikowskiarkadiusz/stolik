@@ -1,9 +1,12 @@
 use super::obstacle::{ObstacleMap, ObstacleType};
-use crate::engine::{
-    color::Color,
-    color_matrix::ColorMatrix,
-    input::{input::Input, key::Key},
-    v2::V2,
+use crate::{
+    engine::{
+        color::Color,
+        color_matrix::ColorMatrix,
+        input::{input::Input, key::Key},
+        v2::V2,
+    },
+    scenes::utils::{P1_COLOR, P2_COLOR},
 };
 
 const SHOOT_COOLDOWN: f32 = 0.25;
@@ -96,8 +99,14 @@ impl Tank {
     }
 
     pub fn render(&self) -> ColorMatrix {
-        let brightness = if self.is_visible { 255u8 } else { 166u8 };
-        let c = Color::new(brightness, brightness, brightness, 255);
+        let base = if self.is_p1 { P1_COLOR } else { P2_COLOR };
+        let scale = if self.is_visible { 1.0f32 } else { 0.65 };
+        let c = Color::new(
+            (base.r as f32 * scale) as u8,
+            (base.g as f32 * scale) as u8,
+            (base.b as f32 * scale) as u8,
+            255,
+        );
         let mut m = ColorMatrix::new(4, 4, Color::none());
         let rot = ((self.rotation % 360) + 360) % 360;
 

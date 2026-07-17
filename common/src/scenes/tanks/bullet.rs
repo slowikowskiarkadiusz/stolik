@@ -1,6 +1,9 @@
 use super::obstacle::{ObstacleMap, ObstacleType};
 use super::tank::Tank;
-use crate::engine::{color::Color, color_matrix::ColorMatrix, v2::V2};
+use crate::{
+    engine::{color_matrix::ColorMatrix, v2::V2},
+    scenes::utils::{P1_COLOR, P2_COLOR},
+};
 
 const SPEED: f32 = 20.0;
 const HALF: f32 = 1.0;
@@ -59,7 +62,8 @@ impl Bullet {
     }
 
     pub fn render(&self) -> ColorMatrix {
-        ColorMatrix::new(2, 2, Color::white())
+        let color = if self.from_p1 { P1_COLOR } else { P2_COLOR };
+        ColorMatrix::new(2, 2, color)
     }
 
     fn impact(&self, obstacle: &mut ObstacleMap) {

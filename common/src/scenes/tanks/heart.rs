@@ -1,4 +1,7 @@
-use crate::engine::{color::Color, color_matrix::ColorMatrix, v2::V2};
+use crate::{
+    engine::{color_matrix::ColorMatrix, v2::V2},
+    scenes::utils::{P1_COLOR, P2_COLOR},
+};
 
 pub const HEART_X: u8 = 30;
 pub const HEART_W: u8 = 4;
@@ -9,17 +12,19 @@ pub struct Heart {
     pub health: u8,
     pub alive: bool,
     pub is_bottom: bool,
+    pub is_p1: bool,
     blink_timer: f32,
     is_visible: bool,
 }
 
 impl Heart {
-    pub fn new(is_bottom: bool) -> Self {
+    pub fn new(is_bottom: bool, is_p1: bool) -> Self {
         let (on, _) = blink_params(HEART_MAX_HEALTH);
         Self {
             health: HEART_MAX_HEALTH,
             alive: true,
             is_bottom,
+            is_p1,
             blink_timer: on,
             is_visible: true,
         }
@@ -83,7 +88,7 @@ impl Heart {
         if !self.alive || !self.is_visible {
             return;
         }
-        let c = Color::new(255, 255, 255, 255);
+        let c = if self.is_p1 { P1_COLOR } else { P2_COLOR };
         for i in 0..self.health {
             let row = i / HEART_W;
             let col = i % HEART_W;
