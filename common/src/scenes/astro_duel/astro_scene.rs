@@ -19,7 +19,12 @@ use crate::{
 };
 use rand::{SeedableRng, rngs::SmallRng};
 
-use super::{astro_obstacle::AstroObstacleMap, bullet::Bullet, ship::Ship};
+use super::{
+    astro_obstacle::{AstroObstacleMap, BOARD_CELLS, CELL_SIZEF32},
+    bullet::Bullet,
+    power_up::PowerUp,
+    ship::Ship,
+};
 
 const GAME_OVER_DELAY: f32 = 4.0;
 const DEATH_DELAY: f32 = 2.5;
@@ -30,6 +35,7 @@ pub struct AstroDuelScene {
     ship_p1: Option<Ship>,
     ship_p2: Option<Ship>,
     bullets: Vec<Bullet>,
+    power_ups: Vec<PowerUp>,
     score: [u8; 2],
     winner: Option<u8>,
     game_over_timer: f32,
@@ -43,6 +49,7 @@ impl AstroDuelScene {
             ship_p1: None,
             ship_p2: None,
             bullets: Vec::new(),
+            power_ups: Vec::new(),
             score: [0, 0],
             winner: None,
             game_over_timer: 0.0,
@@ -58,6 +65,17 @@ impl AstroDuelScene {
         self.ship_p2 = Some(Ship::new(world, false));
         self.bullets = Vec::new();
         self.death_timer = None;
+
+        use rand::Rng;
+        let interior = (BOARD_CELLS - 2) as u32;
+        let gx = (rng.gen_range(0..interior) + 1) as u8;
+        let gy = (rng.gen_range(0..interior) + 1) as u8;
+        let cell_center = |g: u8| g as f32 * CELL_SIZEF32 + CELL_SIZEF32 / 2.0;
+        let pos_a = V2::new(cell_center(gx), cell_center(gy));
+        let pos_b = V2::new(cell_center(BOARD_CELLS - 1 - gx), cell_center(BOARD_CELLS - 1 - gy));
+        self.power_ups = Vec::new();
+        self.power_ups.push(PowerUp::new(pos_a, &mut rng, world));
+        self.power_ups.push(PowerUp::new(pos_b, &mut rng, world));
     }
 }
 
@@ -141,6 +159,10 @@ impl Scene for AstroDuelScene {
                 i += 1;
             }
         }
+
+        for power_up in &mut self.power_ups {
+            power_up.tick(delta_time);
+        }
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
@@ -154,14 +176,18 @@ impl Scene for AstroDuelScene {
             .map(|o| o.render(world))
             .unwrap_or_else(|| ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::black()));
 
-        if let Some(s) = self.ship_p1.as_ref() {
-            s.render(world, camera, &mut result);
+        if let Some(ship) = self.ship_p1.as_ref() {
+            ship.render(world, camera, &mut result);
         }
-        if let Some(s) = self.ship_p2.as_ref() {
-            s.render(world, camera, &mut result);
+        if let Some(ship) = self.ship_p2.as_ref() {
+            ship.render(world, camera, &mut result);
         }
-        for b in &self.bullets {
-            b.render(world, camera, &mut result);
+        for bullet in &self.bullets {
+            bullet.render(world, camera, &mut result);
+        }
+
+        for power_up in &self.power_ups {
+            power_up.render(world, &mut result);
         }
 
         print_score(self.score[0], self.score[1], &mut result);

@@ -1,5 +1,4 @@
 extern crate alloc;
-use alloc::string::String;
 
 use crate::engine::{
     color::Color,

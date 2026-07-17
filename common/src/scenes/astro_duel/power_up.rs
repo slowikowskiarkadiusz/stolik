@@ -1,33 +1,50 @@
+extern crate alloc;
+use alloc::vec;
+
+use rand::{Rng, rngs::SmallRng};
+
+use crate::scenes::astro_duel::astro_obstacle::{CELL_SIZE, CELL_SIZEF32};
 use crate::{
     engine::{
+        color::Color,
         color_matrix::ColorMatrix,
         components::{
             collider::{Collider, ColliderPart},
             transform::Transform,
             world::World,
         },
+        engine::ActorId,
+        v2::V2,
     },
-    scenes::astro_duel::astro_obstacle::{CELL_SIZE, CELL_SIZEF32},
+    scenes::utils::lerp_u8,
 };
 
 const TOTAL_FADE_TIME: f32 = 2.0;
 
+#[derive(Debug)]
 pub enum PowerUpType {
-    Shield = 0,
-    Reflector = 1,
-    Mine = 2,
-    RayGun = 3,
+    Shield,
+    Reflector,
+    Mine,
+    RayGun,
 }
 
 pub struct PowerUp {
     pub actor_id: ActorId,
-    power_up_type: ActorId,
+    power_up_type: PowerUpType,
     fade_timer: f32,
 }
 
-pub impl PowerUp {
-    pub fn new(world_position: V2, world: &mut World) -> Self {
+impl PowerUp {
+    pub fn new(world_position: V2, rng: &mut SmallRng, world: &mut World) -> Self {
         let size = V2::one() * CELL_SIZEF32;
+        let power_up_type: PowerUpType = match rng.gen_range(0..=3) {
+            0 => PowerUpType::Shield,
+            1 => PowerUpType::Reflector,
+            2 => PowerUpType::Mine,
+            3 => PowerUpType::RayGun,
+            _ => PowerUpType::Shield,
+        };
         Self {
             actor_id: world.add_new_actor(
                 Some(Transform::new(world_position, size)),
@@ -35,12 +52,7 @@ pub impl PowerUp {
                 None,
                 None,
             ),
-            power_up_type: match rng.gen_range(0..=3) {
-                0 => PowerUpType::Shield,
-                1 => PowerUpType::Reflector,
-                2 => PowerUpType::Mine,
-                3 => PowerUpType::RayGun,
-            },
+            power_up_type,
             fade_timer: TOTAL_FADE_TIME,
         }
     }
@@ -52,77 +64,52 @@ pub impl PowerUp {
         }
     }
 
-    pub fn render(self, world: &World, result: &mut ColorMatrix) {
-        if let Some(transform) = world.get_transform(self.actor_id) {
+    pub fn render(&self, world: &World, result: &mut ColorMatrix) {
+        if let Some(transform) = world.get_transform(&self.actor_id) {
+            let x = (transform.center.x - CELL_SIZEF32 / 2.0) as u8;
+            let y = (transform.center.y - CELL_SIZEF32 / 2.0) as u8;
+            let fade = self.get_fade_progress();
             match self.power_up_type {
-                PowerUpType::Shield => {
-                    draw_shield(
-                        (transform.center.x - CELL_SIZEF32 / 2.0) as u8,
-                        (transform.center.y - CELL_SIZEF32 / 2.0) as u8,
-                        self.get_fade_progress(),
-                        result,
-                    );
-                }
-                PowerUpType::Reflector => {
-                    draw_reflector(
-                        (transform.center.x - CELL_SIZEF32 / 2.0) as u8,
-                        (transform.center.y - CELL_SIZEF32 / 2.0) as u8,
-                        self.get_fade_progress(),
-                        result,
-                    );
-                }
-                PowerUpType::Mine => {
-                    draw_mine(
-                        (transform.center.x - CELL_SIZEF32 / 2.0) as u8,
-                        (transform.center.y - CELL_SIZEF32 / 2.0) as u8,
-                        self.get_fade_progress(),
-                        result,
-                    );
-                }
-                PowerUpType::RayGun => {
-                    draw_ray_gun(
-                        (transform.center.x - CELL_SIZEF32 / 2.0) as u8,
-                        (transform.center.y - CELL_SIZEF32 / 2.0) as u8,
-                        self.get_fade_progress(),
-                        result,
-                    );
-                }
+                PowerUpType::Shield => draw_shield(x, y, fade, result),
+                PowerUpType::Reflector => draw_reflector(x, y, fade, result),
+                PowerUpType::Mine => draw_mine(x, y, fade, result),
+                PowerUpType::RayGun => draw_ray_gun(x, y, fade, result),
             }
         }
     }
 
-    fn get_fade_progress(self) -> f32 {
+    fn get_fade_progress(&self) -> f32 {
         let p = self.fade_timer - TOTAL_FADE_TIME / 2.0;
-        if p < 0.0 { p * -1 } else { p }
+        if p < 0.0 { p * -1.0 } else { p }
     }
 }
 
 fn draw_ray_gun(start_x: u8, start_y: u8, fade_progress: f32, result: &mut ColorMatrix) {
-    let color = Color::new(0, 55, 255, 255);
+    let color = Color::new(0, 55, 255, lerp_u8(255, 150, fade_progress));
     let excluded_cells = [
         (0, 0),
         (1, 0),
-        (1, 0),
-        (CELL_SIZE, CELL_SIZE),
-        (CELL_SIZE - 1, CELL_SIZE),
-        (CELL_SIZE - 1, CELL_SIZE),
+        (0, 1),
+        (CELL_SIZE - 1, CELL_SIZE - 1),
+        (CELL_SIZE - 2, CELL_SIZE - 1),
+        (CELL_SIZE - 1, CELL_SIZE - 2),
     ];
     for y in 0..CELL_SIZE {
         for x in 0..CELL_SIZE {
             if !excluded_cells.iter().any(|f| f.0 == x && f.1 == y) {
-                out.set(start_x + x, start_y + y, color);
+                result.set(start_x + x, start_y + y, color);
             }
         }
     }
 }
 
 fn draw_reflector(start_x: u8, start_y: u8, fade_progress: f32, result: &mut ColorMatrix) {
-    let color = Color::new(0, 55, 255, 255);
+    let color = Color::new(0, 55, 255, lerp_u8(255, 150, fade_progress));
     for y in 0..CELL_SIZE {
         if y < CELL_SIZE - 1 {
             for x in 0..CELL_SIZE {
                 if (y == 0 && (x != 0 || x != CELL_SIZE - 1)) || (y > 0 && (x == 0 || x == CELL_SIZE - 1)) {
-                    out.set(start_x + x, start_y + y, color);
+                    result.set(start_x + x, start_y + y, color);
                 }
             }
         }
@@ -130,32 +117,31 @@ fn draw_reflector(start_x: u8, start_y: u8, fade_progress: f32, result: &mut Col
 }
 
 fn draw_mine(start_x: u8, start_y: u8, fade_progress: f32, result: &mut ColorMatrix) {
-    let color = Color::new(255, 255, 255, 255);
-    let excluded_cells = [
-        (0, 0),
-        (0, 1),
-        (CELL_SIZE, 0),
-        (CELL_SIZE - 1, 0),
-        (CELL_SIZE, CELL_SIZE),
-        (CELL_SIZE, CELL_SIZE - 1),
-        (0, CELL_SIZE - 1),
-        (1, CELL_SIZE - 1),
-    ];
-    for y in 0..CELL_SIZE {
-        for x in 0..CELL_SIZE {
-            if !excluded_cells.iter().any(|f| f.0 == x && f.1 == y) {
-                out.set(start_x + x, start_y + y, color);
-            }
-        }
+    let color = Color::new(255, 255, 255, lerp_u8(255, 150, fade_progress));
+
+    for x in 0..CELL_SIZE - 1 {
+        result.set(start_x + x, start_y + 1, color);
+    }
+
+    for x in 1..CELL_SIZE {
+        result.set(start_x + x, start_y + 2, color);
+    }
+
+    for y in 1..CELL_SIZE {
+        result.set(start_x + 1, start_y + y, color);
+    }
+
+    for y in 0..CELL_SIZE - 1 {
+        result.set(start_x + 2, start_y + y, color);
     }
 }
 
 fn draw_shield(start_x: u8, start_y: u8, fade_progress: f32, result: &mut ColorMatrix) {
-    let color = Color::new(102, 102, 102, 255);
+    let color = Color::new(102, 102, 102, lerp_u8(255, 150, fade_progress));
     for y in 0..CELL_SIZE {
         for x in 0..CELL_SIZE {
             if !((x == 0 && y == CELL_SIZE - 1) || (x == CELL_SIZE - 1 && y == CELL_SIZE - 1)) {
-                out.set(start_x + x, start_y + y, color);
+                result.set(start_x + x, start_y + y, color);
             }
         }
     }

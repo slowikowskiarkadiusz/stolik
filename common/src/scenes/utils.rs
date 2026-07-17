@@ -83,6 +83,10 @@ pub fn print_score(score_p1: u8, score_p2: u8, result: &mut ColorMatrix) {
     );
 }
 
-pub fn lerp(from: f32, to: f32, step: f32) -> f32 {
-    from as f32 * (1.0 - step) + to as f32 * step
+pub fn lerp_f32(from: f32, to: f32, step: f32) -> f32 {
+    from * (1.0 - step) + to * step
+}
+
+pub fn lerp_u8(from: u8, to: u8, step: f32) -> u8 {
+    (from as f32 * (1.0 - step) + to as f32 * step).round() as u8
 }
