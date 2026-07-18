@@ -17,6 +17,7 @@ use crate::engine::{
 };
 
 use super::astro_obstacle::AstroObstacleMap;
+use super::boost_particles::BoostParticles;
 use super::bullet::wrap_center;
 use super::power_ups::{shield, reflector};
 use super::power_ups::mine::PlacedMine;
@@ -60,6 +61,7 @@ pub struct Ship {
     pub reflector_timer: f32,
     /// Active power-up held in reserve (Mine or RayGun), triggered by hold-fire.
     pub stored_power_up: Option<PowerUpType>,
+    pub boost_particles: Vec<BoostParticles>,
     shoot_cooldown: f32,
     ammo: u8,
     ammo_timer: f32,
@@ -82,6 +84,7 @@ impl Ship {
             active_power_up: None,
             reflector_timer: 0.0,
             stored_power_up: None,
+            boost_particles: Vec::new(),
             shoot_cooldown: 0.0,
             ammo: MAX_AMMO,
             ammo_timer: AMMO_REGEN_TIME,
@@ -104,6 +107,11 @@ impl Ship {
 
         if dashed {
             self.dash_timer = DASH_REGEN_TIME;
+            let facing = rotation_to_dir(self.rotation);
+            let tail = world.get_transform(&self.actor_id)
+                .map(|t| t.center - facing * (SHIP_SIZE / 2.0))
+                .unwrap_or(V2::zero());
+            self.boost_particles.push(BoostParticles::new(tail, facing * -1.0, world));
         }
 
         if let Some(rot) = new_rotation {
@@ -132,6 +140,8 @@ impl Ship {
         } else {
             self.is_visible = true;
         }
+
+        self.boost_particles.retain_mut(|p| !p.tick(delta_time, world));
 
         if self.lives == 0 {
             return Vec::new();
@@ -257,6 +267,10 @@ impl Ship {
     }
 
     pub fn render(&self, world: &World, _camera: &Camera, result: &mut ColorMatrix) {
+        for boost_particle in &self.boost_particles {
+            boost_particle.render(world, result);
+        }
+
         if !self.is_visible {
             return;
         }
@@ -303,7 +317,7 @@ fn create_actor(world: &mut World, pos: V2, rotation: f32) -> ActorId {
             false,
         )),
         Some(physics)
-        
+
     );
     if let Some(t) = world.get_mut_transform(&id) {
         t.rotation = rotation;
