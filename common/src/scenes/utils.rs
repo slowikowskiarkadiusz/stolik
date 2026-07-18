@@ -44,8 +44,8 @@ pub fn print_victory_text(out: &mut ColorMatrix, winner: u8) {
     }
     out.write(&word_matrix, &V2::new(32.0, 47.0), None, None, None, None);
 
-    for x in 19u8..45u8 {
-        for y in 12u8..21u8 {
+    for x in 19..45 {
+        for y in 12..21 {
             out.set(x, y, black);
         }
     }
@@ -53,7 +53,7 @@ pub fn print_victory_text(out: &mut ColorMatrix, winner: u8) {
 }
 
 pub fn print_score(score_p1: u8, score_p2: u8, result: &mut ColorMatrix) {
-    let mut buf = [0u8; 1];
+    let mut buf = [0; 1];
 
     render_text(
         digit_str(score_p1, &mut buf),
@@ -73,7 +73,7 @@ pub fn print_score(score_p1: u8, score_p2: u8, result: &mut ColorMatrix) {
         digit_str(score_p2, &mut buf),
         V2::new(
             (SCREEN_SIZEF32 / 2.0) - (MAX_LETTER_WIDTH as f32) / 2.0,
-            1.0 - (LETTER_HEIGHT as f32) / 2.0,
+            1.0 - (LETTER_HEIGHT as f32) / 2.0 + 1.0,
         ),
         V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32),
         None,

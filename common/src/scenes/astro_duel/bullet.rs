@@ -1,4 +1,5 @@
 extern crate alloc;
+use alloc::vec::Vec;
 
 use crate::engine::{
     color_matrix::ColorMatrix,
@@ -10,10 +11,13 @@ use crate::engine::{
         world::World,
     },
     engine::{ActorId, SCREEN_SIZEF32},
+    hash_map::HashMap,
     v2::V2,
 };
 
 use super::astro_obstacle::AstroObstacleMap;
+use super::ship::Ship;
+use super::scoring::apply_hit;
 use crate::scenes::utils::{P1_COLOR, P2_COLOR};
 
 const BULLET_LIFETIME: f32 = 2.5;
@@ -60,6 +64,79 @@ impl Bullet {
 
     pub fn destroy(&self, world: &mut World) {
         world.murder(&self.actor_id);
+    }
+
+    pub fn apply_all(
+        bullets: &mut Vec<Bullet>,
+        overlaps: &HashMap<u16, Vec<u16>>,
+        world: &mut World,
+        p1_id: Option<ActorId>,
+        p2_id: Option<ActorId>,
+        obstacle: &mut Option<AstroObstacleMap>,
+        ship_p1: &mut Option<Ship>,
+        ship_p2: &mut Option<Ship>,
+        score: &mut [u8; 2],
+        winner: &mut Option<u8>,
+        game_over_timer: &mut f32,
+        death_timer: &mut Option<(f32, usize)>,
+    ) {
+        let bullet_actor_ids: Vec<ActorId> = bullets.iter().map(|b| b.actor_id).collect();
+
+        for i in 0..bullets.len() {
+            if bullets[i].hit { continue; }
+            let bullet_id = bullets[i].actor_id;
+            let owner_is_p1 = bullets[i].owner_is_p1;
+            let Some(list) = overlaps.get(&bullet_id) else { continue };
+            let overlapped: Vec<ActorId> = list.iter().copied().collect();
+
+            for overlapped_id in overlapped {
+                if let Some(j) = bullet_actor_ids.iter().position(|&id| id == overlapped_id) {
+                    if j != i && !bullets[j].hit {
+                        bullets[i].hit = true;
+                        bullets[j].hit = true;
+                    }
+                    continue;
+                }
+
+                let hit_p1_ship = p1_id == Some(overlapped_id);
+                let hit_p2_ship = p2_id == Some(overlapped_id);
+
+                if hit_p1_ship {
+                    bullets[i].hit = true;
+                    let scorer = if owner_is_p1 {
+                        if score[0] > 0 { score[0] -= 1; }
+                        None
+                    } else {
+                        Some(1usize)
+                    };
+                    apply_hit(ship_p1, score, winner, game_over_timer, death_timer, scorer.unwrap_or(usize::MAX));
+                } else if hit_p2_ship {
+                    bullets[i].hit = true;
+                    let scorer = if !owner_is_p1 {
+                        if score[1] > 0 { score[1] -= 1; }
+                        None
+                    } else {
+                        Some(0usize)
+                    };
+                    apply_hit(ship_p2, score, winner, game_over_timer, death_timer, scorer.unwrap_or(usize::MAX));
+                } else {
+                    let is_destroyable = obstacle.as_ref()
+                        .map(|o| o.is_destroyable_obstacle(&overlapped_id))
+                        .unwrap_or(false);
+                    if is_destroyable {
+                        if let Some(o) = obstacle.as_mut() { o.remove(&overlapped_id); }
+                        world.murder(&overlapped_id);
+                        bullets[i].hit = true;
+                    }
+                    let is_border = obstacle.as_ref()
+                        .map(|o| o.is_border_obstacle(&overlapped_id))
+                        .unwrap_or(false);
+                    if is_border {
+                        bullets[i].hit = true;
+                    }
+                }
+            }
+        }
     }
 
     pub fn render(&self, world: &World, _camera: &Camera, result: &mut ColorMatrix) {

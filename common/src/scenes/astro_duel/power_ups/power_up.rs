@@ -29,16 +29,18 @@ pub enum PowerUpType {
     RayGun,
 }
 
+/// `Passive` activate automatically on pickup
+/// `Active` activated manually by holding fire
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerUpKind {
-    Passive, // Shield, Reflector — activate automatically on pickup
-    Active,  // Mine, RayGun — activated manually by holding fire
+    Passive,
+    Active,
 }
 
 pub const fn power_up_kind(t: PowerUpType) -> PowerUpKind {
     match t {
         PowerUpType::Shield | PowerUpType::Reflector => PowerUpKind::Passive,
-        PowerUpType::Mine   | PowerUpType::RayGun    => PowerUpKind::Active,
+        PowerUpType::Mine | PowerUpType::RayGun => PowerUpKind::Active,
     }
 }
 
@@ -72,10 +74,10 @@ impl PowerUp {
 
     pub fn power_up_type(&self) -> PowerUpType {
         match self.power_up_type {
-            PowerUpType::Shield    => PowerUpType::Shield,
+            PowerUpType::Shield => PowerUpType::Shield,
             PowerUpType::Reflector => PowerUpType::Reflector,
-            PowerUpType::Mine      => PowerUpType::Mine,
-            PowerUpType::RayGun    => PowerUpType::RayGun,
+            PowerUpType::Mine => PowerUpType::Mine,
+            PowerUpType::RayGun => PowerUpType::RayGun,
         }
     }
 

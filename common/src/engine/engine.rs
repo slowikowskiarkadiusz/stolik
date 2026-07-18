@@ -12,8 +12,7 @@ use crate::{
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
         v2::V2,
-    },
-    scenes::menu::menu_scene::MenuScene,
+    }, scenes::menu::menu_scene::MenuScene,
 };
 extern crate alloc;
 use alloc::boxed::Box;

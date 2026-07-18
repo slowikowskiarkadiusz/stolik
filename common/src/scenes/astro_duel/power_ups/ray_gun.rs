@@ -1,10 +1,14 @@
+extern crate alloc;
+use alloc::vec::Vec;
+
 use libm::{cosf, roundf, sinf};
 use crate::engine::{color::Color, color_matrix::ColorMatrix, v2::V2};
+use crate::scenes::astro_duel::{ship::Ship, scoring::apply_damage};
 
 pub const RAY_GUN_LINE_WIDTH: i16 = 2;
 const VISUAL_DURATION: f32 = 2.0;
 
-pub struct RayGunBlast {
+pub struct RayGunBeam {
     pub start: V2,
     pub end: V2,
     pub owner_is_p1: bool,
@@ -12,7 +16,7 @@ pub struct RayGunBlast {
     pub collider_active: bool, // true only on the first frame
 }
 
-impl RayGunBlast {
+impl RayGunBeam {
     pub fn new(ship_center: V2, rotation_deg: f32, owner_is_p1: bool) -> Self {
         let rad = rotation_deg.to_radians();
         let dir_x = sinf(rad);
@@ -41,16 +45,12 @@ impl RayGunBlast {
 
     /// Returns true when blast should be removed.
     pub fn tick(&mut self, delta_time: f32) -> bool {
-        self.collider_active = false;
         self.visual_timer -= delta_time;
         self.visual_timer <= 0.0
     }
 
     /// Returns true if point is within RAY_GUN_LINE_WIDTH/2 of the ray segment.
     pub fn hits(&self, pos: V2) -> bool {
-        if !self.collider_active {
-            return false;
-        }
         let dx = self.end.x - self.start.x;
         let dy = self.end.y - self.start.y;
         let len_sq = dx * dx + dy * dy;
@@ -63,6 +63,43 @@ impl RayGunBlast {
         dist_sq <= (RAY_GUN_LINE_WIDTH as f32 / 2.0) * (RAY_GUN_LINE_WIDTH as f32 / 2.0)
     }
 
+    /// Returns true if the segment start→end crosses any edge of the polygon defined by vertices.
+    pub fn hits_polygon(&self, vertices: &[V2]) -> bool {
+        let n = vertices.len();
+        if n < 2 { return false; }
+        for i in 0..n {
+            let a = vertices[i];
+            let b = vertices[(i + 1) % n];
+            if seg_cross(self.start, self.end, a, b) {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn apply(
+        blasts: &mut Vec<RayGunBeam>,
+        p1_center: Option<V2>,
+        p2_center: Option<V2>,
+        ship_p1: &mut Option<Ship>,
+        ship_p2: &mut Option<Ship>,
+        score: &mut [u8; 2],
+        winner: &mut Option<u8>,
+        game_over_timer: &mut f32,
+        death_timer: &mut Option<(f32, usize)>,
+    ) {
+        for blast in blasts.iter_mut() {
+            if !blast.collider_active { continue; }
+            if !blast.owner_is_p1 && p1_center.map(|c| blast.hits(c)).unwrap_or(false) {
+                apply_damage(ship_p1, 2, score, winner, game_over_timer, death_timer, 1);
+            }
+            if blast.owner_is_p1 && p2_center.map(|c| blast.hits(c)).unwrap_or(false) {
+                apply_damage(ship_p2, 2, score, winner, game_over_timer, death_timer, 0);
+            }
+            blast.collider_active = false;
+        }
+    }
+
     pub fn render(&self, result: &mut ColorMatrix) {
         let blue = Color::new(0, 80, 255, 200);
         // Bresenham line, drawn with width RAY_GUN_LINE_WIDTH
@@ -72,6 +109,20 @@ impl RayGunBlast {
         let y1 = roundf(self.end.y) as i16;
         bresenham_thick(result, x0, y0, x1, y1, RAY_GUN_LINE_WIDTH, blue);
     }
+}
+
+/// Signed area of triangle (o, a, b) — positive if CCW.
+fn cross2d(o: V2, a: V2, b: V2) -> f32 {
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+}
+
+/// True if segment p1→p2 properly crosses segment p3→p4.
+fn seg_cross(p1: V2, p2: V2, p3: V2, p4: V2) -> bool {
+    let d1 = cross2d(p3, p4, p1);
+    let d2 = cross2d(p3, p4, p2);
+    let d3 = cross2d(p1, p2, p3);
+    let d4 = cross2d(p1, p2, p4);
+    (d1 * d2 < 0.0) && (d3 * d4 < 0.0)
 }
 
 fn bresenham_thick(result: &mut ColorMatrix, x0: i16, y0: i16, x1: i16, y1: i16, width: i16, color: Color) {

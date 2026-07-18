@@ -1,5 +1,9 @@
+extern crate alloc;
+use alloc::vec::Vec;
+
 use crate::engine::{color::Color, color_matrix::ColorMatrix, v2::V2};
-use crate::scenes::astro_duel::astro_obstacle::CELL_SIZE;
+use crate::scenes::astro_duel::{astro_obstacle::CELL_SIZE, ship::Ship, scoring::apply_hit};
+use libm::sqrtf;
 
 const FUSE_TIME: f32 = 3.0;
 const TRIGGER_COUNTDOWN: f32 = 1.0;
@@ -68,6 +72,38 @@ impl PlacedMine {
         (pos - self.pos).mag() <= BLAST_RADIUS
     }
 
+    pub fn apply(
+        mines: &mut Vec<PlacedMine>,
+        p1_center: Option<V2>,
+        p2_center: Option<V2>,
+        ship_p1: &mut Option<Ship>,
+        ship_p2: &mut Option<Ship>,
+        score: &mut [u8; 2],
+        winner: &mut Option<u8>,
+        game_over_timer: &mut f32,
+        death_timer: &mut Option<(f32, usize)>,
+    ) {
+        for mine in mines.iter_mut() {
+            if mine.just_detonated {
+                if p1_center.map(|c| mine.in_blast_radius(c)).unwrap_or(false) {
+                    apply_hit(ship_p1, score, winner, game_over_timer, death_timer, 1);
+                }
+                if p2_center.map(|c| mine.in_blast_radius(c)).unwrap_or(false) {
+                    apply_hit(ship_p2, score, winner, game_over_timer, death_timer, 0);
+                }
+                continue;
+            }
+            if mine.detonated { continue; }
+            if mine.is_active && !mine.triggered {
+                let p1_near = p1_center.map(|c| mine.in_blast_radius(c)).unwrap_or(false);
+                let p2_near = p2_center.map(|c| mine.in_blast_radius(c)).unwrap_or(false);
+                if p1_near || p2_near {
+                    mine.trigger();
+                }
+            }
+        }
+    }
+
     pub fn render(&self, result: &mut ColorMatrix) {
         if self.detonated {
             draw_explosion(self.pos, result);
@@ -102,33 +138,17 @@ fn draw_placed(pos: V2, red_center: bool, result: &mut ColorMatrix) {
 fn draw_explosion(pos: V2, result: &mut ColorMatrix) {
     let cx = pos.x as i16;
     let cy = pos.y as i16;
-    let r = BLAST_RADIUS as i16;
-    let outline = Color::new(255, 255, 255, 255);
-    let fill    = Color::new(255, 255, 255, 80);
+    let r = BLAST_RADIUS;
+    let ri = r as i16;
 
-    let mut x = r;
-    let mut y = 0i16;
-    let mut err = 1 - r;
-    while x >= y {
-        // Fill horizontal spans between symmetric points
-        for dx in -x + 1..x {
-            set_safe(result, cx + dx, cy + y, fill);
-            set_safe(result, cx + dx, cy - y, fill);
-        }
-        for dx in -y + 1..y {
-            set_safe(result, cx + dx, cy + x, fill);
-            set_safe(result, cx + dx, cy - x, fill);
-        }
-        // Solid outline
-        for &(dx, dy) in &[(x, y), (y, x), (-y, x), (-x, y), (-x, -y), (-y, -x), (y, -x), (x, -y)] {
-            set_safe(result, cx + dx, cy + dy, outline);
-        }
-        y += 1;
-        if err < 0 {
-            err += 2 * y + 1;
-        } else {
-            x -= 1;
-            err += 2 * (y - x) + 1;
+    for dy in -ri..=ri {
+        for dx in -ri..=ri {
+            let dist = sqrtf((dx * dx + dy * dy) as f32);
+            if dist > r { continue; }
+            // alpha: 0 at center, 255 at edge
+            let t = dist / r;
+            let alpha = (255.0 * t) as u8;
+            set_safe(result, cx + dx, cy + dy, Color::new(255, 255, 255, alpha));
         }
     }
 }
