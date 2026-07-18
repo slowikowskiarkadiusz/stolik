@@ -133,8 +133,8 @@ impl Scene for MarioScene {
                 Some(0),
                 false
             )),
-            None,
-            None,
+            None
+            
         );
     }
 
@@ -241,8 +241,8 @@ fn create_rectangle_actor(world: &mut World, center: V2, size: V2, collides: boo
         } else {
             None
         },
-        Some(physics),
-        None,
+        Some(physics)
+        
     )
 }
 
@@ -263,8 +263,8 @@ fn create_plumber(world: &mut World, center: V2, size: V2, collides: bool) -> Ac
         } else {
             None
         },
-        Some(physics),
-        None,
+        Some(physics)
+        
     )
 }
 
@@ -281,8 +281,8 @@ fn create_rectangle_at_origin(world: &mut World, from: V2, to: V2, collides: boo
         } else {
             None
         },
-        Some(physics),
-        None,
+        Some(physics)
+        
     )
 }
 

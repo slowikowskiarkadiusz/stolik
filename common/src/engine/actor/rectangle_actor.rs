@@ -29,6 +29,5 @@ pub fn create_rectangle_actor(
             None
         },
         None,
-        None, // Some(ColorMatrix::new(size.x as u8, size.y as u8, color)),
     )
 }

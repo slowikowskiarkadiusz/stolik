@@ -104,8 +104,8 @@ fn create_border_actors(world: &mut World) -> Vec<ActorId> {
         result.push(world.add_new_actor(
             Some(Transform::new(*center, *size)),
             Some(Collider::new(vec![ColliderPart::rect(V2::zero(), *size, false)], Some(0), true)),
-            None,
-            None,
+            None
+            
         ));
     }
 
@@ -167,8 +167,8 @@ fn create_brick_actor(gx: u8, gy: u8, world: &mut World) -> ActorId {
     world.add_new_actor(
         Some(Transform::new(center, size)),
         Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size, false)], Some(0), true)),
-        None,
-        None,
+        None
+        
     )
 }
 

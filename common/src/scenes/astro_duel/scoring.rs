@@ -36,6 +36,28 @@ pub fn apply_hit(
     }
 }
 
+pub fn apply_self_kill(
+    ship: &mut Option<Ship>,
+    player_idx: usize,
+    score: &mut [u8; 2],
+    winner: &mut Option<u8>,
+    game_over_timer: &mut f32,
+    death_timer: &mut Option<(f32, usize)>,
+) {
+    if score[player_idx] > 0 { score[player_idx] -= 1; }
+    if let Some(s) = ship {
+        let (died, _) = s.take_hit();
+        if died {
+            if let Some(w) = check_winner(score) {
+                *winner = Some(w);
+                *game_over_timer = GAME_OVER_DELAY;
+            } else if death_timer.is_none() {
+                *death_timer = Some((DEATH_DELAY, player_idx));
+            }
+        }
+    }
+}
+
 pub fn apply_damage(
     ship: &mut Option<Ship>,
     amount: u8,

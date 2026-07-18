@@ -302,8 +302,8 @@ fn create_actor(world: &mut World, pos: V2, rotation: f32) -> ActorId {
             Some(0),
             false,
         )),
-        Some(physics),
-        None,
+        Some(physics)
+        
     );
     if let Some(t) = world.get_mut_transform(&id) {
         t.rotation = rotation;

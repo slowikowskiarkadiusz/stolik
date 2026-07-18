@@ -73,7 +73,7 @@ pub fn create_text_actor_at_center(
 
     result.write(&generated, &center, rotation, None, None, Some(camera));
 
-    world.add_new_actor(Some(Transform::new(center, container_size)), None, None, None)
+    world.add_new_actor(Some(Transform::new(center, container_size)), None, None)
 }
 
 pub fn generate_word_matrix(text: &str, max_width: u8, color: &Color, reverse: bool) -> (ColorMatrix, Option<ColorMatrix>) {

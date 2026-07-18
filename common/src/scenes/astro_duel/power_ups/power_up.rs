@@ -64,8 +64,8 @@ impl PowerUp {
             actor_id: world.add_new_actor(
                 Some(Transform::new(world_position, size)),
                 Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size, true)], Some(0), true)),
-                None,
-                None,
+                None
+                
             ),
             power_up_type,
             fade_timer: TOTAL_FADE_TIME,

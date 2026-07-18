@@ -3,7 +3,6 @@ use alloc::vec::Vec;
 
 use crate::engine::{
     components::{
-        blinker::Blinker,
         camera::{Camera, Viewport},
         collider::{Collider, ColliderPartDebug, CollisionMask, CollisionMaskId},
         physics::Physics,
@@ -22,7 +21,6 @@ pub struct World {
     transforms: [Option<Transform>; MAX_ACTORS],
     colliders: [Option<Collider>; MAX_ACTORS],
     physics: [Option<Physics>; MAX_ACTORS],
-    pub(crate) blinkers: [Option<Blinker>; MAX_ACTORS],
     collision_matrix: [CollisionMask; CollisionMaskId::MAX as usize],
 }
 
@@ -36,7 +34,6 @@ impl World {
             transforms: core::array::from_fn(|_| None),
             colliders: core::array::from_fn(|_| None),
             physics: core::array::from_fn(|_| None),
-            blinkers: core::array::from_fn(|_| None),
             collision_matrix: [CollisionMask::MAX; CollisionMaskId::MAX as usize],
         }
     }
@@ -114,20 +111,11 @@ impl World {
         self.colliders[*actor_id as usize].as_mut()
     }
 
-    pub fn get_blinker(&self, actor_id: &ActorId) -> Option<&Blinker> {
-        self.blinkers[*actor_id as usize].as_ref()
-    }
-
-    pub fn get_mut_blinker(&mut self, actor_id: &ActorId) -> Option<&mut Blinker> {
-        self.blinkers[*actor_id as usize].as_mut()
-    }
-
     pub fn add_new_actor(
         &mut self,
         transform: Option<Transform>,
         collider: Option<Collider>,
         physics: Option<Physics>,
-        blinker: Option<Blinker>,
     ) -> ActorId {
         let slot = (0..MAX_ACTORS).find(|&i| !self.actor_alive[i]).expect("MAX_ACTORS exceeded") as ActorId;
 
@@ -139,7 +127,6 @@ impl World {
         self.transforms[idx] = transform;
         self.colliders[idx] = collider;
         self.physics[idx] = physics;
-        self.blinkers[idx] = blinker;
 
         slot
     }
@@ -150,7 +137,6 @@ impl World {
         self.transforms[idx] = None;
         self.colliders[idx] = None;
         self.physics[idx] = None;
-        self.blinkers[idx] = None;
 
         if let Some(pos) = self.all_actors[..self.actor_count].iter().position(|&id| id == *actor_id) {
             self.actor_count -= 1;
@@ -165,21 +151,6 @@ impl World {
             self.transforms[i] = None;
             self.colliders[i] = None;
             self.physics[i] = None;
-            self.blinkers[i] = None;
-        }
-    }
-
-    /// Ticks all blinker components — called by the engine each frame.
-    pub fn tick_blinkers(&mut self, delta_time: f32) {
-        for i in 0..self.actor_count {
-            let actor_id = self.all_actors[i];
-            if let Some(blinker) = self.blinkers[actor_id as usize].as_mut() {
-                blinker.timer += delta_time;
-                if blinker.timer >= (blinker.delay_ms as f32 / 1000.0) {
-                    blinker.is_on = !blinker.is_on;
-                    blinker.timer = 0.0;
-                }
-            }
         }
     }
 }

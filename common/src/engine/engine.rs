@@ -115,7 +115,6 @@ impl Engine {
 
         {
             let overlaps = Collider::detect_overlaps(&self.world);
-            self.world.tick_blinkers(delta_time);
             let mut_scene = self.current_scene.as_mut();
             mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
             self.combine_color_matrixes(frame);

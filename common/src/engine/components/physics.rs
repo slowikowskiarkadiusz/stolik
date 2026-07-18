@@ -197,8 +197,7 @@ impl Physics {
         self.force += force;
     }
 
-    /// Natychmiastowa zmiana prędkości — nie mnoży przez delta_time.
-    /// Używaj do skoków zamiast add_force.
+    /// instantly changes the speed, ignoring delta_time. good for jumping
     pub fn add_impulse(&mut self, impulse: V2) {
         self.velocity += impulse;
     }

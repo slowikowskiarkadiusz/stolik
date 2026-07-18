@@ -4,3 +4,4 @@ pub mod power_ups;
 mod bullet;
 mod ship;
 mod scoring;
+pub mod boost_particles;

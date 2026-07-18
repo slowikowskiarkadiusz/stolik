@@ -17,7 +17,7 @@ use crate::engine::{
 
 use super::astro_obstacle::AstroObstacleMap;
 use super::ship::Ship;
-use super::scoring::apply_hit;
+use super::scoring::{apply_hit, apply_self_kill};
 use crate::scenes::utils::{P1_COLOR, P2_COLOR};
 
 const BULLET_LIFETIME: f32 = 2.5;
@@ -42,8 +42,8 @@ impl Bullet {
                 Some(0),
                 false
             )),
-            Some(physics),
-            None,
+            Some(physics)
+            
         );
         world.get_mut_physics(&id).unwrap().set_velocity(velocity);
 
@@ -103,22 +103,18 @@ impl Bullet {
 
                 if hit_p1_ship {
                     bullets[i].hit = true;
-                    let scorer = if owner_is_p1 {
-                        if score[0] > 0 { score[0] -= 1; }
-                        None
+                    if owner_is_p1 {
+                        apply_self_kill(ship_p1, 0, score, winner, game_over_timer, death_timer);
                     } else {
-                        Some(1usize)
-                    };
-                    apply_hit(ship_p1, score, winner, game_over_timer, death_timer, scorer.unwrap_or(usize::MAX));
+                        apply_hit(ship_p1, score, winner, game_over_timer, death_timer, 1);
+                    }
                 } else if hit_p2_ship {
                     bullets[i].hit = true;
-                    let scorer = if !owner_is_p1 {
-                        if score[1] > 0 { score[1] -= 1; }
-                        None
+                    if !owner_is_p1 {
+                        apply_self_kill(ship_p2, 1, score, winner, game_over_timer, death_timer);
                     } else {
-                        Some(0usize)
-                    };
-                    apply_hit(ship_p2, score, winner, game_over_timer, death_timer, scorer.unwrap_or(usize::MAX));
+                        apply_hit(ship_p2, score, winner, game_over_timer, death_timer, 0);
+                    }
                 } else {
                     let is_destroyable = obstacle.as_ref()
                         .map(|o| o.is_destroyable_obstacle(&overlapped_id))
