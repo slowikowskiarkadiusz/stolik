@@ -302,4 +302,3 @@ pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
         Timer::after_millis(10).await;
     }
 }
-

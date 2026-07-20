@@ -31,8 +31,8 @@ impl DesktopInput {
             f.borrow_mut().insert(minifb::Key::D, Key::P1Right);
             f.borrow_mut().insert(minifb::Key::F, Key::P1Blue);
             f.borrow_mut().insert(minifb::Key::G, Key::P1Green);
-            f.borrow_mut().insert(minifb::Key::Down, Key::P2Down);
-            f.borrow_mut().insert(minifb::Key::Up, Key::P2Up);
+            f.borrow_mut().insert(minifb::Key::Down, Key::P2Up);
+            f.borrow_mut().insert(minifb::Key::Up, Key::P2Down);
             f.borrow_mut().insert(minifb::Key::Left, Key::P2Left);
             f.borrow_mut().insert(minifb::Key::Right, Key::P2Right);
             f.borrow_mut().insert(minifb::Key::O, Key::P2Blue);

@@ -102,37 +102,28 @@ impl AstroDuelScene {
             .map(|(i, pu)| (pu.actor_id, i))
             .collect();
 
-        let mut picked_power_up: Option<usize> = None;
+        let mut picked_power_up: Option<(usize, bool)> = None; // (power_up_idx, is_p1)
         'power_up_outer: for &(power_up_actor, power_up_idx) in &power_up_ids {
-            for ship_opt in [&self.ship_p1, &self.ship_p2] {
+            let ships = [(&self.ship_p1, true), (&self.ship_p2, false)];
+            for (ship_opt, is_p1) in &ships {
                 if let Some(ship) = ship_opt {
-                    if let Some(list) = overlaps.get(&ship.actor_id) {
-                        if list.contains(&power_up_actor) {
-                            picked_power_up = Some(power_up_idx);
-                            break 'power_up_outer;
-                        }
-                    }
-                    if let Some(list) = overlaps.get(&power_up_actor) {
-                        if list.contains(&ship.actor_id) {
-                            picked_power_up = Some(power_up_idx);
-                            break 'power_up_outer;
-                        }
+                    let hit = overlaps.get(&ship.actor_id).map_or(false, |l| l.contains(&power_up_actor))
+                        || overlaps.get(&power_up_actor).map_or(false, |l| l.contains(&ship.actor_id));
+                    if hit {
+                        picked_power_up = Some((power_up_idx, *is_p1));
+                        break 'power_up_outer;
                     }
                 }
             }
         }
 
-        if let Some(idx) = picked_power_up {
+        if let Some((idx, is_p1)) = picked_power_up {
             let power_up = self.power_ups.remove(idx);
-            // Give to whichever ship overlapped it
             let power_up_type = power_up.power_up_type();
             world.murder(&power_up.actor_id);
-            for ship_opt in [&mut self.ship_p1, &mut self.ship_p2] {
-                if let Some(ship) = ship_opt {
-                    if ship.give_power_up(power_up_type) {
-                        break;
-                    }
-                }
+            let ship = if is_p1 { &mut self.ship_p1 } else { &mut self.ship_p2 };
+            if let Some(s) = ship {
+                s.give_power_up(power_up_type);
             }
         }
     }
@@ -273,7 +264,7 @@ impl Scene for AstroDuelScene {
         print_score(self.score[0], self.score[1], &mut result);
 
         if let Some(winner) = self.winner {
-            print_victory_text(&mut result, winner);
+            print_victory_text(&mut result, winner, camera, true);
         }
 
         result

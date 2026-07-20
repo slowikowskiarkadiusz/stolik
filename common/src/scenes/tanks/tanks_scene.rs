@@ -155,7 +155,7 @@ impl Scene for TanksScene {
         }
     }
 
-    fn render(&mut self, _camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
         world
             .get_mut_camera()
             .set_viewport((V2::zero(), V2::new(SCREEN_SIZEF32, SCREEN_SIZEF32)));
@@ -189,7 +189,7 @@ impl Scene for TanksScene {
         }
 
         if let Some(winner) = w.winner {
-            print_victory_text(&mut result, winner);
+            print_victory_text(&mut result, winner, camera, true);
         }
 
         result

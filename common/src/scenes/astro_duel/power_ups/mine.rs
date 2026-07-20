@@ -2,7 +2,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 use crate::engine::{color::Color, color_matrix::ColorMatrix, v2::V2};
-use crate::scenes::astro_duel::{astro_obstacle::CELL_SIZE, ship::Ship, scoring::apply_hit};
+use crate::scenes::astro_duel::{astro_obstacle::CELL_SIZE, ship::Ship, scoring::apply_damage};
 use libm::sqrtf;
 
 const FUSE_TIME: f32 = 3.0;
@@ -86,10 +86,10 @@ impl PlacedMine {
         for mine in mines.iter_mut() {
             if mine.just_detonated {
                 if p1_center.map(|c| mine.in_blast_radius(c)).unwrap_or(false) {
-                    apply_hit(ship_p1, score, winner, game_over_timer, death_timer, 1);
+                    apply_damage(ship_p1, 3, score, winner, game_over_timer, death_timer, 1);
                 }
                 if p2_center.map(|c| mine.in_blast_radius(c)).unwrap_or(false) {
-                    apply_hit(ship_p2, score, winner, game_over_timer, death_timer, 0);
+                    apply_damage(ship_p2, 3, score, winner, game_over_timer, death_timer, 0);
                 }
                 continue;
             }

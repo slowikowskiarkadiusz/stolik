@@ -60,7 +60,7 @@ impl RayGunBeam {
         let proj_x = self.start.x + t * dx;
         let proj_y = self.start.y + t * dy;
         let dist_sq = (pos.x - proj_x) * (pos.x - proj_x) + (pos.y - proj_y) * (pos.y - proj_y);
-        dist_sq <= (RAY_GUN_LINE_WIDTH as f32 / 2.0) * (RAY_GUN_LINE_WIDTH as f32 / 2.0)
+        dist_sq <= 2.0 * 2.0
     }
 
     /// Returns true if the segment start→end crosses any edge of the polygon defined by vertices.

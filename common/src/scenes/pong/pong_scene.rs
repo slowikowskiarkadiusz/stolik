@@ -28,14 +28,15 @@ use esp_println::println;
 static ORIGINAL_BALL_SPEED: f32 = 10.0;
 static ORIGINAL_BALL_SPEED_MULTIPLIER: f32 = 1.0;
 static MAX_SCORE: u8 = 3;
+static PADDLE_WIDTH: u8 = 5;
+static PADDLE_SPEED: f32 = 20.0;
+static MAX_BOUNCE_SPEED: f32 = 15.0;
 
 pub struct PongScene {
     score: [u8; 2],
     paddle: [Option<ActorId>; 2],
     score_zone: [Option<ActorId>; 2],
     ball: Option<ActorId>,
-    paddle_speed: f32,
-    max_bounce_speed: f32,
     ball_speed: V2,
     ball_speed_multiplier: f32,
     size_factor: f32,
@@ -55,7 +56,7 @@ impl Scene for PongScene {
             Some(create_rectangle_actor(
                 world,
                 V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
-                V2::new(7.0, 1.0) * size_factor,
+                V2::new(PADDLE_WIDTH as f32, 1.0) * size_factor,
                 // Color::white(),
                 Some(ColliderType::Blocking),
                 Some("paddle1"),
@@ -63,7 +64,7 @@ impl Scene for PongScene {
             Some(create_rectangle_actor(
                 world,
                 V2::new(screen_size / 2.0, 3.0 * size_factor),
-                V2::new(7.0, 1.0) * size_factor,
+                V2::new(PADDLE_WIDTH as f32, 1.0) * size_factor,
                 // Color::white(),
                 Some(ColliderType::Blocking),
                 Some("paddle2"),
@@ -102,11 +103,6 @@ impl Scene for PongScene {
     }
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
-        println!(
-            "{}",
-            input.is_key_press(crate::engine::input::key::Key::P2Down) || input.is_key_press(crate::engine::input::key::Key::P2Blue)
-        );
-
         self.handle_input(input, world, delta_time);
         if let Some(ball) = self.ball
             && let Some(ball_transform) = world.get_mut_transform(&ball)
@@ -143,7 +139,7 @@ impl Scene for PongScene {
 
             if self.score.iter().any(|x| x == &MAX_SCORE) {
                 self.do_play = false;
-                print_victory_text(&mut result, if self.score[0] > self.score[1] { 1 } else { 2 });
+                print_victory_text(&mut result, if self.score[0] > self.score[1] { 1 } else { 2 }, camera, true);
                 let play_against_ai = self.play_against_ai;
                 add_asyncable(
                     Box::new(move |_, _| {
@@ -189,8 +185,6 @@ impl PongScene {
             paddle: [None, None],
             score_zone: [None, None],
             ball: None,
-            paddle_speed: 15.0,
-            max_bounce_speed: 10.0,
             ball_speed: V2::one() * ORIGINAL_BALL_SPEED,
             ball_speed_multiplier: ORIGINAL_BALL_SPEED_MULTIPLIER,
             size_factor: SCREEN_SIZE as f32 / 32.0,
@@ -227,7 +221,7 @@ impl PongScene {
                 let paddle_transform = &world.get_transform(&self.paddle[i].unwrap()).unwrap();
                 let x_offset = (&ball_transform.center.x - &paddle_transform.center.x) / &paddle_transform.size.x * 2.0;
                 let new_ball_speed = V2::new(
-                    x_offset * self.max_bounce_speed * self.size_factor,
+                    x_offset * MAX_BOUNCE_SPEED * self.size_factor,
                     ORIGINAL_BALL_SPEED * self.size_factor * self.ball_speed_multiplier * if i == 0 { -1.0 } else { 1.0 },
                 );
 
@@ -283,23 +277,8 @@ impl PongScene {
     }
 
     fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, delta_time: f32) {
-        if !self.play_against_ai {
-            let _a = input.is_key_press(Key::P2Left)
-                || input.is_key_press(Key::P2Right)
-                || input.is_key_press(Key::P2AnyDirection)
-                || input.is_key_press(Key::P2Blue)
-                || input.is_key_press(Key::P2Green)
-                || input.is_key_press(Key::P2Any);
-            if input.is_key_press(Key::P2Left) ^ input.is_key_press(Key::P2Right) {
-                if let Some(paddle_p1_id) = self.paddle[0] {
-                    PongScene::move_paddle(
-                        &paddle_p1_id,
-                        world,
-                        if input.is_key_press(Key::P2Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
-                    );
-                }
-            }
-        } else {
+        // paddle[0] = P1_COLOR (bottom): P1 keys in pvp, AI in ai mode
+        if self.play_against_ai {
             if let Some(ball_id) = self.ball
                 && let Some(ball_transform) = world.get_transform(&ball_id)
                 && let Some(paddle_p1_id) = self.paddle[0]
@@ -312,19 +291,28 @@ impl PongScene {
                         -1.0
                     } else {
                         1.0
-                    } * self.paddle_speed
+                    } * PADDLE_SPEED
                         * self.size_factor
                         * delta_time,
                 );
             }
+        } else if input.is_key_press(Key::P1Left) ^ input.is_key_press(Key::P1Right) {
+            if let Some(paddle_p1_id) = self.paddle[0] {
+                PongScene::move_paddle(
+                    &paddle_p1_id,
+                    world,
+                    if input.is_key_press(Key::P1Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
+                );
+            }
         }
 
-        if input.is_key_press(Key::P1Left) ^ input.is_key_press(Key::P1Right) {
+        // paddle[1] = P2_COLOR/orange (top): always P2 keys
+        if input.is_key_press(Key::P2Left) ^ input.is_key_press(Key::P2Right) {
             if let Some(paddle_p2_id) = self.paddle[1] {
                 PongScene::move_paddle(
                     &paddle_p2_id,
                     world,
-                    if input.is_key_press(Key::P1Left) { -1.0 } else { 1.0 } * self.paddle_speed * self.size_factor * delta_time,
+                    if input.is_key_press(Key::P2Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
                 );
             }
         }

@@ -27,7 +27,7 @@ use super::power_ups::power_up::{PowerUpType, PowerUpKind, power_up_kind};
 use crate::scenes::utils::{P1_COLOR, P2_COLOR};
 
 const SHIP_SIZE: f32 = 4.0;
-const THRUST_IMPULSE: f32 = 0.5;
+const THRUST_IMPULSE: f32 = 1.0;
 const SHIP_DRAG: f32 = 0.5;
 const BULLET_SPEED: f32 = 50.0;
 const SHOOT_COOLDOWN: f32 = 0.15;
