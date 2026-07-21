@@ -285,5 +285,14 @@ static POSSIBLE_CONTROL_SETS: LazyLock<HashMap<String, Vec<ControlsData>>> = Laz
                 ControlsData::new(vec![Key::P1Green], "dash", None),
             ],
         ),
+        (
+            String::from("game_of_life"),
+            vec![
+                ControlsData::new(vec![Key::P1AnyDirection], "move selection", None),
+                ControlsData::new(vec![Key::P1Blue], "select", None),
+                ControlsData::new(vec![Key::P1Green], "start stop playing", None),
+                ControlsData::new(vec![Key::P1Down, Key::P1Up], "faster slower", None),
+            ],
+        ),
     ])
 });

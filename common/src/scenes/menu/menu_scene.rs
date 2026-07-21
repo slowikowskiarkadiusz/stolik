@@ -56,7 +56,7 @@ impl Scene for MenuScene {
             MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario"),
             MenuOption::new(Box::new(|| Box::new(TanksScene::new())), "tanks", "tanks"),
             MenuOption::new(Box::new(|| Box::new(AstroDuelScene::new())), "astro_duel", "astro duel"),
-            MenuOption::new(Box::new(|| Box::new(GameOfLifeScene::new())), "astro_duel", "game of life"),
+            MenuOption::new(Box::new(|| Box::new(GameOfLifeScene::new())), "game_of_life", "game of life"),
         ];
     }
 

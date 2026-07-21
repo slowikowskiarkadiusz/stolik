@@ -1,54 +1,102 @@
+extern crate alloc;
+
+use alloc::{boxed::Box, vec::Vec};
+
 use crate::engine::{
     color::Color,
     color_matrix::ColorMatrix,
     components::{camera::Camera, collider::CollisionResult, world::World},
-    engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEUSIZE},
+    engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, SCREEN_SIZEUSIZE},
     hash_map::HashMap,
-    input::input::Input,
+    input::{input::Input, key::Key},
     scene::Scene,
+    v2::V2,
 };
 
-static DELAY: f32 = 0.5;
+static TURN_DELAY: f32 = 0.5;
+static TURN_DELAY_STEP: f32 = 0.1;
+static SELECTION_BLINK_DELAY: f32 = 0.5;
 
 pub struct GameOfLifeScene {
+    is_playing: bool,
     is_taken: [bool; SCREEN_SIZEUSIZE * SCREEN_SIZEUSIZE],
-    timer: f32,
+    turn_delay: f32,
+    turn_timer: f32,
+    currently_selected: V2,
+    selection_blink_timer: f32,
 }
 
 impl Scene for GameOfLifeScene {
-    fn init(&mut self, world: &mut World) {
-        self.set(SCREEN_SIZEUSIZE / 2, SCREEN_SIZEUSIZE / 2, true);
-        self.set(SCREEN_SIZEUSIZE / 2, SCREEN_SIZEUSIZE / 2 - 5, true);
-        self.set(SCREEN_SIZEUSIZE / 2-1, SCREEN_SIZEUSIZE / 2 - 5, true);
-        self.set(SCREEN_SIZEUSIZE / 2+1, SCREEN_SIZEUSIZE / 2 - 5, true);
-    }
+    fn init(&mut self, world: &mut World) {}
 
     fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
-        self.timer -= delta_time;
-        if self.timer > 0.0 {
-            return;
+        if input.is_key_down(Key::P1Green) {
+            self.is_playing = !self.is_playing;
         }
-        self.timer = DELAY;
 
-        let mut new_table: [bool; SCREEN_SIZEUSIZE * SCREEN_SIZEUSIZE] = [false; SCREEN_SIZEUSIZE * SCREEN_SIZEUSIZE];
+        if !self.is_playing {
+            self.selection_blink_timer -= delta_time;
+            if self.selection_blink_timer <= 0.0 {
+                self.selection_blink_timer = TURN_DELAY;
+            }
 
-        for x in 0..SCREEN_SIZEUSIZE {
-            for y in 0..SCREEN_SIZEUSIZE {
-                let neighbor_count = self.number_of_neighbors(x, y);
-
-                if self.is_taken[y * SCREEN_SIZEUSIZE + x] {
-                    new_table[y * SCREEN_SIZEUSIZE + x] = match neighbor_count {
-                        0 | 1 => false,
-                        2 | 3 => true,
-                        _ => false,
-                    };
+            let dif = V2::new(
+                if input.is_key_down(Key::P1Right) {
+                    1.0
+                } else if input.is_key_down(Key::P1Left) {
+                    -1.0
                 } else {
-                    new_table[y * SCREEN_SIZEUSIZE + x] = neighbor_count == 2 || neighbor_count == 3
+                    0.0
+                },
+                if input.is_key_down(Key::P1Down) {
+                    1.0
+                } else if input.is_key_down(Key::P1Up) {
+                    -1.0
+                } else {
+                    0.0
+                },
+            );
+
+            if dif.mag() > 0.0 {
+                self.selection_blink_timer = SELECTION_BLINK_DELAY;
+            }
+
+            if input.is_key_down(Key::P1Blue) {
+                let csx = self.currently_selected.x as usize;
+                let csy = self.currently_selected.y as usize;
+                self.set(csx, csy, !self.get(csx, csy));
+            }
+
+            self.currently_selected += dif;
+        } else {
+            self.turn_timer -= delta_time;
+            if self.turn_timer <= 0.0 {
+                self.turn_timer = self.turn_delay;
+
+                let mut new_table: [bool; SCREEN_SIZEUSIZE * SCREEN_SIZEUSIZE] = [false; SCREEN_SIZEUSIZE * SCREEN_SIZEUSIZE];
+
+                for x in 0..SCREEN_SIZEUSIZE {
+                    for y in 0..SCREEN_SIZEUSIZE {
+                        let neighbor_count = self.number_of_neighbors(x, y);
+
+                        if self.get(x, y) {
+                            new_table[y * SCREEN_SIZEUSIZE + x] = matches!(neighbor_count, 2 | 3);
+                        } else {
+                            new_table[y * SCREEN_SIZEUSIZE + x] = neighbor_count == 3;
+                        }
+                    }
                 }
+
+                self.is_taken = new_table;
+            }
+
+            if input.is_key_down(Key::P1Down) {
+                self.turn_delay += TURN_DELAY_STEP;
+            }
+            if input.is_key_down(Key::P1Up) && self.turn_delay >= TURN_DELAY_STEP {
+                self.turn_delay -= TURN_DELAY_STEP;
             }
         }
-
-        self.is_taken = new_table;
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
@@ -58,6 +106,23 @@ impl Scene for GameOfLifeScene {
             for y in 0usize..SCREEN_SIZEUSIZE {
                 result.set(x as u8, y as u8, if self.get(x, y) { Color::white() } else { Color::black() });
             }
+        }
+
+        if !self.is_playing {
+            let csx = self.currently_selected.x as u8;
+            let csy = self.currently_selected.y as u8;
+
+            result.set(
+                csx,
+                csy,
+                if self.selection_blink_timer > SELECTION_BLINK_DELAY / 2.0 {
+                    *Color::white().a(125)
+                } else if self.get(csx as usize, csy as usize) {
+                    Color::white()
+                } else {
+                    Color::black()
+                },
+            );
         }
 
         result
@@ -71,8 +136,12 @@ impl Scene for GameOfLifeScene {
 impl GameOfLifeScene {
     pub fn new() -> Self {
         Self {
+            is_playing: false,
             is_taken: [false; SCREEN_SIZEUSIZE * SCREEN_SIZEUSIZE],
-            timer: DELAY,
+            turn_delay: TURN_DELAY,
+            turn_timer: TURN_DELAY,
+            currently_selected: V2::new(SCREEN_SIZEF32 / 2.0, SCREEN_SIZEF32 / 2.0),
+            selection_blink_timer: SELECTION_BLINK_DELAY,
         }
     }
 

@@ -48,7 +48,7 @@ pub fn make_button_matrix(size: u8, key: Key) -> ColorMatrix {
 
         if is_up_key || is_down_key {
             color_matrix.set(1, 2, Color::black());
-            color_matrix.set(if is_down_key { 1 } else { 3 }, 2, Color::black());
+            color_matrix.set(2, if is_down_key { 1 } else { 3 }, Color::black());
             color_matrix.set(3, 2, Color::black());
         }
     }
