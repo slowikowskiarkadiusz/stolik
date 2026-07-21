@@ -27,9 +27,9 @@ pub struct GameOfLifeScene {
 }
 
 impl Scene for GameOfLifeScene {
-    fn init(&mut self, world: &mut World) {}
+    fn init(&mut self, _world: &mut World) {}
 
-    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
+    fn tick(&mut self, input: &Box<dyn Input>, _world: &mut World, delta_time: f32) {
         if input.is_key_down(Key::P1Green) {
             self.is_playing = !self.is_playing;
         }
@@ -99,7 +99,7 @@ impl Scene for GameOfLifeScene {
         }
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, _camera: &Camera, _world: &mut World, _delta_time: f32) -> ColorMatrix {
         let mut result = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
 
         for x in 0usize..SCREEN_SIZEUSIZE {
@@ -128,9 +128,9 @@ impl Scene for GameOfLifeScene {
         result
     }
 
-    fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, delta_time: f32) {}
+    fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}
 
-    fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32) {}
+    fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 }
 
 impl GameOfLifeScene {
