@@ -12,14 +12,8 @@ use crate::{
         input::{input::Input, key::Key},
         scene::Scene,
         v2::V2,
-    },
-    scenes::{
-        astro_duel::astro_scene::AstroDuelScene,
-        controls::controls_scene::ControlsScene,
-        mario::mario_scene::MarioScene,
-        pong::pong_scene::PongScene,
-        tanks::tanks_scene::TanksScene,
-        tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
+    }, scenes::{
+        astro_duel::astro_scene::AstroDuelScene, controls::controls_scene::ControlsScene, game_of_life::game_of_life_scene::GameOfLifeScene, mario::mario_scene::MarioScene, pong::pong_scene::PongScene, tanks::tanks_scene::TanksScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
     },
 };
 
@@ -62,6 +56,7 @@ impl Scene for MenuScene {
             MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario"),
             MenuOption::new(Box::new(|| Box::new(TanksScene::new())), "tanks", "tanks"),
             MenuOption::new(Box::new(|| Box::new(AstroDuelScene::new())), "astro_duel", "astro duel"),
+            MenuOption::new(Box::new(|| Box::new(GameOfLifeScene::new())), "astro_duel", "game of life"),
         ];
     }
 

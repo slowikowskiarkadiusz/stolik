@@ -23,6 +23,7 @@ use embassy_sync::channel::Channel;
 use embassy_time::Instant;
 pub const SCREEN_SIZE: u8 = 64;
 pub const SCREEN_SIZEF32: f32 = SCREEN_SIZE as f32;
+pub const SCREEN_SIZEUSIZE: usize = SCREEN_SIZE as usize;
 pub type TempActorId = u16;
 pub type ActorId = u16;
 
