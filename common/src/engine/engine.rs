@@ -12,7 +12,8 @@ use crate::{
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
         v2::V2,
-    }, scenes::menu::menu_scene::MenuScene,
+    },
+    scenes::menu::menu_scene::MenuScene,
 };
 extern crate alloc;
 use alloc::boxed::Box;
@@ -42,12 +43,16 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new(input: Box<dyn Input>) -> Self {
+    pub fn new(input: Box<dyn Input>, open_on_scene: Option<Box<dyn Scene>>) -> Self {
+        let is_a_scene = open_on_scene.is_some();
+        let mut scene = open_on_scene.unwrap_or_else(|| Box::new(EmptyScene::new()));
+        let mut world = World::new();
+        scene.init(&mut world);
         Self {
             delta_time: 0.0,
-            world: World::new(),
-            current_scene: Box::new(EmptyScene::new()),
-            is_any_scene: false,
+            world: world,
+            current_scene: scene,
+            is_any_scene: is_a_scene,
             input: input,
             asyncable_storage: AsyncableStorage::new(),
             screen: ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none()),
@@ -142,6 +147,10 @@ impl Engine {
         let obj = new_scene_func();
         self.current_scene = obj;
         self.current_scene.as_mut().init(&mut self.world);
+    }
+
+    pub fn get_scene_ai_inputs(&self) -> [Vec<f64>; 2] {
+        self.current_scene.get_ai_inputs()
     }
 }
 

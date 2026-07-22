@@ -46,6 +46,8 @@ pub struct PongScene {
     do_play: bool,
     rng: SmallRng,
     play_against_ai: bool,
+
+    ai_inputs: [Vec<f64>; 2],
 }
 
 impl Scene for PongScene {
@@ -111,6 +113,8 @@ impl Scene for PongScene {
             self.bounce_off_wall(world);
             self.check_scoring(world);
         }
+
+        save
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
@@ -176,6 +180,10 @@ impl Scene for PongScene {
     }
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
+
+    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+        self.ai_inputs
+    }
 }
 
 impl PongScene {
@@ -194,6 +202,8 @@ impl PongScene {
             do_play: true,
             rng: SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()),
             play_against_ai: play_against_ai,
+
+            ai_inputs: [Vec::new(), Vec::new()],
         }
     }
 
@@ -346,46 +356,29 @@ impl PongScene {
         }
     }
 
-    // fn print_score(&mut self, world: &mut World, result: &mut ColorMatrix, camera: &Camera) {
-    //     for i in 0..2 {
-    //         if let Some(score_text_actor) = self.score_text[i] {
-    //             world.murder(&score_text_actor);
-    //         }
+    fn save_ai_data(&mut self, world: &mut World) {
+        if let Some(ball) = self.ball
+            && let Some(ball_transform) = world.get_transform(&ball)
+        {
+            let mut p0_inputs = Vec::<f64>::new();
+            if let Some(paddle0) = self.paddle[0]
+                && let Some(paddle0_transform) = world.get_transform(&paddle0)
+            {
+                p0_inputs.push(paddle0_transform.center.x as f64);
+                p0_inputs.push(ball_transform.center.x as f64);
+                p0_inputs.push(ball_transform.center.y as f64);
+            }
 
-    //         let score_text_actor = create_text_actor_at_center(
-    //             world,
-    //             self.score[i].to_string(),
-    //             V2::new(5.0, SCREEN_SIZE as f32 / 2.0 + (if i == 0 { -5.0 } else { 3.0 })),
-    //             V2::new(MAX_LETTER_WIDTH as f32, LETTER_HEIGHT as f32),
-    //             None,
-    //             Some(-90.0),
-    //             Color::white(),
-    //             camera,
-    //             result,
-    //         );
+            let mut p1_inputs = Vec::<f64>::new();
+            if let Some(paddle1) = self.paddle[1]
+                && let Some(paddle1_transform) = world.get_transform(&paddle1)
+            {
+                p1_inputs.push(paddle1_transform.center.x as f64);
+                p1_inputs.push(ball_transform.center.x as f64);
+                p1_inputs.push(ball_transform.center.y as f64);
+            }
 
-    //         // if let Some(a) = world.get_mut_render(&score_text_actor) {
-    //         //     a.rotate(-90.0, Color::none());
-    //         // }
-
-    //         self.score_text[i] = Some(score_text_actor);
-    //     }
-
-    //     if self.score.iter().any(|x| x == &MAX_SCORE) {
-    //         self.do_play = false;
-    //         print_victory_text(result, if self.score[0] > self.score[1] { 1 } else { 2 });
-    //         let play_against_ai = self.play_against_ai;
-    //         add_asyncable(
-    //             Box::new(move |_, _| {
-    //                 open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
-    //             }),
-    //             10.0,
-    //             AsyncableType::Timeout,
-    //         );
-
-    //         if let Some(ball_id) = self.ball {
-    //             world.murder(&ball_id);
-    //         }
-    //     }
-    // }
+            self.ai_inputs = [p0_inputs, p1_inputs];
+        }
+    }
 }

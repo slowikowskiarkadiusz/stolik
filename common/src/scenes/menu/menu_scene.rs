@@ -12,8 +12,15 @@ use crate::{
         input::{input::Input, key::Key},
         scene::Scene,
         v2::V2,
-    }, scenes::{
-        astro_duel::astro_scene::AstroDuelScene, controls::controls_scene::ControlsScene, game_of_life::game_of_life_scene::GameOfLifeScene, mario::mario_scene::MarioScene, pong::pong_scene::PongScene, tanks::tanks_scene::TanksScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
+    },
+    scenes::{
+        astro_duel::astro_scene::AstroDuelScene,
+        controls::controls_scene::ControlsScene,
+        game_of_life::game_of_life_scene::GameOfLifeScene,
+        mario::mario_scene::MarioScene,
+        pong::pong_scene::PongScene,
+        tanks::tanks_scene::TanksScene,
+        tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
     },
 };
 
@@ -131,6 +138,14 @@ impl Scene for MenuScene {
     fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
+
+    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+        [Vec::new(), Vec::new()]
+    }
+
+    fn set_ai_outputs(&self, data: [Vec<f64>; 2]) {
+        todo!()
+    }
 }
 
 impl MenuScene {

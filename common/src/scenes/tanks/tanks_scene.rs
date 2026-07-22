@@ -197,4 +197,12 @@ impl Scene for TanksScene {
 
     fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}
     fn on_collisions(&mut self, _: &HashMap<u16, Vec<(u16, CollisionResult)>>, _: &mut World, _: f32) {}
+
+    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+        todo!()
+    }
+
+    fn set_ai_outputs(&self, data: [Vec<f64>; 2]) {
+        todo!()
+    }
 }

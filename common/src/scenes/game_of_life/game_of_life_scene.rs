@@ -131,6 +131,10 @@ impl Scene for GameOfLifeScene {
     fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
+
+    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+        [Vec::new(), Vec::new()]
+    }
 }
 
 impl GameOfLifeScene {

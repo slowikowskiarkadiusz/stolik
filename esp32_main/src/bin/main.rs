@@ -410,7 +410,7 @@ async fn main(_s: embassy_executor::Spawner) {
 async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     //println!("engine: creating input");
     // esp_println::println!("ZZZZZZ");
-    let mut engine = Engine::new(Box::new(Esp32Input::new(input_pin_setup)));
+    let mut engine = Engine::new(Box::new(Esp32Input::new(input_pin_setup)), None);
 
     // esp_println::println!("AAAAAA");
     //println!("engine: input ok");

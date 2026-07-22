@@ -134,7 +134,7 @@ impl Scene for MarioScene {
                 false
             )),
             None
-            
+
         );
     }
 
@@ -188,6 +188,14 @@ impl Scene for MarioScene {
     }
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
+
+    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+        todo!()
+    }
+
+    fn set_ai_outputs(&self, data: [Vec<f64>; 2]) {
+        todo!()
+    }
 }
 
 impl MarioScene {
@@ -242,7 +250,7 @@ fn create_rectangle_actor(world: &mut World, center: V2, size: V2, collides: boo
             None
         },
         Some(physics)
-        
+
     )
 }
 
@@ -264,7 +272,7 @@ fn create_plumber(world: &mut World, center: V2, size: V2, collides: bool) -> Ac
             None
         },
         Some(physics)
-        
+
     )
 }
 
@@ -282,7 +290,7 @@ fn create_rectangle_at_origin(world: &mut World, from: V2, to: V2, collides: boo
             None
         },
         Some(physics)
-        
+
     )
 }
 

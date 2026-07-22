@@ -293,4 +293,8 @@ impl Scene for AstroDuelScene {
     }
 
     fn on_collisions(&mut self, _: &HashMap<u16, Vec<(u16, CollisionResult)>>, _: &mut World, _: f32) {}
+
+    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+        todo!()
+    }
 }

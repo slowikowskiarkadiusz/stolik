@@ -1,0 +1,9 @@
+[package]
+name = "ai_trainer"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+common = { path = "../common", features = ["std"] }
+desktop_main = { path = "../desktop_main" }
+minifb = "0.28.0"

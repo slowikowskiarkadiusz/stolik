@@ -28,7 +28,7 @@ enum NodeType {
     Bias,
 }
 
-struct NeatGenome {
+pub struct NeatGenome {
     nodes: BTreeMap<Id, NodeType>,
     connections: Vec<Connection>,
     fitness: f64,
@@ -40,19 +40,17 @@ struct NeatGenome {
 }
 
 impl NeatGenome {
-    pub fn reproduce(genomes: &[NeatGenome], population_size: u8) -> Vec<NeatGenome> {
+    pub fn reproduce(genomes: Vec<NeatGenome>, population_size: u8, rng: &mut SmallRng) -> Vec<NeatGenome> {
         let mut new_population = Vec::<NeatGenome>::new();
-        let sorted = genomes.iter().collect();
+        let mut sorted: Vec<_> = genomes;
 
-        new_population.push(sorted[0]);
-        new_population.push(sorted[1]);
+        new_population.push(sorted.remove(0));
+        new_population.push(sorted.remove(1));
 
         for child_index in 0..population_size {
-            new_population.push(bara_bara(
-                &tournament_select(genomes, population_size / 3, rng),
-                &tournament_select(genomes, population_size / 3, rng),
-                rng,
-            ));
+            let first_parent = sorted.remove(tournament_select(&sorted, population_size / 3, rng));
+            let second_parent = sorted.remove(tournament_select(&sorted, population_size / 3, rng));
+            new_population.push(bara_bara(&first_parent, &second_parent, rng));
         }
 
         new_population
@@ -297,13 +295,13 @@ fn bara_bara(parent1: &NeatGenome, parent2: &NeatGenome, rng: &mut SmallRng) -> 
     let better = if parent1.fitness >= parent2.fitness { parent1 } else { parent2 };
     let worse = if parent1.fitness >= parent2.fitness { parent2 } else { parent2 };
 
-    for better_node in better.nodes {
-        nodes.insert(better_node.0, better_node.1);
+    for better_node in &better.nodes {
+        nodes.insert(better_node.0.clone(), better_node.1.clone());
     }
 
     let mut new_connections: Vec<Connection> = Vec::new();
 
-    for connection in better.connections {
+    for connection in &better.connections {
         let find_matching = worse.connections.iter().find(|f| f.innovation == connection.innovation);
 
         let new_connection = if let Some(matching) = find_matching
@@ -332,15 +330,15 @@ fn bara_bara(parent1: &NeatGenome, parent2: &NeatGenome, rng: &mut SmallRng) -> 
     child
 }
 
-fn tournament_select(genomes: &[NeatGenome], tournament_size: u8, rng: &mut SmallRng) -> &NeatGenome {
-    let mut best: Option<&NeatGenome> = None;
+fn tournament_select(genomes: &[NeatGenome], tournament_size: u8, rng: &mut SmallRng) -> usize {
+    let mut best: Option<usize> = None;
 
     for i in 0..tournament_size {
-        let candidate = genomes[rng.gen_range(0..genomes.len())];
-        if best.is_none() || candidate.fitness > best.unwrap().fitness {
-            best = Some(&candidate);
+        let candidate_index = rng.gen_range(0..genomes.len());
+        if best.is_none() || genomes[candidate_index].fitness > genomes[best.unwrap().clone()].fitness {
+            best = Some(candidate_index);
         }
     }
 
-    best.unwrap()
+    best.unwrap().clone()
 }

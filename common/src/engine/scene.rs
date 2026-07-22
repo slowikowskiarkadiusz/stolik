@@ -17,6 +17,7 @@ pub trait Scene {
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix;
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, delta_time: f32);
     fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32);
+    fn get_ai_inputs(&self) -> [Vec<f64>; 2];
 }
 
 pub struct EmptyScene;
@@ -45,6 +46,10 @@ impl Scene for EmptyScene {
     }
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {
+        todo!()
+    }
+
+    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
         todo!()
     }
 }

@@ -3,6 +3,15 @@
 version = 4
 
 [[package]]
+name = "ai_trainer"
+version = "0.0.1"
+dependencies = [
+ "common",
+ "desktop_main",
+ "minifb",
+]
+
+[[package]]
 name = "allocator-api2"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
