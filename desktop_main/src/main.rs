@@ -2,12 +2,15 @@ pub mod desktop_input;
 pub mod desktop_threading_provider;
 
 use crate::{desktop_input::DesktopInput, desktop_threading_provider::DesktopThread};
-use common::{engine::{
-    color::Color,
-    color_matrix::ColorMatrix,
-    components::collider::{ColliderPartDebug, ColliderShape},
-    engine::Engine,
-}, scenes::{astro_duel::astro_scene::AstroDuelScene, tetris::tetris_scene::TetrisScene}};
+use common::{
+    engine::{
+        color::Color,
+        color_matrix::ColorMatrix,
+        components::collider::{ColliderPartDebug, ColliderShape},
+        engine::Engine,
+    },
+    scenes::{astro_duel::astro_scene::AstroDuelScene, tetris::tetris_scene::TetrisScene},
+};
 use minifb::{Key, Window, WindowOptions};
 use std::{
     collections::HashMap,
@@ -47,7 +50,13 @@ fn main() {
     let cloned_input_state = input_state.clone();
 
     std::thread::spawn(move || {
-        let mut engine = Engine::new(Box::new(DesktopInput::new(cloned_input_state)), None);
+        let mut engine = Engine::new(
+            [
+                Box::new(DesktopInput::new(0, cloned_input_state.clone())),
+                Box::new(DesktopInput::new(1, cloned_input_state.clone())),
+            ],
+            None,
+        );
         let on_frame_func = Arc::new(move |mat: &ColorMatrix| {
             let mut s = shared_engine_copy.lock().unwrap();
             s.color_matrix = Some(mat.clone());

@@ -3,16 +3,8 @@ use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     engine::{
-        color::Color,
-        color_matrix::ColorMatrix,
-        components::{camera::Camera, collider::CollisionResult, physics::Physics, world::World},
-        engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene},
-        hash_map::HashMap,
-        input::input::Input,
-        scene::Scene,
-        v2::V2,
-    },
-    scenes::{
+        ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, physics::Physics, world::World}, engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene}, hash_map::HashMap, input::input::Input, scene::Scene, v2::V2,
+    }, scenes::{
         menu::menu_scene::MenuScene,
         utils::{print_score, print_victory_text},
     },
@@ -138,7 +130,7 @@ impl Scene for AstroDuelScene {
         self.reset_round(world);
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
+    fn tick(&mut self, inputs: [&Box<dyn Input>; 2], world: &mut World, delta_time: f32) {
         if self.winner.is_some() {
             self.game_over_timer -= delta_time;
             if self.game_over_timer <= 0.0 {
@@ -167,8 +159,8 @@ impl Scene for AstroDuelScene {
             None => return,
         };
 
-        let actions1 = self.ship_p1.as_mut().map(|s| s.tick(input.as_ref(), world, obstacle, delta_time)).unwrap_or_default();
-        let actions2 = self.ship_p2.as_mut().map(|s| s.tick(input.as_ref(), world, obstacle, delta_time)).unwrap_or_default();
+        let actions1 = self.ship_p1.as_mut().map(|s| s.tick(inputs[0].as_ref(), world, obstacle, delta_time)).unwrap_or_default();
+        let actions2 = self.ship_p2.as_mut().map(|s| s.tick(inputs[1].as_ref(), world, obstacle, delta_time)).unwrap_or_default();
 
         if self.death_timer.is_none() {
             for action in actions1.into_iter().chain(actions2.into_iter()) {

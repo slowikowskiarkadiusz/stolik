@@ -4,68 +4,72 @@ use common::engine::input::{
     key::{KEYS_LENGTH, Key, KeyState},
 };
 use std::{
-    cell::RefCell,
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 
-thread_local! {
-    static KEY_MAP: RefCell<HashMap<minifb::Key, Key>> = RefCell::new(HashMap::new());
-}
+// thread_local! {
+//     static KEY_MAP: RefCell<HashMap<minifb::Key, Key>> = RefCell::new(HashMap::new());
+// }
 
 pub struct DesktopInput {
+    player: u8,
     gestures: Gestures,
     input_state: Arc<Mutex<HashMap<minifb::Key, (bool, bool)>>>,
     keys_down: [bool; KEYS_LENGTH as usize],
     keys_up: [bool; KEYS_LENGTH as usize],
     keys_press: [bool; KEYS_LENGTH as usize],
+    key_map: HashMap<minifb::Key, Key>,
 }
 
 impl DesktopInput {
-    pub fn new(input_state: Arc<Mutex<HashMap<minifb::Key, (bool, bool)>>>) -> Self {
-        KEY_MAP.with(|f| {
-            f.borrow_mut().insert(minifb::Key::Space, Key::Start);
-            f.borrow_mut().insert(minifb::Key::S, Key::P1Down);
-            f.borrow_mut().insert(minifb::Key::W, Key::P1Up);
-            f.borrow_mut().insert(minifb::Key::A, Key::P1Left);
-            f.borrow_mut().insert(minifb::Key::D, Key::P1Right);
-            f.borrow_mut().insert(minifb::Key::F, Key::P1Blue);
-            f.borrow_mut().insert(minifb::Key::G, Key::P1Green);
-            f.borrow_mut().insert(minifb::Key::Down, Key::P2Up);
-            f.borrow_mut().insert(minifb::Key::Up, Key::P2Down);
-            f.borrow_mut().insert(minifb::Key::Left, Key::P2Left);
-            f.borrow_mut().insert(minifb::Key::Right, Key::P2Right);
-            f.borrow_mut().insert(minifb::Key::O, Key::P2Blue);
-            f.borrow_mut().insert(minifb::Key::P, Key::P2Green);
-        });
+    pub fn new(player: u8, input_state: Arc<Mutex<HashMap<minifb::Key, (bool, bool)>>>) -> Self {
+        let mut key_map: HashMap<minifb::Key, Key> = HashMap::new();
+        if player == 0 {
+            key_map.insert(minifb::Key::Space, Key::Start);
+            key_map.insert(minifb::Key::S, Key::Down);
+            key_map.insert(minifb::Key::W, Key::Up);
+            key_map.insert(minifb::Key::A, Key::Left);
+            key_map.insert(minifb::Key::D, Key::Right);
+            key_map.insert(minifb::Key::F, Key::Blue);
+            key_map.insert(minifb::Key::G, Key::Green);
+        }
+
+        if player == 1 {
+            key_map.insert(minifb::Key::Space, Key::Start);
+            key_map.insert(minifb::Key::Down, Key::Up);
+            key_map.insert(minifb::Key::Up, Key::Down);
+            key_map.insert(minifb::Key::Left, Key::Left);
+            key_map.insert(minifb::Key::Right, Key::Right);
+            key_map.insert(minifb::Key::O, Key::Blue);
+            key_map.insert(minifb::Key::P, Key::Green);
+        }
 
         Self {
+            player: player,
             gestures: Gestures::new(),
             input_state: input_state.clone(),
             keys_down: [false; KEYS_LENGTH as usize],
             keys_up: [false; KEYS_LENGTH as usize],
             keys_press: [false; KEYS_LENGTH as usize],
+            key_map,
         }
     }
 
     pub fn on_key_pressed(&mut self, key: &minifb::Key) {
-        KEY_MAP.with(|f| {
-            if let Some(mapped) = f.borrow().get(&key) {
-                let m = mapped.clone();
-                self.keys_down[m as usize] = true;
-                self.keys_press[m as usize] = true;
-            }
-        });
+        if let Some(mapped) = self.key_map.get(&key) {
+            let m = mapped.clone();
+            self.keys_down[m as usize] = true;
+            self.keys_press[m as usize] = true;
+        }
     }
 
     pub fn on_key_released(&mut self, key: &minifb::Key) {
-        KEY_MAP.with(|f| {
-            if let Some(mapped) = f.borrow().get(&key) {
-                let m = mapped.clone();
-                self.keys_up[m as usize] = true;
-                self.keys_press[m as usize] = false;
-            }
-        });
+        if let Some(mapped) = self.key_map.get(&key) {
+            let m = mapped.clone();
+            self.keys_up[m as usize] = true;
+            self.keys_press[m as usize] = false;
+        }
     }
 
     fn is_key(&self, key: Option<Key>, key_state: KeyState) -> bool {
@@ -86,23 +90,9 @@ impl DesktopInput {
 
     fn map_key(key: Key) -> Vec<Key> {
         match key {
-            Key::P1Down
-            | Key::P1Up
-            | Key::P1Left
-            | Key::P1Right
-            | Key::P1Blue
-            | Key::P1Green
-            | Key::P2Down
-            | Key::P2Up
-            | Key::P2Left
-            | Key::P2Right
-            | Key::P2Blue
-            | Key::P2Green
-            | Key::Start => vec![key],
-            Key::P1AnyDirection => vec![Key::P1Up, Key::P1Down, Key::P1Left, Key::P1Right],
-            Key::P1Any => vec![Key::P1Up, Key::P1Down, Key::P1Left, Key::P1Right, Key::P1Blue, Key::P1Green],
-            Key::P2AnyDirection => vec![Key::P2Up, Key::P2Down, Key::P2Left, Key::P2Right],
-            Key::P2Any => vec![Key::P2Up, Key::P2Down, Key::P2Left, Key::P2Right, Key::P2Blue, Key::P2Green],
+            Key::Down | Key::Up | Key::Left | Key::Right | Key::Blue | Key::Green | Key::Start => vec![key],
+            Key::AnyDirection => vec![Key::Up, Key::Down, Key::Left, Key::Right],
+            Key::Any => vec![Key::Up, Key::Down, Key::Left, Key::Right, Key::Blue, Key::Green],
         }
     }
 }
@@ -117,9 +107,6 @@ impl Input for DesktopInput {
             let mut guard = self.input_state.lock().unwrap();
 
             let snapshot = guard.clone();
-            for v in guard.values_mut() {
-                *v = (false, false);
-            }
 
             snapshot
         };
@@ -137,6 +124,10 @@ impl Input for DesktopInput {
     }
 
     fn late_update(&mut self, _: f32) {
+        let mut guard = self.input_state.lock().unwrap();
+        for v in guard.values_mut() {
+            *v = (false, false);
+        }
         self.keys_down = [false; KEYS_LENGTH as usize];
         self.keys_up = [false; KEYS_LENGTH as usize];
 

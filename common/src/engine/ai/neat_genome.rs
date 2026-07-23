@@ -1,8 +1,10 @@
 extern crate alloc;
 use core::sync::atomic::AtomicU32;
-use std::collections::BTreeSet;
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    vec::Vec,
+};
 use libm::exp;
 use rand::{Rng, rngs::SmallRng};
 

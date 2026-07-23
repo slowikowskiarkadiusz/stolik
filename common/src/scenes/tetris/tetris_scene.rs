@@ -1,14 +1,7 @@
 use crate::{
     engine::{
-        color::Color,
-        color_matrix::ColorMatrix,
-        components::{camera::Camera, collider::CollisionResult, world::World},
-        engine::ActorId,
-        hash_map::HashMap,
-        scene::Scene,
-        v2::V2,
-    },
-    scenes::{
+        self, ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::{self, World}}, engine::ActorId, hash_map::HashMap, input::input::Input, scene::Scene, v2::V2,
+    }, scenes::{
         tetris::{board::create_board_actor, world::TetrisWorld},
         utils::print_victory_text,
     },
@@ -50,8 +43,8 @@ impl Scene for TetrisScene {
 
     fn tick(
         &mut self,
-        input: &Box<dyn crate::engine::input::input::Input>,
-        _world: &mut crate::engine::components::world::World,
+        inputs: [&Box<dyn Input>; 2],
+        _world: &mut World,
         delta_time: f32,
     ) {
         let mut damage_for_p1 = 0;
@@ -60,7 +53,7 @@ impl Scene for TetrisScene {
         // println!("[Tetris] getting p1 board");
         if let Some(p1_board) = self.tetris_world.get_mut_board(&self.p1_board_actor_id) {
             // println!("[Tetris] ticking p1");
-            damage_for_p2 = p1_board.tick(input, delta_time);
+            damage_for_p2 = p1_board.tick(inputs[0], delta_time);
             if p1_board.is_dead {
                 self.is_player_dead = 1;
             }
@@ -70,7 +63,7 @@ impl Scene for TetrisScene {
             // println!("[Tetris] getting p2 board");
             if let Some(p2_board) = self.tetris_world.get_mut_board(&self.p2_board_actor_id) {
                 // println!("[Tetris] ticking p2");
-                damage_for_p1 = p2_board.tick(input, delta_time);
+                damage_for_p1 = p2_board.tick(inputs[1], delta_time);
                 if p2_board.is_dead {
                     self.is_player_dead = 2;
                 }
@@ -121,8 +114,8 @@ impl Scene for TetrisScene {
 
     fn on_overlaps(
         &mut self,
-        _: &crate::engine::hash_map::HashMap<ActorId, Vec<ActorId>>,
-        _: &mut crate::engine::components::world::World,
+        _: &engine::hash_map::HashMap<ActorId, Vec<ActorId>>,
+        _: &mut World,
         _: f32,
     ) {
     }

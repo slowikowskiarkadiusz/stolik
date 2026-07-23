@@ -3,20 +3,13 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
 use crate::engine::{
-    color::Color,
-    color_matrix::ColorMatrix,
-    components::{
+    ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{
         camera::Camera,
         collider::{Collider, ColliderPart, CollisionResult},
         physics::Physics,
         transform::Transform,
         world::World,
-    },
-    engine::{ActorId, SCREEN_SIZEF32},
-    hash_map::HashMap,
-    input::{input::Input, key::Key},
-    scene::Scene,
-    v2::V2,
+    }, engine::{ActorId, SCREEN_SIZEF32}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2,
 };
 use alloc::vec;
 
@@ -131,15 +124,14 @@ impl Scene for MarioScene {
             Some(Collider::new(
                 vec![ColliderPart::rect(V2::zero(), V2::new(BALL_SIZE - 1.0, 1.0), true)],
                 Some(0),
-                false
+                false,
             )),
-            None
-
+            None,
         );
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
-        self.handle_input(input, world, delta_time);
+    fn tick(&mut self, inputs: [&Box<dyn Input>; 2], world: &mut World, delta_time: f32) {
+        self.handle_input(inputs[0], world, delta_time);
 
         let plumber_center = world.get_transform(&self.plumber).unwrap().center;
 
@@ -192,10 +184,6 @@ impl Scene for MarioScene {
     fn get_ai_inputs(&self) -> DataForAi {
         todo!()
     }
-
-    fn set_ai_outputs(&self, data: [Vec<f64>; 2]) {
-        todo!()
-    }
 }
 
 impl MarioScene {
@@ -214,12 +202,12 @@ impl MarioScene {
         }
     }
 
-    fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, _delta_time: f32) {
+    fn handle_input(&mut self, input: &Box<dyn Input>, world: &mut World, _delta_time: f32) {
         if let Some(plumber_physics) = world.get_mut_physics(&self.plumber) {
-            let is_left = input.is_key_press(Key::P1Left);
-            let is_right = input.is_key_press(Key::P1Right);
-            let _is_down = input.is_key_press(Key::P1Down);
-            let is_up = input.is_key_down(Key::P1Up);
+            let is_left = input.is_key_press(Key::Left);
+            let is_right = input.is_key_press(Key::Right);
+            let _is_down = input.is_key_press(Key::Down);
+            let is_up = input.is_key_down(Key::Up);
             let move_by = V2::new(
                 if is_left {
                     -20.0
@@ -245,12 +233,15 @@ fn create_rectangle_actor(world: &mut World, center: V2, size: V2, collides: boo
     world.add_new_actor(
         Some(Transform::new(center, size.clone())),
         if collides {
-            Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size.clone(), false)], Some(0), true))
+            Some(Collider::new(
+                vec![ColliderPart::rect(V2::zero(), size.clone(), false)],
+                Some(0),
+                true,
+            ))
         } else {
             None
         },
-        Some(physics)
-
+        Some(physics),
     )
 }
 
@@ -266,13 +257,12 @@ fn create_plumber(world: &mut World, center: V2, size: V2, collides: bool) -> Ac
                     ColliderPart::circle(V2::zero(), size.y / 2.0, false),
                 ],
                 Some(0),
-                false
+                false,
             ))
         } else {
             None
         },
-        Some(physics)
-
+        Some(physics),
     )
 }
 
@@ -285,12 +275,15 @@ fn create_rectangle_at_origin(world: &mut World, from: V2, to: V2, collides: boo
     world.add_new_actor(
         Some(Transform::new(center, size.clone())),
         if collides {
-            Some(Collider::new(vec![ColliderPart::rect(V2::zero(), size.clone(), false)], Some(0), true))
+            Some(Collider::new(
+                vec![ColliderPart::rect(V2::zero(), size.clone(), false)],
+                Some(0),
+                true,
+            ))
         } else {
             None
         },
-        Some(physics)
-
+        Some(physics),
     )
 }
 

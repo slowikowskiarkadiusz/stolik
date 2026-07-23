@@ -190,25 +190,25 @@ impl Tank {
         }
 
         let (rotation, by) = if self.is_p1 {
-            if input.is_key_press(Key::P1Down) {
+            if input.is_key_press(Key::Down) {
                 (180, V2::new(0.0, 1.0))
-            } else if input.is_key_press(Key::P1Up) {
+            } else if input.is_key_press(Key::Up) {
                 (0, V2::new(0.0, -1.0))
-            } else if input.is_key_press(Key::P1Right) {
+            } else if input.is_key_press(Key::Right) {
                 (90, V2::new(1.0, 0.0))
-            } else if input.is_key_press(Key::P1Left) {
+            } else if input.is_key_press(Key::Left) {
                 (270, V2::new(-1.0, 0.0))
             } else {
                 return;
             }
         } else {
-            if input.is_key_press(Key::P2Down) {
+            if input.is_key_press(Key::Down) {
                 (0, V2::new(0.0, -1.0))
-            } else if input.is_key_press(Key::P2Up) {
+            } else if input.is_key_press(Key::Up) {
                 (180, V2::new(0.0, 1.0))
-            } else if input.is_key_press(Key::P2Left) {
+            } else if input.is_key_press(Key::Left) {
                 (270, V2::new(-1.0, 0.0))
-            } else if input.is_key_press(Key::P2Right) {
+            } else if input.is_key_press(Key::Right) {
                 (90, V2::new(1.0, 0.0))
             } else {
                 return;
@@ -239,7 +239,7 @@ impl Tank {
 
     fn tick_shoot(&mut self, input: &dyn Input, has_bullet: bool, delta_time: f32) -> Option<BulletSpawn> {
         self.shoot_timer -= delta_time;
-        let shoot_key = if self.is_p1 { Key::P1Blue } else { Key::P2Blue };
+        let shoot_key = Key::Blue;
         if self.shoot_timer <= 0.0 && !has_bullet && input.is_key_down(shoot_key) {
             self.shoot_timer = SHOOT_COOLDOWN;
             let dir = rotation_to_dir(self.rotation);

@@ -311,20 +311,20 @@ async fn main(_s: embassy_executor::Spawner) {
     // info!("Embassy initialized!");
 
     let input_pin_setup = Esp32InputPinSetup {
-        gpio1: peripherals.GPIO1.degrade(),
-        // gpio17: peripherals.GPIO17.degrade(),
-        gpio18: peripherals.GPIO18.degrade(),
-        gpio21: peripherals.GPIO21.degrade(),
-        gpio35: peripherals.GPIO35.degrade(),
-        gpio36: peripherals.GPIO36.degrade(),
-        gpio37: peripherals.GPIO37.degrade(),
-        gpio38: peripherals.GPIO38.degrade(),
-        gpio39: peripherals.GPIO39.degrade(),
-        gpio40: peripherals.GPIO40.degrade(),
-        gpio41: peripherals.GPIO41.degrade(),
-        gpio42: peripherals.GPIO42.degrade(),
-        gpio47: peripherals.GPIO47.degrade(),
-        gpio48: peripherals.GPIO48.degrade(),
+        gpio1: Some(peripherals.GPIO1.degrade()),
+        // gpio17: Some(peripherals.GPIO17.degrade()),
+        gpio18: Some(peripherals.GPIO18.degrade()),
+        gpio21: Some(peripherals.GPIO21.degrade()),
+        gpio35: Some(peripherals.GPIO35.degrade()),
+        gpio36: Some(peripherals.GPIO36.degrade()),
+        gpio37: Some(peripherals.GPIO37.degrade()),
+        gpio38: Some(peripherals.GPIO38.degrade()),
+        gpio39: Some(peripherals.GPIO39.degrade()),
+        gpio40: Some(peripherals.GPIO40.degrade()),
+        gpio41: Some(peripherals.GPIO41.degrade()),
+        gpio42: Some(peripherals.GPIO42.degrade()),
+        gpio47: Some(peripherals.GPIO47.degrade()),
+        gpio48: Some(peripherals.GPIO48.degrade()),
     };
 
     let expander_pin_setup = esp32_main::esp32_input::Esp32ExpanderPinSetup {
@@ -410,7 +410,7 @@ async fn main(_s: embassy_executor::Spawner) {
 async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     //println!("engine: creating input");
     // esp_println::println!("ZZZZZZ");
-    let mut engine = Engine::new(Box::new(Esp32Input::new(input_pin_setup)), None);
+    let mut engine = Engine::new([Box::new(Esp32Input::new(0, input_pin_setup)), Box::new(Esp32Input::new(1, Esp32InputPinSetup::empty()))], None);
 
     // esp_println::println!("AAAAAA");
     //println!("engine: input ok");

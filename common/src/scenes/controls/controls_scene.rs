@@ -4,17 +4,8 @@ use embassy_sync::lazy_lock::LazyLock;
 // use esp_println::println;
 use crate::{
     engine::{
-        actor::{arrow_actor::render_arrow, rectangle_actor::create_rectangle_actor, text::render_text},
-        color::Color,
-        color_matrix::ColorMatrix,
-        components::{camera::Camera, collider::CollisionResult, world::World},
-        engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
-        hash_map::HashMap,
-        input::{input::Input, key::Key},
-        scene::Scene,
-        v2::V2,
-    },
-    scenes::{controls::button_icon_actor::make_button_matrix, menu::menu_scene::MenuScene},
+        actor::{arrow_actor::render_arrow, rectangle_actor::create_rectangle_actor, text::render_text}, ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::World}, engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2,
+    }, scenes::{controls::button_icon_actor::make_button_matrix, menu::menu_scene::MenuScene},
 };
 
 static BUTTON_SIZE: u8 = 5;
@@ -74,14 +65,14 @@ impl Scene for ControlsScene {
         // println!("[ControlsScene] init done");
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, _world: &mut World, _delta_time: f32) {
+    fn tick(&mut self, inputs: [&Box<dyn Input>; 2], _world: &mut World, _delta_time: f32) {
         // println!(
         //     "[ControlsScene] can_proceed: {}, any_key_down: {}",
         //     self.can_proceed,
         //     input.is_any_key_down()
         // );
 
-        if self.can_proceed && input.is_any_key_down() {
+        if self.can_proceed && (inputs[0].is_any_key_down() || inputs[1].is_any_key_down()) {
             // println!("[ControlsScene] opening next scene");
             let factory = core::mem::replace(&mut self.next_scene, Box::new(|| Box::new(MenuScene::new())));
             open_scene(factory);
@@ -144,10 +135,6 @@ impl Scene for ControlsScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_ai_inputs(&self) -> DataForAi {
-        [Vec::new(), Vec::new()]
-    }
-
-    fn set_ai_outputs(&self, data: [Vec<f64>; 2]) {
         todo!()
     }
 }
@@ -269,44 +256,44 @@ static POSSIBLE_CONTROL_SETS: LazyLock<HashMap<String, Vec<ControlsData>>> = Laz
         (
             String::from("pong"),
             vec![
-                ControlsData::new(vec![Key::P1Left], "move left", None),
-                ControlsData::new(vec![Key::P1Right], "move right", None),
+                ControlsData::new(vec![Key::Left], "move left", None),
+                ControlsData::new(vec![Key::Right], "move right", None),
             ],
         ),
         (
             String::from("tetris"),
             vec![
-                ControlsData::new(vec![Key::P1Left], "move left", None),
-                ControlsData::new(vec![Key::P1Right], "move right", None),
-                ControlsData::new(vec![Key::P1Down], "fall", None),
-                ControlsData::new(vec![Key::P1Up], "drop", None),
-                ControlsData::new(vec![Key::P1Blue], "rotate left", None),
-                ControlsData::new(vec![Key::P1Green], "rotate right", None),
-                ControlsData::new(vec![Key::P1Blue, Key::P1Green], "swap block", Some("+")),
+                ControlsData::new(vec![Key::Left], "move left", None),
+                ControlsData::new(vec![Key::Right], "move right", None),
+                ControlsData::new(vec![Key::Down], "fall", None),
+                ControlsData::new(vec![Key::Up], "drop", None),
+                ControlsData::new(vec![Key::Blue], "rotate left", None),
+                ControlsData::new(vec![Key::Green], "rotate right", None),
+                ControlsData::new(vec![Key::Blue, Key::Green], "swap block", Some("+")),
             ],
         ),
         (
             String::from("tanks"),
             vec![
-                ControlsData::new(vec![Key::P1AnyDirection], "move", None),
-                ControlsData::new(vec![Key::P1Blue, Key::P1Green], "fire", Some("or")),
+                ControlsData::new(vec![Key::AnyDirection], "move", None),
+                ControlsData::new(vec![Key::Blue, Key::Green], "fire", Some("or")),
             ],
         ),
         (
             String::from("astro_duel"),
             vec![
-                ControlsData::new(vec![Key::P1AnyDirection], "thrust", None),
-                ControlsData::new(vec![Key::P1Blue], "fire", None),
-                ControlsData::new(vec![Key::P1Green], "dash", None),
+                ControlsData::new(vec![Key::AnyDirection], "thrust", None),
+                ControlsData::new(vec![Key::Blue], "fire", None),
+                ControlsData::new(vec![Key::Green], "dash", None),
             ],
         ),
         (
             String::from("game_of_life"),
             vec![
-                ControlsData::new(vec![Key::P1AnyDirection], "move selection", None),
-                ControlsData::new(vec![Key::P1Blue], "select", None),
-                ControlsData::new(vec![Key::P1Green], "start stop playing", None),
-                ControlsData::new(vec![Key::P1Down, Key::P1Up], "faster slower", None),
+                ControlsData::new(vec![Key::AnyDirection], "move selection", None),
+                ControlsData::new(vec![Key::Blue], "select", None),
+                ControlsData::new(vec![Key::Green], "start stop playing", None),
+                ControlsData::new(vec![Key::Down, Key::Up], "faster slower", None),
             ],
         ),
     ])

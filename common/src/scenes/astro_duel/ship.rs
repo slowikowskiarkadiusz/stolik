@@ -12,18 +12,22 @@ use crate::engine::{
         world::World,
     },
     engine::ActorId,
-    input::{gesture::{Gesture, State}, input::Input, key::Key},
+    input::{
+        gesture::{Gesture, State},
+        input::Input,
+        key::Key,
+    },
     v2::V2,
 };
 
 use super::astro_obstacle::AstroObstacleMap;
 use super::boost_particles::BoostParticles;
 use super::bullet::wrap_center;
-use super::power_ups::{shield, reflector};
 use super::power_ups::mine::PlacedMine;
+use super::power_ups::power_up::{PowerUpKind, PowerUpType, power_up_kind};
 use super::power_ups::ray_gun::RayGunBeam;
 use super::power_ups::reflector::REFLECTOR_DURATION;
-use super::power_ups::power_up::{PowerUpType, PowerUpKind, power_up_kind};
+use super::power_ups::{reflector, shield};
 use crate::scenes::utils::{P1_COLOR, P2_COLOR};
 
 const SHIP_SIZE: f32 = 4.0;
@@ -95,20 +99,14 @@ impl Ship {
         }
     }
 
-    pub fn tick(
-        &mut self,
-        input: &dyn Input,
-        world: &mut World,
-        _obstacle: &AstroObstacleMap,
-        delta_time: f32,
-    ) -> Vec<ShipAction> {
-        let (thrust_dir, new_rotation, dashed) =
-            get_thrust_and_rotation(self.dash_timer <= 0.0, input, self.is_p1, &mut self.last_thrust);
+    pub fn tick(&mut self, input: &dyn Input, world: &mut World, _obstacle: &AstroObstacleMap, delta_time: f32) -> Vec<ShipAction> {
+        let (thrust_dir, new_rotation, dashed) = get_thrust_and_rotation(self.dash_timer <= 0.0, input, self.is_p1, &mut self.last_thrust);
 
         if dashed {
             self.dash_timer = DASH_REGEN_TIME;
             let facing = rotation_to_dir(self.rotation);
-            let tail = world.get_transform(&self.actor_id)
+            let tail = world
+                .get_transform(&self.actor_id)
                 .map(|t| t.center - facing * (SHIP_SIZE / 2.0))
                 .unwrap_or(V2::zero());
             self.boost_particles.push(BoostParticles::new(tail, facing * -1.0, world));
@@ -135,7 +133,11 @@ impl Ship {
             self.blink_timer -= delta_time;
             if self.blink_timer <= 0.0 {
                 self.is_visible = !self.is_visible;
-                self.blink_timer = if self.is_visible { BLINK_VISIBLE_TIME } else { BLINK_INVISIBLE_TIME };
+                self.blink_timer = if self.is_visible {
+                    BLINK_VISIBLE_TIME
+                } else {
+                    BLINK_INVISIBLE_TIME
+                };
             }
         } else {
             self.is_visible = true;
@@ -167,19 +169,15 @@ impl Ship {
             }
         }
 
-        let fire_key = if self.is_p1 { Key::P1Blue } else { Key::P2Blue };
-        let fire_down = input.is_key_down(fire_key);
-        let fire_activate = input.gestures().is(fire_key, State::Press, Gesture::Prolonged, None);
+        let fire_down = input.is_key_down(Key::Blue);
+        let fire_activate = input.gestures().is(Key::Blue, State::Press, Gesture::Prolonged, None);
 
         let mut actions: Vec<ShipAction> = Vec::new();
 
         // Stored active power-ups (Mine / RayGun) triggered by double-tap
         if fire_activate {
             if let Some(stored) = self.stored_power_up.take() {
-                let pos = world
-                    .get_transform(&self.actor_id)
-                    .map(|t| t.center)
-                    .unwrap_or(V2::zero());
+                let pos = world.get_transform(&self.actor_id).map(|t| t.center).unwrap_or(V2::zero());
                 match stored {
                     PowerUpType::Mine => {
                         actions.push(ShipAction::PlaceMine(PlacedMine::new(pos, self.is_p1)));
@@ -204,14 +202,8 @@ impl Ship {
             }
             self.shoot_cooldown = SHOOT_COOLDOWN;
             let facing = rotation_to_dir(self.rotation);
-            let ship_pos = world
-                .get_transform(&self.actor_id)
-                .map(|t| t.center)
-                .unwrap_or(V2::zero());
-            let ship_vel = world
-                .get_physics(&self.actor_id)
-                .map(|p| *p.get_velocity())
-                .unwrap_or(V2::zero());
+            let ship_pos = world.get_transform(&self.actor_id).map(|t| t.center).unwrap_or(V2::zero());
+            let ship_vel = world.get_physics(&self.actor_id).map(|p| *p.get_velocity()).unwrap_or(V2::zero());
             actions.push(ShipAction::SpawnBullet(BulletSpawn {
                 pos: ship_pos + facing * (SHIP_SIZE / 2.0 + 2.0),
                 velocity: ship_vel + facing * BULLET_SPEED,
@@ -240,7 +232,9 @@ impl Ship {
     pub fn take_damage(&mut self, amount: u8) -> bool {
         for _ in 0..amount {
             let (died, _) = self.take_hit();
-            if died { return true; }
+            if died {
+                return true;
+            }
         }
         false
     }
@@ -316,8 +310,7 @@ fn create_actor(world: &mut World, pos: V2, rotation: f32) -> ActorId {
             Some(0),
             false,
         )),
-        Some(physics)
-
+        Some(physics),
     );
     if let Some(t) = world.get_mut_transform(&id) {
         t.rotation = rotation;
@@ -344,40 +337,36 @@ fn make_ship_sprite(ammo: u8, is_p1: bool) -> ColorMatrix {
     m
 }
 
-fn get_thrust_and_rotation(
-    can_dash: bool,
-    input: &dyn Input,
-    is_p1: bool,
-    last_thrust: &mut V2,
-) -> (V2, Option<i32>, bool) {
-    let (up, down, left, right) = if is_p1 {
+fn get_thrust_and_rotation(can_dash: bool, input: &dyn Input, is_p1: bool, last_thrust: &mut V2) -> (V2, Option<i32>, bool) {
+    let (up, down, left, right) = {
         (
-            input.is_key_press(Key::P1Up),
-            input.is_key_press(Key::P1Down),
-            input.is_key_press(Key::P1Left),
-            input.is_key_press(Key::P1Right),
-        )
-    } else {
-        (
-            input.is_key_press(Key::P2Down),
-            input.is_key_press(Key::P2Up),
-            input.is_key_press(Key::P2Left),
-            input.is_key_press(Key::P2Right),
+            input.is_key_press(Key::Up),
+            input.is_key_press(Key::Down),
+            input.is_key_press(Key::Left),
+            input.is_key_press(Key::Right),
         )
     };
 
-    let dashed = can_dash
-        && (is_p1 && input.is_key_press(Key::P1Green)
-            || (!is_p1 && input.is_key_press(Key::P2Green)));
+    let dashed = can_dash && input.is_key_press(Key::Green);
 
     let mut thrust = V2::zero();
-    if up    { thrust.y -= 1.0; }
-    if down  { thrust.y += 1.0; }
-    if left  { thrust.x -= 1.0; }
-    if right { thrust.x += 1.0; }
+    if up {
+        thrust.y -= 1.0;
+    }
+    if down {
+        thrust.y += 1.0;
+    }
+    if left {
+        thrust.x -= 1.0;
+    }
+    if right {
+        thrust.x += 1.0;
+    }
 
     let mag = thrust.mag();
-    if mag > 0.0 { thrust = thrust / mag; }
+    if mag > 0.0 {
+        thrust = thrust / mag;
+    }
 
     if !(thrust.x == 0.0 && thrust.y == 0.0) {
         last_thrust.x = thrust.x;
@@ -389,14 +378,14 @@ fn get_thrust_and_rotation(
     }
 
     let new_rotation = match (up, down, left, right) {
-        (true,  false, false, false) => Some(0),
-        (true,  false, false, true)  => Some(45),
-        (false, false, false, true)  => Some(90),
-        (false, true,  false, true)  => Some(135),
-        (false, true,  false, false) => Some(180),
-        (false, true,  true,  false) => Some(225),
-        (false, false, true,  false) => Some(270),
-        (true,  false, true,  false) => Some(315),
+        (true, false, false, false) => Some(0),
+        (true, false, false, true) => Some(45),
+        (false, false, false, true) => Some(90),
+        (false, true, false, true) => Some(135),
+        (false, true, false, false) => Some(180),
+        (false, true, true, false) => Some(225),
+        (false, false, true, false) => Some(270),
+        (true, false, true, false) => Some(315),
         _ => None,
     };
 

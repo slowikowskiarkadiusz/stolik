@@ -3,14 +3,7 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
 use crate::engine::{
-    color::Color,
-    color_matrix::ColorMatrix,
-    components::{camera::Camera, collider::CollisionResult, world::World},
-    engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, SCREEN_SIZEUSIZE},
-    hash_map::HashMap,
-    input::{input::Input, key::Key},
-    scene::Scene,
-    v2::V2,
+    ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::World}, engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, SCREEN_SIZEUSIZE}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2,
 };
 
 static TURN_DELAY: f32 = 0.5;
@@ -29,8 +22,8 @@ pub struct GameOfLifeScene {
 impl Scene for GameOfLifeScene {
     fn init(&mut self, _world: &mut World) {}
 
-    fn tick(&mut self, input: &Box<dyn Input>, _world: &mut World, delta_time: f32) {
-        if input.is_key_down(Key::P1Green) {
+    fn tick(&mut self, inputs: [&Box<dyn Input>; 2], _world: &mut World, delta_time: f32) {
+        if inputs[0].is_key_down(Key::Green) {
             self.is_playing = !self.is_playing;
         }
 
@@ -41,16 +34,16 @@ impl Scene for GameOfLifeScene {
             }
 
             let dif = V2::new(
-                if input.is_key_down(Key::P1Right) {
+                if inputs[0].is_key_down(Key::Right) {
                     1.0
-                } else if input.is_key_down(Key::P1Left) {
+                } else if inputs[0].is_key_down(Key::Left) {
                     -1.0
                 } else {
                     0.0
                 },
-                if input.is_key_down(Key::P1Down) {
+                if inputs[0].is_key_down(Key::Down) {
                     1.0
-                } else if input.is_key_down(Key::P1Up) {
+                } else if inputs[0].is_key_down(Key::Up) {
                     -1.0
                 } else {
                     0.0
@@ -61,7 +54,7 @@ impl Scene for GameOfLifeScene {
                 self.selection_blink_timer = SELECTION_BLINK_DELAY;
             }
 
-            if input.is_key_down(Key::P1Blue) {
+            if inputs[0].is_key_down(Key::Blue) {
                 let csx = self.currently_selected.x as usize;
                 let csy = self.currently_selected.y as usize;
                 self.set(csx, csy, !self.get(csx, csy));
@@ -90,10 +83,10 @@ impl Scene for GameOfLifeScene {
                 self.is_taken = new_table;
             }
 
-            if input.is_key_down(Key::P1Down) {
+            if inputs[0].is_key_down(Key::Down) {
                 self.turn_delay += TURN_DELAY_STEP;
             }
-            if input.is_key_down(Key::P1Up) && self.turn_delay >= TURN_DELAY_STEP {
+            if inputs[0].is_key_down(Key::Up) && self.turn_delay >= TURN_DELAY_STEP {
                 self.turn_delay -= TURN_DELAY_STEP;
             }
         }
@@ -133,7 +126,7 @@ impl Scene for GameOfLifeScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_ai_inputs(&self) -> DataForAi {
-        [Vec::new(), Vec::new()]
+        todo!()
     }
 }
 

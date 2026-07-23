@@ -2,6 +2,7 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
 use super::world::TanksWorld;
+use crate::engine::ai::neat_genome::DataForAi;
 use crate::scenes::menu::menu_scene::MenuScene;
 use crate::scenes::tanks::bullet::Bullet;
 use crate::write_m;
@@ -37,7 +38,7 @@ impl Scene for TanksScene {
         self.world = Some(TanksWorld::new());
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, _world: &mut World, delta_time: f32) {
+    fn tick(&mut self, inputs: [&Box<dyn Input>; 2], _world: &mut World, delta_time: f32) {
         let w = match self.world.as_mut() {
             Some(w) => w,
             None => return,
@@ -78,10 +79,10 @@ impl Scene for TanksScene {
 
         let spawn1 = w
             .tank_p1
-            .tick(input.as_ref(), &w.obstacle, &p1_blockers_slice, w.bullet_p1.is_some(), delta_time);
+            .tick(inputs[0].as_ref(), &w.obstacle, &p1_blockers_slice, w.bullet_p1.is_some(), delta_time);
         let spawn2 = w
             .tank_p2
-            .tick(input.as_ref(), &w.obstacle, &p2_blockers_slice, w.bullet_p2.is_some(), delta_time);
+            .tick(inputs[1].as_ref(), &w.obstacle, &p2_blockers_slice, w.bullet_p2.is_some(), delta_time);
 
         if let Some(s) = spawn1 {
             w.bullet_p1 = Some(Bullet::new(s.pos, s.dir, s.level, true));

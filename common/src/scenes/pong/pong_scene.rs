@@ -105,8 +105,8 @@ impl Scene for PongScene {
         self.reset_ball(world);
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, world: &mut World, delta_time: f32) {
-        self.handle_input(input, world, delta_time);
+    fn tick(&mut self, inputs: [&Box<dyn Input>; 2], world: &mut World, delta_time: f32) {
+        self.handle_input(inputs, world, delta_time);
         if let Some(ball) = self.ball
             && let Some(ball_transform) = world.get_mut_transform(&ball)
         {
@@ -115,7 +115,7 @@ impl Scene for PongScene {
             self.check_scoring(world);
         }
 
-        save
+        self.save_ai_data(world);
     }
 
     fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
@@ -183,7 +183,8 @@ impl Scene for PongScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_ai_inputs(&self) -> DataForAi {
-        self.ai_inputs
+        // self.ai_inputs
+        todo!()
     }
 }
 
@@ -294,7 +295,7 @@ impl PongScene {
         }
     }
 
-    fn handle_input(&mut self, input: &Box<dyn Input + 'static>, world: &mut World, delta_time: f32) {
+    fn handle_input(&mut self, inputs: [&Box<dyn Input + 'static>; 2], world: &mut World, delta_time: f32) {
         // paddle[0] = P1_COLOR (bottom): P1 keys in pvp, AI in ai mode
         if self.play_against_ai {
             if let Some(ball_id) = self.ball
@@ -314,23 +315,23 @@ impl PongScene {
                         * delta_time,
                 );
             }
-        } else if input.is_key_press(Key::P1Left) ^ input.is_key_press(Key::P1Right) {
+        } else if inputs[0].is_key_press(Key::Left) ^ inputs[0].is_key_press(Key::Right) {
             if let Some(paddle_p1_id) = self.paddle[0] {
                 PongScene::move_paddle(
                     &paddle_p1_id,
                     world,
-                    if input.is_key_press(Key::P1Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
+                    if inputs[0].is_key_press(Key::Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
                 );
             }
         }
 
         // paddle[1] = P2_COLOR/orange (top): always P2 keys
-        if input.is_key_press(Key::P2Left) ^ input.is_key_press(Key::P2Right) {
+        if inputs[1].is_key_press(Key::Left) ^ inputs[1].is_key_press(Key::Right) {
             if let Some(paddle_p2_id) = self.paddle[1] {
                 PongScene::move_paddle(
                     &paddle_p2_id,
                     world,
-                    if input.is_key_press(Key::P2Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
+                    if inputs[1].is_key_press(Key::Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
                 );
             }
         }

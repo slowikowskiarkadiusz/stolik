@@ -16,7 +16,6 @@ use crate::{
     scenes::tetris::{block::Block, garbage_bar::GarbageBar, hold_logic::HoldLogic, shape::Shape},
 };
 
-
 /// Rendering scale. Logic stays at 1×; all render matrices are pre-scaled at creation.
 /// Toggle between 1 and 2 for debugging — no per-frame scaling ever happens.
 pub const SCALE: u8 = 1;
@@ -148,75 +147,38 @@ impl Board {
         let mut damage_to_do = 0;
 
         if let Some(current_agent) = self.current_agent.as_mut() {
-            if input.gestures().is(
-                if self.is_p1 { Key::P1Blue } else { Key::P2Blue },
-                State::Press,
-                Gesture::Prolonged,
-                None,
-            ) && !self.already_switched_pieces
-            {
+            if input.gestures().is(Key::Blue, State::Press, Gesture::Prolonged, None) && !self.already_switched_pieces {
                 let held_shape = self.hold_logic.swap(current_agent.shape.clone());
                 let center = current_agent.center.clone();
                 self.spawn(Some(center), held_shape);
                 self.already_switched_pieces = true;
-            } else if input.gestures().is(
-                if self.is_p1 { Key::P1Down } else { Key::P2Down },
-                State::Press,
-                Gesture::Once,
-                None,
-            ) {
+            } else if input.gestures().is(Key::Down, State::Press, Gesture::Once, None) {
                 self.dropping_delay_value = FASTER_DROPPING_DELAY_SEC;
             } else {
                 self.dropping_delay_value = DROPPING_DELAY_SEC;
-                if input
-                    .gestures()
-                    .is(if self.is_p1 { Key::P1Left } else { Key::P2Left }, State::Down, Gesture::Once, None)
-                    || input.gestures().is(
-                        if self.is_p1 { Key::P1Left } else { Key::P2Left },
-                        State::Press,
-                        Gesture::Repeating,
-                        None,
-                    )
+                if input.gestures().is(Key::Left, State::Down, Gesture::Once, None)
+                    || input.gestures().is(Key::Left, State::Press, Gesture::Repeating, None)
                 {
                     self.move_block_by(V2::left());
                 }
 
-                if input.gestures().is(
-                    if self.is_p1 { Key::P1Right } else { Key::P2Right },
-                    State::Down,
-                    Gesture::Once,
-                    None,
-                ) || input.gestures().is(
-                    if self.is_p1 { Key::P1Right } else { Key::P2Right },
-                    State::Press,
-                    Gesture::Repeating,
-                    None,
-                ) {
+                if input.gestures().is(Key::Right, State::Down, Gesture::Once, None)
+                    || input.gestures().is(Key::Right, State::Press, Gesture::Repeating, None)
+                {
                     self.move_block_by(V2::right());
                 }
             }
 
             let mut damage_from_hard_drop = 0u8;
-            if input
-                .gestures()
-                .is(if self.is_p1 { Key::P1Up } else { Key::P2Up }, State::Down, Gesture::Once, None)
-            {
+            if input.gestures().is(Key::Up, State::Down, Gesture::Once, None) {
                 damage_from_hard_drop = self.drop();
             }
 
-            if input
-                .gestures()
-                .is(if self.is_p1 { Key::P1Blue } else { Key::P2Blue }, State::Down, Gesture::Once, None)
-            {
+            if input.gestures().is(Key::Blue, State::Down, Gesture::Once, None) {
                 self.rotate_block(1);
             }
 
-            if input.gestures().is(
-                if self.is_p1 { Key::P1Green } else { Key::P2Green },
-                State::Down,
-                Gesture::Once,
-                None,
-            ) {
+            if input.gestures().is(Key::Green, State::Down, Gesture::Once, None) {
                 self.rotate_block(-1);
             }
 
@@ -636,11 +598,7 @@ pub fn create_board_actor(world: &mut World, tetris_world: &mut TetrisWorld, is_
         transform.rotation = 180.0;
     }
 
-    let actor_id = world.add_new_actor(
-        Some(transform),
-        None,
-        None,
-    );
+    let actor_id = world.add_new_actor(Some(transform), None, None);
 
     tetris_world.add_new_actor(actor_id, Some(board));
 

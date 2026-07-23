@@ -1,13 +1,9 @@
-use crate::engine::{
-    color::Color,
-    color_matrix::ColorMatrix,
-    input::key::Key,
-};
+use crate::engine::{color::Color, color_matrix::ColorMatrix, input::key::Key};
 
-const LEFT_KEYS: [Key; 2] = [Key::P1Left, Key::P2Left];
-const RIGHT_KEYS: [Key; 2] = [Key::P1Right, Key::P2Right];
-const UP_KEYS: [Key; 2] = [Key::P1Up, Key::P2Up];
-const DOWN_KEYS: [Key; 2] = [Key::P1Down, Key::P2Down];
+const LEFT_KEYS: [Key; 2] = [Key::Left, Key::Left];
+const RIGHT_KEYS: [Key; 2] = [Key::Right, Key::Right];
+const UP_KEYS: [Key; 2] = [Key::Up, Key::Up];
+const DOWN_KEYS: [Key; 2] = [Key::Down, Key::Down];
 
 // pub fn create_button_icon_actor(world: &mut World, center: V2, size: u8, key: Key, _name: Option<&str>) -> ActorId {
 //     world.add_new_actor(
@@ -58,18 +54,9 @@ pub fn make_button_matrix(size: u8, key: Key) -> ColorMatrix {
 
 fn map_key_to_color(key: Key) -> Color {
     match key {
-        Key::P1Down
-        | Key::P1Up
-        | Key::P1Left
-        | Key::P1Right
-        | Key::P1AnyDirection
-        | Key::P2Down
-        | Key::P2Up
-        | Key::P2Left
-        | Key::P2Right
-        | Key::P2AnyDirection => Color::red(),
-        Key::P1Blue | Key::P2Blue => Color::green(),
-        Key::P1Green | Key::P2Green => Color::blue(),
+        Key::Down | Key::Up | Key::Left | Key::Right | Key::AnyDirection => Color::red(),
+        Key::Blue => Color::green(),
+        Key::Green => Color::blue(),
         Key::Start => Color::white(),
         _ => Color::yellow(),
     }

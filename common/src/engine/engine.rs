@@ -37,15 +37,15 @@ pub struct Engine {
     world: World,
     current_scene: Box<dyn Scene>,
     is_any_scene: bool,
-    pub input: Box<dyn Input>,
+    pub inputs: [Box<dyn Input>; 2],
     asyncable_storage: AsyncableStorage,
     screen: ColorMatrix,
 }
 
 impl Engine {
-    pub fn new(input: Box<dyn Input>, open_on_scene: Option<Box<dyn Scene>>) -> Self {
+    pub fn new(inputs: [Box<dyn Input>; 2], open_on_scene: Option<Box<dyn Scene>>) -> Self {
         let is_a_scene = open_on_scene.is_some();
-        let mut scene = open_on_scene.unwrap_or_else(|| Box::new(EmptyScene::new()));
+        let mut scene = open_on_scene.unwrap_or_else(|| Box::new(MenuScene::new()));
         let mut world = World::new();
         scene.init(&mut world);
         Self {
@@ -53,7 +53,7 @@ impl Engine {
             world: world,
             current_scene: scene,
             is_any_scene: is_a_scene,
-            input: input,
+            inputs,
             asyncable_storage: AsyncableStorage::new(),
             screen: ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none()),
         }
@@ -78,7 +78,9 @@ impl Engine {
             if let Some(ref func) = colliders_debug {
                 func(self.world._debug_get_collider_parts(self.world.get_camera().get_viewport().clone()));
             }
-            self.input.as_mut().late_update(dt);
+
+            self.inputs[0].as_mut().late_update(dt);
+            self.inputs[1].as_mut().late_update(dt);
 
             let elapsed_ms = frame_start.elapsed().as_millis() as u64;
             if elapsed_ms < TARGET_MS {
@@ -106,8 +108,11 @@ impl Engine {
 
         {
             let mut_scene = self.current_scene.as_mut();
-            self.input.as_mut().update(delta_time);
-            mut_scene.tick(&self.input, &mut self.world, delta_time);
+
+            self.inputs[0].as_mut().update(delta_time);
+            self.inputs[1].as_mut().update(delta_time);
+
+            mut_scene.tick([&self.inputs[0], &self.inputs[1]], &mut self.world, delta_time);
             let camera = self.world.get_camera();
             frame = mut_scene.render(&camera, &mut self.world, delta_time);
             self.asyncable_storage.update(&mut self.world, delta_time);
@@ -125,7 +130,11 @@ impl Engine {
             mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
             self.combine_color_matrixes(frame);
             on_frame_finished(&self.screen);
-            self.input.as_mut().late_update(delta_time);
+
+            // for input in &mut self.inputs {
+            self.inputs[0].as_mut().late_update(delta_time);
+            self.inputs[1].as_mut().late_update(delta_time);
+            // }
         }
     }
 
@@ -150,7 +159,7 @@ impl Engine {
     }
 
     pub fn get_scene_ai_inputs(&self) -> [Vec<f64>; 2] {
-        self.current_scene.get_ai_inputs()
+        self.current_scene.get_ai_inputs().inputs
     }
 }
 

@@ -3,17 +3,8 @@ use alloc::{boxed::Box, vec, vec::Vec};
 
 use crate::{
     engine::{
-        actor::{arrow_actor::render_arrow, text::render_text},
-        color::Color,
-        color_matrix::ColorMatrix,
-        components::{camera::Camera, collider::CollisionResult, world::World},
-        engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
-        hash_map::HashMap,
-        input::{input::Input, key::Key},
-        scene::Scene,
-        v2::V2,
-    },
-    scenes::{
+        actor::{arrow_actor::render_arrow, text::render_text}, ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::World}, engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2,
+    }, scenes::{
         astro_duel::astro_scene::AstroDuelScene,
         controls::controls_scene::ControlsScene,
         game_of_life::game_of_life_scene::GameOfLifeScene,
@@ -67,19 +58,19 @@ impl Scene for MenuScene {
         ];
     }
 
-    fn tick(&mut self, input: &Box<dyn Input>, _world: &mut World, _delta_time: f32) {
+    fn tick(&mut self, inputs: [&Box<dyn Input>; 2], _world: &mut World, _delta_time: f32) {
         if self.options.len() == 0 {
             return;
         }
 
-        if input.is_key_down(Key::P1Up) {
+        if inputs[0].is_key_down(Key::Up) {
             if self.cursor_position == 0 {
                 self.cursor_position = self.options.len() as u8 - 1;
             } else {
                 self.cursor_position -= 1;
             }
         }
-        if input.is_key_down(Key::P1Down) {
+        if inputs[0].is_key_down(Key::Down) {
             if self.cursor_position == self.options.len() as u8 - 1 {
                 self.cursor_position = 0;
             } else {
@@ -87,7 +78,7 @@ impl Scene for MenuScene {
             }
         }
 
-        if input.is_key_down(Key::Start) {
+        if inputs[0].is_key_down(Key::Start) {
             let selected = self.options.remove(self.cursor_position as usize);
             let name = selected.next_scene_code_name;
             // open_scene(selected.next_scene_factory);
@@ -140,7 +131,7 @@ impl Scene for MenuScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_ai_inputs(&self) -> DataForAi {
-        [Vec::new(), Vec::new()]
+        todo!()
     }
 }
 
