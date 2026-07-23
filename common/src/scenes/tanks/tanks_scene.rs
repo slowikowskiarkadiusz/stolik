@@ -47,7 +47,7 @@ impl Scene for TanksScene {
         if w.winner.is_some() {
             w.game_over_timer -= delta_time;
             if w.game_over_timer <= 0.0 {
-                open_scene(Box::new(|| Box::new(MenuScene::new())));
+                open_scene(Box::new(|| Box::new(MenuScene::new())), None);
             }
             return;
         }

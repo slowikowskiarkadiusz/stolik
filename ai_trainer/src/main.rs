@@ -1,7 +1,6 @@
-use crate::ai_input::AiInput;
 use common::{
     engine::{
-        ai::{ai_config::AiConfig, neat_genome::NeatGenome},
+        ai::{ai_config::AiConfig, ai_input::AiInput, neat_genome::NeatGenome},
         color_matrix::ColorMatrix,
         engine::Engine,
         input::key::KEYS_LENGTH,
@@ -9,14 +8,14 @@ use common::{
     scenes::pong::pong_scene::PongScene,
 };
 use rand::{SeedableRng, rngs::SmallRng};
+use spin::Mutex;
 use std::{
     env::{self, var},
     fs,
-    sync::{Arc, Mutex},
+    sync::Arc,
     thread::{self, JoinHandle},
 };
 
-pub mod ai_input;
 
 const POPULATION_COUNT: usize = 10;
 
@@ -57,7 +56,7 @@ fn main() {
 
                 let mut engine = Engine::new(
                     [Box::new(AiInput::new(p0_held.clone())), Box::new(AiInput::new(p1_held.clone()))],
-                    Some(Box::new(PongScene::new(false))),
+                    Some(Box::new(PongScene::new())),
                 );
                 let on_frame: Arc<dyn Fn(&ColorMatrix) + Send + Sync> = Arc::new(|_: &ColorMatrix| {});
 
@@ -75,7 +74,7 @@ fn main() {
                     }
 
                     let (p0_outputs, p1_outputs) = {
-                        let mut pop = population_arc.lock().unwrap_or_else(|e| e.into_inner());
+                        let mut pop = population_arc.lock();
                         let p0_out = pop[pair_index].activate(ai_data.inputs[0].clone());
                         pop[pair_index].fitness = ai_data.points[0];
                         let p1_out = pop[pair_index + 1].activate(ai_data.inputs[1].clone());
@@ -83,8 +82,8 @@ fn main() {
                         (p0_out, p1_out)
                     };
 
-                    *p0_held.lock().unwrap() = keys_from_outputs(&p0_outputs);
-                    *p1_held.lock().unwrap() = keys_from_outputs(&p1_outputs);
+                    *p0_held.lock() = keys_from_outputs(&p0_outputs);
+                    *p1_held.lock() = keys_from_outputs(&p1_outputs);
 
                     engine.tick_frame(1.0 / 33.0, &on_frame);
 
@@ -101,7 +100,7 @@ fn main() {
             handle.join().unwrap();
         }
 
-        let mut pop = population_arc.lock().unwrap();
+        let mut pop = population_arc.lock();
         pop.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
 
         println!(

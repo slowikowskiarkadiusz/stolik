@@ -4,7 +4,7 @@ use alloc::{boxed::Box, vec, vec::Vec};
 use crate::{
     engine::{
         actor::{arrow_actor::render_arrow, text::render_text},
-        ai::neat_genome::DataForAi,
+        ai::{ai_config::AiConfig, neat_genome::{DataForAi, NeatGenome}},
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
@@ -27,16 +27,23 @@ use crate::{
 
 struct MenuOption {
     next_scene_factory: SceneFactory,
+    next_p1_genome: Option<NeatGenome>,
     next_scene_code_name: &'static str,
     next_scene_print_name: &'static str,
 }
 
 impl MenuOption {
-    pub fn new(next_scene_factory: SceneFactory, next_scene_code_name: &'static str, next_scene_print_name: &'static str) -> Self {
+    pub fn new(next_scene_factory: SceneFactory, next_scene_code_name: &'static str, next_scene_print_name: &'static str, is_vs_ai: bool) -> Self {
+        let next_p1_genome = if is_vs_ai {
+            NeatGenome::from_bytes(AiConfig::get(next_scene_code_name).bytes)
+        } else {
+            None
+        };
         Self {
             next_scene_factory,
-            next_scene_code_name: next_scene_code_name,
-            next_scene_print_name: next_scene_print_name,
+            next_p1_genome,
+            next_scene_code_name,
+            next_scene_print_name,
         }
     }
 }
@@ -49,22 +56,14 @@ pub struct MenuScene {
 impl Scene for MenuScene {
     fn init(&mut self, _world: &mut World) {
         self.options = vec![
-            MenuOption::new(Box::new(|| Box::new(PongScene::new(false))), "pong", "pong"),
-            MenuOption::new(Box::new(|| Box::new(PongScene::new(true))), "pong", "pong -- vs ai"),
-            MenuOption::new(
-                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))),
-                "tetris",
-                "tetris",
-            ),
-            MenuOption::new(
-                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))),
-                "tetris",
-                "tetris -- solo",
-            ),
-            MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario"),
-            MenuOption::new(Box::new(|| Box::new(TanksScene::new())), "tanks", "tanks"),
-            MenuOption::new(Box::new(|| Box::new(AstroDuelScene::new())), "astro_duel", "astro duel"),
-            MenuOption::new(Box::new(|| Box::new(GameOfLifeScene::new())), "game_of_life", "game of life"),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong", false),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong -- vs ai", true),
+            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))), "tetris", "tetris", false),
+            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))), "tetris", "tetris -- solo", false),
+            MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario", false),
+            MenuOption::new(Box::new(|| Box::new(TanksScene::new())), "tanks", "tanks", false),
+            MenuOption::new(Box::new(|| Box::new(AstroDuelScene::new())), "astro_duel", "astro duel", false),
+            MenuOption::new(Box::new(|| Box::new(GameOfLifeScene::new())), "game_of_life", "game of life", false),
         ];
     }
 
@@ -91,11 +90,11 @@ impl Scene for MenuScene {
         if inputs[0].is_key_down(Key::Start) {
             let selected = self.options.remove(self.cursor_position as usize);
             let name = selected.next_scene_code_name;
-            // open_scene(selected.next_scene_factory);
-            open_scene(Box::new(|| Box::new(ControlsScene::new(name, selected.next_scene_factory))));
-
-            // let factory = core::mem::replace(&mut self.next_scene, Box::new(|| Box::new(MenuScene::new())));
-            // open_scene(factory);
+            let genome = selected.next_p1_genome;
+            open_scene(
+                Box::new(move || Box::new(ControlsScene::new(name, selected.next_scene_factory, genome))),
+                None,
+            );
         }
 
         //todo move to render
@@ -141,7 +140,11 @@ impl Scene for MenuScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_data_for_ai(&self) -> DataForAi {
-        todo!()
+        DataForAi {
+            inputs: todo!(),
+            points: todo!(),
+            is_gameover: todo!(),
+        }
     }
 
     fn is_game_over(&self) -> bool {

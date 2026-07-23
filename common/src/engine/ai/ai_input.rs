@@ -1,9 +1,11 @@
-use common::engine::input::{
+extern crate alloc;
+use alloc::sync::Arc;
+use spin::Mutex;
+use crate::engine::input::{
     gesture::Gestures,
     input::Input,
     key::{KEYS_LENGTH, Key, KeyState},
 };
-use std::sync::{Arc, Mutex};
 
 pub struct AiInput {
     gestures: Gestures,
@@ -55,7 +57,7 @@ impl Input for AiInput {
     }
 
     fn update(&mut self, delta_time: f32) {
-        let keys = *self.held.lock().unwrap();
+        let keys = *self.held.lock();
         for i in 0..KEYS_LENGTH as usize {
             let was = self.keys_press[i];
             let is = keys[i];

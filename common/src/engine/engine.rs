@@ -1,10 +1,10 @@
 use crate::{
     engine::{
-        ai::neat_genome::DataForAi, asyncable::AsyncableStorage, color::Color, color_matrix::ColorMatrix, components::{
+        ai::neat_genome::{DataForAi, NeatGenome}, asyncable::AsyncableStorage, color::Color, color_matrix::ColorMatrix, components::{
             collider::{Collider, ColliderPartDebug, CollisionResult},
             physics::Physics,
             world::World,
-        }, hash_map::HashMap, input::input::Input, scene::{EmptyScene, Scene}, threading_provider::Thread, v2::V2,
+        }, hash_map::HashMap, input::{input::Input, key::KEYS_LENGTH}, scene::{EmptyScene, Scene}, threading_provider::Thread, v2::V2,
     }, scenes::menu::menu_scene::MenuScene,
 };
 extern crate alloc;
@@ -14,6 +14,10 @@ use alloc::vec::Vec;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Instant;
+
+use crate::engine::ai::ai_input::AiInput;
+use spin::Mutex;
+
 pub const SCREEN_SIZE: u8 = 64;
 pub const SCREEN_SIZEF32: f32 = SCREEN_SIZE as f32;
 pub const SCREEN_SIZEUSIZE: usize = SCREEN_SIZE as usize;
@@ -22,7 +26,12 @@ pub type ActorId = u16;
 
 pub type SceneFactory = Box<dyn FnOnce() -> Box<dyn Scene> + Send + Sync>;
 
-static SCENE_CHANNEL: Channel<CriticalSectionRawMutex, SceneFactory, 1> = Channel::new();
+static SCENE_CHANNEL: Channel<CriticalSectionRawMutex, (SceneFactory, Option<NeatGenome>), 1> = Channel::new();
+
+struct AiState {
+    genome: NeatGenome,
+    held: Arc<Mutex<[bool; KEYS_LENGTH as usize]>>,
+}
 
 pub struct Engine {
     pub delta_time: f32,
@@ -34,6 +43,8 @@ pub struct Engine {
     screen: ColorMatrix,
     overlaps: HashMap<ActorId, Vec<ActorId>>,
     collisions: HashMap<ActorId, Vec<(ActorId, CollisionResult)>>,
+    ai_state: Option<AiState>,
+    p1_backup: Option<Box<dyn Input>>,
 }
 
 impl Engine {
@@ -52,6 +63,8 @@ impl Engine {
             screen: ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none()),
             overlaps: HashMap::new(),
             collisions: HashMap::new(),
+            ai_state: None,
+            p1_backup: None,
         }
     }
 
@@ -96,9 +109,12 @@ impl Engine {
         self.delta_time = delta_time;
 
         let receiver = SCENE_CHANNEL.receiver();
-        if let Ok(factory) = receiver.try_receive() {
-            self.change_scene(factory);
+        if let Ok((scene_factory, p1_genome)) = receiver.try_receive() {
+            self.set_ai_player(p1_genome);
+            self.change_scene(scene_factory);
         }
+
+        self.tick_ai_player();
 
         let frame: ColorMatrix;
 
@@ -127,10 +143,35 @@ impl Engine {
             self.combine_color_matrixes(frame);
             on_frame_finished(&self.screen);
 
-            // for input in &mut self.inputs {
             self.inputs[0].as_mut().late_update(delta_time);
             self.inputs[1].as_mut().late_update(delta_time);
-            // }
+        }
+    }
+
+    fn set_ai_player(&mut self, genome: Option<NeatGenome>) {
+        match genome {
+            Some(g) => {
+                let held = Arc::new(Mutex::new([false; KEYS_LENGTH as usize]));
+                let backup = core::mem::replace(&mut self.inputs[1], Box::new(AiInput::new(held.clone())));
+                self.p1_backup = Some(backup);
+                self.ai_state = Some(AiState { genome: g, held });
+            }
+            None => {
+                if let Some(backup) = self.p1_backup.take() {
+                    self.inputs[1] = backup;
+                }
+                self.ai_state = None;
+            }
+        }
+    }
+
+    fn tick_ai_player(&mut self) {
+        if let Some(state) = &mut self.ai_state {
+            let data = self.current_scene.get_data_for_ai();
+            if !data.inputs[1].is_empty() {
+                let outputs = state.genome.activate(data.inputs[1].clone());
+                *state.held.lock() = ai_outputs_to_keys(&outputs);
+            }
         }
     }
 
@@ -158,12 +199,21 @@ impl Engine {
         self.current_scene.get_data_for_ai()
     }
 
-    pub fn is_game_over(&self)->bool{
+    pub fn is_game_over(&self) -> bool {
         self.current_scene.is_game_over()
     }
 }
 
-pub fn open_scene(factory: SceneFactory) {
+fn ai_outputs_to_keys(outputs: &[f64]) -> [bool; KEYS_LENGTH as usize] {
+    let mut keys = [false; KEYS_LENGTH as usize];
+    if let Some(&v) = outputs.first() {
+        keys[2] = v > 0.5;
+        keys[3] = v < 0.5;
+    }
+    keys
+}
+
+pub fn open_scene(factory: SceneFactory, p1_genome: Option<NeatGenome>) {
     let sender = SCENE_CHANNEL.sender();
-    sender.try_send(factory).ok();
+    sender.try_send((factory, p1_genome)).ok();
 }

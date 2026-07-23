@@ -10,6 +10,7 @@ use crate::{
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
         engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
+        ai::neat_genome::NeatGenome,
         hash_map::HashMap,
         input::{input::Input, key::Key},
         scene::Scene,
@@ -47,6 +48,7 @@ pub struct ControlsScene {
     pages: Vec<Vec<ControlsData>>,
     current_page_index: u8,
     next_scene: SceneFactory,
+    next_p1_genome: Option<NeatGenome>,
     #[allow(dead_code)]
     lines_per_page: u8,
     print_page_timer_seconds: f32,
@@ -83,9 +85,8 @@ impl Scene for ControlsScene {
         // );
 
         if self.can_proceed && (inputs[0].is_any_key_down() || inputs[1].is_any_key_down()) {
-            // println!("[ControlsScene] opening next scene");
             let factory = core::mem::replace(&mut self.next_scene, Box::new(|| Box::new(MenuScene::new())));
-            open_scene(factory);
+            open_scene(factory, self.next_p1_genome.take());
         }
     }
 
@@ -154,7 +155,7 @@ impl Scene for ControlsScene {
 }
 
 impl ControlsScene {
-    pub fn new(next_scene_name: &str, next_scene: SceneFactory) -> Self {
+    pub fn new(next_scene_name: &str, next_scene: SceneFactory, next_p1_genome: Option<NeatGenome>) -> Self {
         let lines_per_page = (SCREEN_SIZE / 2 - 5) / (BUTTON_SIZE + 1);
         Self {
             can_proceed: false,
@@ -167,6 +168,7 @@ impl ControlsScene {
             // current_text_actors: Vec::new(),
             current_page_index: 0,
             next_scene,
+            next_p1_genome,
             lines_per_page,
             print_page_timer_seconds: 0.0,
             allow_proceeding_timer_sec: 2.0,

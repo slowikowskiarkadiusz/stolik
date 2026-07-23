@@ -10,6 +10,7 @@ dependencies = [
  "desktop_main",
  "minifb",
  "rand",
+ "spin",
 ]
 
 [[package]]

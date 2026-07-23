@@ -1,4 +1,6 @@
-use std::{fs, io, ptr::write};
+extern crate alloc;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 pub struct AiConfig {
     pub game_name: String,
@@ -40,8 +42,9 @@ impl AiConfig {
         }
     }
 
-    pub fn save_bytes(game_name: &str, bytes: Vec<u8>) -> io::Result<()> {
+    #[cfg(feature = "std")]
+    pub fn save_bytes(game_name: &str, bytes: Vec<u8>) -> std::io::Result<()> {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/neat_genomes");
-        fs::write(format!("{dir}/best_{game_name}.bin"), bytes)
+        std::fs::write(format!("{dir}/best_{game_name}.bin"), bytes)
     }
 }

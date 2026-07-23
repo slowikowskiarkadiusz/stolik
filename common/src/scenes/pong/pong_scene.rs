@@ -46,8 +46,6 @@ pub struct PongScene {
     can_bounce: bool,
     do_play: bool,
     rng: SmallRng,
-    play_against_ai: bool,
-
     data_for_ai: DataForAi,
 }
 
@@ -60,7 +58,6 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, screen_size - 4.0 * size_factor),
                 V2::new(PADDLE_WIDTH as f32, 1.0) * size_factor,
-                // Color::white(),
                 Some(ColliderType::Blocking),
                 Some("paddle1"),
             )),
@@ -68,7 +65,6 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, 3.0 * size_factor),
                 V2::new(PADDLE_WIDTH as f32, 1.0) * size_factor,
-                // Color::white(),
                 Some(ColliderType::Blocking),
                 Some("paddle2"),
             )),
@@ -78,7 +74,6 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, -4.0 * size_factor),
                 V2::new(screen_size, 10.0),
-                // Color::none(),
                 Some(ColliderType::Overlapping),
                 Some("score_zone1"),
             )),
@@ -86,7 +81,6 @@ impl Scene for PongScene {
                 world,
                 V2::new(screen_size / 2.0, screen_size + 4.0 * size_factor),
                 V2::new(screen_size, 10.0),
-                // Color::none(),
                 Some(ColliderType::Overlapping),
                 Some("score_zone2"),
             )),
@@ -95,12 +89,9 @@ impl Scene for PongScene {
             world,
             V2::one() * screen_size / 2.0,
             V2::one() * 2.0 * size_factor,
-            // Color::white(),
             Some(ColliderType::Blocking),
             Some("ball"),
         ));
-
-        // self.print_score(world);
 
         self.reset_ball(world);
     }
@@ -145,10 +136,9 @@ impl Scene for PongScene {
             if self.score.iter().any(|x| x == &MAX_SCORE) {
                 self.do_play = false;
                 print_victory_text(&mut result, if self.score[0] > self.score[1] { 1 } else { 2 }, camera, true);
-                let play_against_ai = self.play_against_ai;
                 add_asyncable(
                     Box::new(move |_, _| {
-                        open_scene(Box::new(move || Box::new(PongScene::new(play_against_ai))));
+                        open_scene(Box::new(|| Box::new(PongScene::new())), None);
                     }),
                     10.0,
                     AsyncableType::Timeout,
@@ -196,7 +186,7 @@ impl Scene for PongScene {
 }
 
 impl PongScene {
-    pub fn new(play_against_ai: bool) -> Self {
+    pub fn new() -> Self {
         Self {
             score: [0, 0],
             paddle: [None, None],
@@ -210,8 +200,6 @@ impl PongScene {
             can_bounce: true,
             do_play: true,
             rng: SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()),
-            play_against_ai: play_against_ai,
-
             data_for_ai: DataForAi {
                 inputs: [Vec::new(), Vec::new()],
                 points: [0.0, 0.0],
@@ -235,7 +223,6 @@ impl PongScene {
     }
 
     fn bounce_off_paddle(&mut self, overlaps: &HashMap<u16, Vec<u16>>, world: &mut World) {
-        // TODO dobrze wiadomo kto bedzie kolejny odbijal pilke wiec nie ma sensu robic loopa tutaj
         for i in 0..2 {
             if overlaps.contains_key(&self.ball.unwrap()) && overlaps[&self.ball.unwrap()].contains(&self.paddle[i].unwrap()) {
                 self.data_for_ai.points[i] += 1.0;
@@ -254,7 +241,6 @@ impl PongScene {
                 );
 
                 self.ball_speed = new_ball_speed;
-
                 self.ball_speed_multiplier = f32::min(self.ball_speed_multiplier + 0.1, 5.0);
             }
         }
@@ -269,14 +255,9 @@ impl PongScene {
                 ball_transform.center.x = screen_size - ball_transform.size.x / 2.0 - 0.1;
                 self.ball_speed.x *= -1.0;
                 self.can_bounce = false;
-                // TODO timeout
-                // engine::set_timeout([this]() { canBounce = true; }, 1000);
             } else if ball_transform.center.x - ball_transform.size.x / 2.0 <= 0.0 {
                 self.ball_speed.x *= -1.0;
                 self.can_bounce = false;
-                // ball_transform.center.x = 0.1;
-                // TODO timeout
-                // engine::set_timeout([this]() { canBounce = true; }, 1000);
             }
         }
     }
@@ -293,11 +274,9 @@ impl PongScene {
 
         if &ball.center.y < &p1_zone.center.y {
             self.score[1] += 1;
-            // self.data_for_ai.points[0] -= 10.0;
             scored = true;
         } else if &ball.center.y > &p2_zone.center.y {
             self.score[0] += 1;
-            // self.data_for_ai.points[1] -= 10.0;
             scored = true;
         }
 
@@ -307,43 +286,15 @@ impl PongScene {
     }
 
     fn handle_input(&mut self, inputs: [&Box<dyn Input + 'static>; 2], world: &mut World, delta_time: f32) {
-        // paddle[0] = P1_COLOR (bottom): P1 keys in pvp, AI in ai mode
-        if self.play_against_ai {
-            if let Some(ball_id) = self.ball
-                && let Some(ball_transform) = world.get_transform(&ball_id)
-                && let Some(paddle_p1_id) = self.paddle[0]
-                && let Some(paddle_p1_transform) = world.get_transform(&paddle_p1_id)
-            {
-                PongScene::move_paddle(
-                    &paddle_p1_id,
-                    world,
-                    if ball_transform.center.x < paddle_p1_transform.center.x - 1.0 {
-                        -1.0
-                    } else {
-                        1.0
-                    } * PADDLE_SPEED
-                        * self.size_factor
-                        * delta_time,
-                );
-            }
-        } else if inputs[0].is_key_press(Key::Left) ^ inputs[0].is_key_press(Key::Right) {
-            if let Some(paddle_p1_id) = self.paddle[0] {
-                PongScene::move_paddle(
-                    &paddle_p1_id,
-                    world,
-                    if inputs[0].is_key_press(Key::Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
-                );
-            }
-        }
-
-        // paddle[1] = P2_COLOR/orange (top): always P2 keys
-        if inputs[1].is_key_press(Key::Left) ^ inputs[1].is_key_press(Key::Right) {
-            if let Some(paddle_p2_id) = self.paddle[1] {
-                PongScene::move_paddle(
-                    &paddle_p2_id,
-                    world,
-                    if inputs[1].is_key_press(Key::Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
-                );
+        for i in 0..2 {
+            if inputs[i].is_key_press(Key::Left) ^ inputs[i].is_key_press(Key::Right) {
+                if let Some(paddle_id) = self.paddle[i] {
+                    PongScene::move_paddle(
+                        &paddle_id,
+                        world,
+                        if inputs[i].is_key_press(Key::Left) { -1.0 } else { 1.0 } * PADDLE_SPEED * self.size_factor * delta_time,
+                    );
+                }
             }
         }
     }
@@ -360,14 +311,8 @@ impl PongScene {
             if self.do_play {
                 self.ball_speed_multiplier = ORIGINAL_BALL_SPEED_MULTIPLIER;
                 self.ball_speed = V2::new(
-                    //TODO
-                    // 0.5,
                     self.rng.gen_range(0.0..1.0) * 2.0 * ORIGINAL_BALL_SPEED - ORIGINAL_BALL_SPEED,
-                    if self.rng.gen_range(0.0..1.0) > 0.5 {
-                        ORIGINAL_BALL_SPEED
-                    } else {
-                        -ORIGINAL_BALL_SPEED
-                    },
+                    if self.rng.gen_range(0.0..1.0) > 0.5 { ORIGINAL_BALL_SPEED } else { -ORIGINAL_BALL_SPEED },
                 );
             } else {
                 self.ball_speed_multiplier = 0.0;

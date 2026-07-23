@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 rand = { version = "0.8", features = ["small_rng"] }
+spin = { version = "0.9", default-features = false, features = ["mutex"] }
 common = { path = "../common", features = ["std"] }
 desktop_main = { path = "../desktop_main" }
 minifb = "0.28.0"
