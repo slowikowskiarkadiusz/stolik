@@ -1,20 +1,11 @@
 use crate::{
     engine::{
-        asyncable::AsyncableStorage,
-        color::Color,
-        color_matrix::ColorMatrix,
-        components::{
+        ai::neat_genome::DataForAi, asyncable::AsyncableStorage, color::Color, color_matrix::ColorMatrix, components::{
             collider::{Collider, ColliderPartDebug, CollisionResult},
             physics::Physics,
             world::World,
-        },
-        hash_map::HashMap,
-        input::input::Input,
-        scene::{EmptyScene, Scene},
-        threading_provider::Thread,
-        v2::V2,
-    },
-    scenes::menu::menu_scene::MenuScene,
+        }, hash_map::HashMap, input::input::Input, scene::{EmptyScene, Scene}, threading_provider::Thread, v2::V2,
+    }, scenes::menu::menu_scene::MenuScene,
 };
 extern crate alloc;
 use alloc::boxed::Box;
@@ -163,8 +154,12 @@ impl Engine {
         self.current_scene.as_mut().init(&mut self.world);
     }
 
-    pub fn get_scene_ai_inputs(&self) -> [Vec<f64>; 2] {
-        self.current_scene.get_ai_inputs().inputs
+    pub fn get_scene_data_for_ai(&self) -> DataForAi {
+        self.current_scene.get_data_for_ai()
+    }
+
+    pub fn is_game_over(&self)->bool{
+        self.current_scene.is_game_over()
     }
 }
 

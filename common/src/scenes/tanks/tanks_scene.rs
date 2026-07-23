@@ -77,12 +77,20 @@ impl Scene for TanksScene {
         };
         let p2_blockers_slice: Vec<(V2, V2)> = p2_blockers.iter().filter_map(|x| *x).collect();
 
-        let spawn1 = w
-            .tank_p1
-            .tick(inputs[0].as_ref(), &w.obstacle, &p1_blockers_slice, w.bullet_p1.is_some(), delta_time);
-        let spawn2 = w
-            .tank_p2
-            .tick(inputs[1].as_ref(), &w.obstacle, &p2_blockers_slice, w.bullet_p2.is_some(), delta_time);
+        let spawn1 = w.tank_p1.tick(
+            inputs[0].as_ref(),
+            &w.obstacle,
+            &p1_blockers_slice,
+            w.bullet_p1.is_some(),
+            delta_time,
+        );
+        let spawn2 = w.tank_p2.tick(
+            inputs[1].as_ref(),
+            &w.obstacle,
+            &p2_blockers_slice,
+            w.bullet_p2.is_some(),
+            delta_time,
+        );
 
         if let Some(s) = spawn1 {
             w.bullet_p1 = Some(Bullet::new(s.pos, s.dir, s.level, true));
@@ -199,7 +207,11 @@ impl Scene for TanksScene {
     fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}
     fn on_collisions(&mut self, _: &HashMap<u16, Vec<(u16, CollisionResult)>>, _: &mut World, _: f32) {}
 
-    fn get_ai_inputs(&self) -> DataForAi {
+    fn get_data_for_ai(&self) -> DataForAi {
         todo!()
+    }
+
+    fn is_game_over(&self) -> bool {
+        self.current_scene.is_game_over()
     }
 }

@@ -1,7 +1,21 @@
 use crate::{
     engine::{
-        self, ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::{self, World}}, engine::ActorId, hash_map::HashMap, input::input::Input, scene::Scene, v2::V2,
-    }, scenes::{
+        self,
+        ai::neat_genome::DataForAi,
+        color::Color,
+        color_matrix::ColorMatrix,
+        components::{
+            camera::Camera,
+            collider::CollisionResult,
+            world::{self, World},
+        },
+        engine::ActorId,
+        hash_map::HashMap,
+        input::input::Input,
+        scene::Scene,
+        v2::V2,
+    },
+    scenes::{
         tetris::{board::create_board_actor, world::TetrisWorld},
         utils::print_victory_text,
     },
@@ -41,12 +55,7 @@ impl Scene for TetrisScene {
         // println!("[Tetris] init done");
     }
 
-    fn tick(
-        &mut self,
-        inputs: [&Box<dyn Input>; 2],
-        _world: &mut World,
-        delta_time: f32,
-    ) {
+    fn tick(&mut self, inputs: [&Box<dyn Input>; 2], _world: &mut World, delta_time: f32) {
         let mut damage_for_p1 = 0;
         let mut damage_for_p2 = 0;
 
@@ -112,18 +121,16 @@ impl Scene for TetrisScene {
         result
     }
 
-    fn on_overlaps(
-        &mut self,
-        _: &engine::hash_map::HashMap<ActorId, Vec<ActorId>>,
-        _: &mut World,
-        _: f32,
-    ) {
-    }
+    fn on_overlaps(&mut self, _: &engine::hash_map::HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
-    fn get_ai_inputs(&self) -> DataForAi {
+    fn get_data_for_ai(&self) -> DataForAi {
         todo!()
+    }
+
+    fn is_game_over(&self) -> bool {
+        self.current_scene.is_game_over()
     }
 }
 

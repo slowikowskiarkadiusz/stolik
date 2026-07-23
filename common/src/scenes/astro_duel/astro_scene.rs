@@ -3,8 +3,17 @@ use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     engine::{
-        ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, physics::Physics, world::World}, engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene}, hash_map::HashMap, input::input::Input, scene::Scene, v2::V2,
-    }, scenes::{
+        ai::neat_genome::DataForAi,
+        color::Color,
+        color_matrix::ColorMatrix,
+        components::{camera::Camera, collider::CollisionResult, physics::Physics, world::World},
+        engine::{ActorId, SCREEN_SIZE, SCREEN_SIZEF32, open_scene},
+        hash_map::HashMap,
+        input::input::Input,
+        scene::Scene,
+        v2::V2,
+    },
+    scenes::{
         menu::menu_scene::MenuScene,
         utils::{print_score, print_victory_text},
     },
@@ -14,7 +23,7 @@ use rand::{SeedableRng, rngs::SmallRng};
 use super::{
     astro_obstacle::{AstroObstacleMap, BOARD_CELLS, CELL_SIZEF32},
     bullet::Bullet,
-    power_ups::{reflector, mine::PlacedMine, ray_gun::RayGunBeam, power_up::PowerUp},
+    power_ups::{mine::PlacedMine, power_up::PowerUp, ray_gun::RayGunBeam, reflector},
     ship::{Ship, ShipAction},
 };
 
@@ -90,9 +99,7 @@ impl AstroDuelScene {
     }
 
     fn picking_up_power_ups(&mut self, overlaps: &HashMap<u16, Vec<u16>>, world: &mut World) {
-        let power_up_ids: Vec<(ActorId, usize)> = self.power_ups.iter().enumerate()
-            .map(|(i, pu)| (pu.actor_id, i))
-            .collect();
+        let power_up_ids: Vec<(ActorId, usize)> = self.power_ups.iter().enumerate().map(|(i, pu)| (pu.actor_id, i)).collect();
 
         let mut picked_power_up: Option<(usize, bool)> = None; // (power_up_idx, is_p1)
         'power_up_outer: for &(power_up_actor, power_up_idx) in &power_up_ids {
@@ -159,8 +166,16 @@ impl Scene for AstroDuelScene {
             None => return,
         };
 
-        let actions1 = self.ship_p1.as_mut().map(|s| s.tick(inputs[0].as_ref(), world, obstacle, delta_time)).unwrap_or_default();
-        let actions2 = self.ship_p2.as_mut().map(|s| s.tick(inputs[1].as_ref(), world, obstacle, delta_time)).unwrap_or_default();
+        let actions1 = self
+            .ship_p1
+            .as_mut()
+            .map(|s| s.tick(inputs[0].as_ref(), world, obstacle, delta_time))
+            .unwrap_or_default();
+        let actions2 = self
+            .ship_p2
+            .as_mut()
+            .map(|s| s.tick(inputs[1].as_ref(), world, obstacle, delta_time))
+            .unwrap_or_default();
 
         if self.death_timer.is_none() {
             for action in actions1.into_iter().chain(actions2.into_iter()) {
@@ -277,16 +292,53 @@ impl Scene for AstroDuelScene {
         let p1_center = Self::ship_center(&self.ship_p1, world);
         let p2_center = Self::ship_center(&self.ship_p2, world);
 
-        PlacedMine::apply(&mut self.placed_mines, p1_center, p2_center, &mut self.ship_p1, &mut self.ship_p2, &mut self.score, &mut self.winner, &mut self.game_over_timer, &mut self.death_timer);
+        PlacedMine::apply(
+            &mut self.placed_mines,
+            p1_center,
+            p2_center,
+            &mut self.ship_p1,
+            &mut self.ship_p2,
+            &mut self.score,
+            &mut self.winner,
+            &mut self.game_over_timer,
+            &mut self.death_timer,
+        );
 
-        RayGunBeam::apply(&mut self.ray_gun_blasts, p1_center, p2_center, &mut self.ship_p1, &mut self.ship_p2, &mut self.score, &mut self.winner, &mut self.game_over_timer, &mut self.death_timer);
+        RayGunBeam::apply(
+            &mut self.ray_gun_blasts,
+            p1_center,
+            p2_center,
+            &mut self.ship_p1,
+            &mut self.ship_p2,
+            &mut self.score,
+            &mut self.winner,
+            &mut self.game_over_timer,
+            &mut self.death_timer,
+        );
 
-        Bullet::apply_all(&mut self.bullets, overlaps, world, p1_id, p2_id, &mut self.obstacle, &mut self.ship_p1, &mut self.ship_p2, &mut self.score, &mut self.winner, &mut self.game_over_timer, &mut self.death_timer);
+        Bullet::apply_all(
+            &mut self.bullets,
+            overlaps,
+            world,
+            p1_id,
+            p2_id,
+            &mut self.obstacle,
+            &mut self.ship_p1,
+            &mut self.ship_p2,
+            &mut self.score,
+            &mut self.winner,
+            &mut self.game_over_timer,
+            &mut self.death_timer,
+        );
     }
 
     fn on_collisions(&mut self, _: &HashMap<u16, Vec<(u16, CollisionResult)>>, _: &mut World, _: f32) {}
 
-    fn get_ai_inputs(&self) -> DataForAi {
+    fn get_data_for_ai(&self) -> DataForAi {
         todo!()
+    }
+
+    fn is_game_over(&self) -> bool {
+        self.current_scene.is_game_over()
     }
 }

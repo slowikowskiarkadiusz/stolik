@@ -3,13 +3,21 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
 use crate::engine::{
-    ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{
+    ai::neat_genome::DataForAi,
+    color::Color,
+    color_matrix::ColorMatrix,
+    components::{
         camera::Camera,
         collider::{Collider, ColliderPart, CollisionResult},
         physics::Physics,
         transform::Transform,
         world::World,
-    }, engine::{ActorId, SCREEN_SIZEF32}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2,
+    },
+    engine::{ActorId, SCREEN_SIZEF32},
+    hash_map::HashMap,
+    input::{input::Input, key::Key},
+    scene::Scene,
+    v2::V2,
 };
 use alloc::vec;
 
@@ -181,8 +189,12 @@ impl Scene for MarioScene {
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
-    fn get_ai_inputs(&self) -> DataForAi {
+    fn get_data_for_ai(&self) -> DataForAi {
         todo!()
+    }
+
+    fn is_game_over(&self) -> bool {
+        self.current_scene.is_game_over()
     }
 }
 

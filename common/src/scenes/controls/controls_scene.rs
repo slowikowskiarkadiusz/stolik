@@ -4,8 +4,18 @@ use embassy_sync::lazy_lock::LazyLock;
 // use esp_println::println;
 use crate::{
     engine::{
-        actor::{arrow_actor::render_arrow, rectangle_actor::create_rectangle_actor, text::render_text}, ai::neat_genome::DataForAi, color::Color, color_matrix::ColorMatrix, components::{camera::Camera, collider::CollisionResult, world::World}, engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2,
-    }, scenes::{controls::button_icon_actor::make_button_matrix, menu::menu_scene::MenuScene},
+        actor::{arrow_actor::render_arrow, rectangle_actor::create_rectangle_actor, text::render_text},
+        ai::neat_genome::DataForAi,
+        color::Color,
+        color_matrix::ColorMatrix,
+        components::{camera::Camera, collider::CollisionResult, world::World},
+        engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
+        hash_map::HashMap,
+        input::{input::Input, key::Key},
+        scene::Scene,
+        v2::V2,
+    },
+    scenes::{controls::button_icon_actor::make_button_matrix, menu::menu_scene::MenuScene},
 };
 
 static BUTTON_SIZE: u8 = 5;
@@ -134,8 +144,12 @@ impl Scene for ControlsScene {
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
-    fn get_ai_inputs(&self) -> DataForAi {
+    fn get_data_for_ai(&self) -> DataForAi {
         todo!()
+    }
+
+    fn is_game_over(&self) -> bool {
+        self.current_scene.is_game_over()
     }
 }
 

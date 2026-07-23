@@ -39,8 +39,7 @@ enum NodeType {
 pub struct NeatGenome {
     nodes: BTreeMap<Id, NodeType>,
     connections: Vec<Connection>,
-    fitness: f64,
-    adjusted_fitness: f64,
+    pub fitness: f64,
     species_id: Id,
 
     inputs_count: u32,
@@ -99,7 +98,6 @@ impl NeatGenome {
             nodes: input_nodes,
             connections,
             fitness: 0.0,
-            adjusted_fitness: 0.0,
             species_id: 0,
             inputs_count,
             outputs_count,
@@ -327,7 +325,6 @@ fn bara_bara(parent1: &NeatGenome, parent2: &NeatGenome, rng: &mut SmallRng) -> 
         nodes: nodes,
         connections: new_connections,
         fitness: 0.0,
-        adjusted_fitness: 0.0,
         species_id: 0,
         inputs_count: parent1.inputs_count,
         outputs_count: parent1.outputs_count,

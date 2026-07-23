@@ -182,9 +182,12 @@ impl Scene for PongScene {
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
-    fn get_ai_inputs(&self) -> DataForAi {
-        // self.ai_inputs
-        todo!()
+    fn get_data_for_ai(&self) -> DataForAi {
+        self.data_for_ai
+    }
+
+    fn is_game_over(&self) -> bool {
+        self.current_scene.is_game_over()
     }
 }
 
