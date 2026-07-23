@@ -4,6 +4,7 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
 use crate::engine::{
+    ai::neat_genome::DataForAi,
     color_matrix::ColorMatrix,
     components::{camera::Camera, collider::CollisionResult, world::World},
     engine::ActorId,
@@ -17,7 +18,7 @@ pub trait Scene {
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix;
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, delta_time: f32);
     fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32);
-    fn get_ai_inputs(&self) -> [Vec<f64>; 2];
+    fn get_ai_inputs(&self) -> DataForAi;
 }
 
 pub struct EmptyScene;
@@ -49,7 +50,7 @@ impl Scene for EmptyScene {
         todo!()
     }
 
-    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+    fn get_ai_inputs(&self) -> DataForAi {
         todo!()
     }
 }

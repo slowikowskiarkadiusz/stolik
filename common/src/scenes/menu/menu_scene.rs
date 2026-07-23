@@ -139,12 +139,8 @@ impl Scene for MenuScene {
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
-    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+    fn get_ai_inputs(&self) -> DataForAi {
         [Vec::new(), Vec::new()]
-    }
-
-    fn set_ai_outputs(&self, data: [Vec<f64>; 2]) {
-        todo!()
     }
 }
 

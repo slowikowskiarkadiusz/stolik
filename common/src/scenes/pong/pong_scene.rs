@@ -5,6 +5,7 @@ use rand::{Rng, SeedableRng, rngs::SmallRng};
 use crate::{
     engine::{
         actor::rectangle_actor::create_rectangle_actor,
+        ai::neat_genome::DataForAi,
         asyncable::{AsyncableType, add_asyncable},
         color::Color,
         color_matrix::ColorMatrix,
@@ -47,7 +48,7 @@ pub struct PongScene {
     rng: SmallRng,
     play_against_ai: bool,
 
-    ai_inputs: [Vec<f64>; 2],
+    data_for_ai: DataForAi,
 }
 
 impl Scene for PongScene {
@@ -181,7 +182,7 @@ impl Scene for PongScene {
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
-    fn get_ai_inputs(&self) -> [Vec<f64>; 2] {
+    fn get_ai_inputs(&self) -> DataForAi {
         self.ai_inputs
     }
 }
@@ -203,7 +204,11 @@ impl PongScene {
             rng: SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()),
             play_against_ai: play_against_ai,
 
-            ai_inputs: [Vec::new(), Vec::new()],
+            data_for_ai: DataForAi {
+                inputs: [Vec::new(), Vec::new()],
+                points: [0.0, 0.0],
+                is_gameover: false,
+            },
         }
     }
 
@@ -225,6 +230,7 @@ impl PongScene {
         // TODO dobrze wiadomo kto bedzie kolejny odbijal pilke wiec nie ma sensu robic loopa tutaj
         for i in 0..2 {
             if overlaps.contains_key(&self.ball.unwrap()) && overlaps[&self.ball.unwrap()].contains(&self.paddle[i].unwrap()) {
+                self.data_for_ai.points[i] += 1.0;
                 self.can_collide[i] = false;
                 self.can_bounce = true;
                 let ball_transform = &world.get_transform(&self.ball.unwrap()).unwrap();
@@ -275,9 +281,11 @@ impl PongScene {
 
         if &ball.center.y < &p1_zone.center.y {
             self.score[1] += 1;
+            self.data_for_ai.points[0] -= 10.0;
             scored = true;
         } else if &ball.center.y > &p2_zone.center.y {
             self.score[0] += 1;
+            self.data_for_ai.points[1] -= 10.0;
             scored = true;
         }
 
@@ -378,7 +386,7 @@ impl PongScene {
                 p1_inputs.push(ball_transform.center.y as f64);
             }
 
-            self.ai_inputs = [p0_inputs, p1_inputs];
+            self.data_for_ai.inputs = [p0_inputs, p1_inputs];
         }
     }
 }

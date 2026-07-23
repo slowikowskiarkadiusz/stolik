@@ -36,6 +36,8 @@ fn main() {
         );
         let on_frame_func: Arc<dyn Fn(&Matrix<Color>) + Send + Sync> = Arc::new(|mat: &ColorMatrix| {});
 
+        let loop_cloned_input_state = input_state.clone();
+
         engine.ensure_scene();
 
         loop {
@@ -45,6 +47,9 @@ fn main() {
             population_index += 1;
             let p1_outputs = population[population_index].activate(ai_data[1]);
             population_index += 1;
+
+            let a = loop_cloned_input_state.lock().as_mut().unwrap();
+            a[Key::A] = (true, true);
 
             engine.tick_frame(1.00 / 33.0, &on_frame_func);
             engine.input.as_mut().late_update(dt);

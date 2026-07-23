@@ -11,6 +11,12 @@ use crate::engine::ai::innovation_tracker::{get_innovation_id, get_next_node_id}
 pub type Id = u32;
 pub type AtomicId = AtomicU32;
 
+pub struct DataForAi {
+    pub inputs: [Vec<f64>; 2],
+    pub points: [f64; 2],
+    pub is_gameover: bool,
+}
+
 #[derive(Clone, Copy)]
 struct Connection {
     from: Id,
