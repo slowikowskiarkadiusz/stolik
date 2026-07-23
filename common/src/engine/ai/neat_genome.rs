@@ -299,6 +299,93 @@ fn sigmoid(x: f64) -> f64 {
     1.0 / (1.0 + exp(-4.9 * x))
 }
 
+impl NeatGenome {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&self.inputs_count.to_le_bytes());
+        out.extend_from_slice(&self.outputs_count.to_le_bytes());
+
+        out.extend_from_slice(&(self.nodes.len() as u32).to_le_bytes());
+        for (&id, &node_type) in &self.nodes {
+            out.extend_from_slice(&id.to_le_bytes());
+            out.push(node_type as u8);
+        }
+
+        out.extend_from_slice(&(self.connections.len() as u32).to_le_bytes());
+        for conn in &self.connections {
+            out.extend_from_slice(&conn.from.to_le_bytes());
+            out.extend_from_slice(&conn.to.to_le_bytes());
+            out.extend_from_slice(&conn.weight.to_le_bytes());
+            out.push(conn.is_enabled as u8);
+            out.extend_from_slice(&conn.innovation.to_le_bytes());
+        }
+        out
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        let mut pos = 0usize;
+
+        macro_rules! read_u32 {
+            () => {{
+                let v = u32::from_le_bytes(bytes.get(pos..pos + 4)?.try_into().ok()?);
+                pos += 4;
+                v
+            }};
+        }
+        macro_rules! read_f64 {
+            () => {{
+                let v = f64::from_le_bytes(bytes.get(pos..pos + 8)?.try_into().ok()?);
+                pos += 8;
+                v
+            }};
+        }
+        macro_rules! read_u8 {
+            () => {{
+                let v = *bytes.get(pos)?;
+                pos += 1;
+                v
+            }};
+        }
+
+        let inputs_count = read_u32!();
+        let outputs_count = read_u32!();
+
+        let nodes_len = read_u32!();
+        let mut nodes = BTreeMap::new();
+        for _ in 0..nodes_len {
+            let id = read_u32!();
+            let node_type = match read_u8!() {
+                0 => NodeType::Input,
+                1 => NodeType::Output,
+                2 => NodeType::Hidden,
+                _ => NodeType::Bias,
+            };
+            nodes.insert(id, node_type);
+        }
+
+        let conns_len = read_u32!();
+        let mut connections = Vec::new();
+        for _ in 0..conns_len {
+            connections.push(Connection {
+                from: read_u32!(),
+                to: read_u32!(),
+                weight: read_f64!(),
+                is_enabled: read_u8!() != 0,
+                innovation: read_u32!(),
+            });
+        }
+
+        Some(Self {
+            nodes,
+            connections,
+            fitness: 0.0,
+            species_id: 0,
+            inputs_count,
+            outputs_count,
+        })
+    }
+}
+
 fn bara_bara(parent1: &NeatGenome, parent2: &NeatGenome, rng: &mut SmallRng) -> NeatGenome {
     let mut nodes = BTreeMap::<Id, NodeType>::new();
 

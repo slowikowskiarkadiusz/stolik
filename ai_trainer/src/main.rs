@@ -1,10 +1,17 @@
 use crate::ai_input::AiInput;
 use common::{
-    engine::{ai::neat_genome::NeatGenome, color_matrix::ColorMatrix, engine::Engine, input::key::KEYS_LENGTH},
+    engine::{
+        ai::{ai_config::AiConfig, neat_genome::NeatGenome},
+        color_matrix::ColorMatrix,
+        engine::Engine,
+        input::key::KEYS_LENGTH,
+    },
     scenes::pong::pong_scene::PongScene,
 };
 use rand::{SeedableRng, rngs::SmallRng};
 use std::{
+    env::{self, var},
+    fs,
     sync::{Arc, Mutex},
     thread::{self, JoinHandle},
 };
@@ -12,12 +19,30 @@ use std::{
 pub mod ai_input;
 
 const POPULATION_COUNT: usize = 10;
-const INPUT_COUNT: u32 = 3;
-const OUTPUT_COUNT: u32 = 1;
 
 fn main() {
+    let game = var("game");
+    let mut ai_config: AiConfig = match game {
+        Ok(game_name) => AiConfig::get(&game_name),
+        Err(err) => {
+            panic!("{}", err)
+        }
+    };
+
     let mut rng = SmallRng::from_entropy();
-    let mut population: Vec<NeatGenome> = (0..POPULATION_COUNT).map(|_| NeatGenome::new(INPUT_COUNT, OUTPUT_COUNT)).collect();
+    let mut population: Vec<NeatGenome> = if let Some(best) = NeatGenome::from_bytes(ai_config.bytes) {
+        let mut pop = vec![best.clone()];
+        while pop.len() < POPULATION_COUNT {
+            let mut genome = best.clone();
+            genome.mutate(&mut rng);
+            pop.push(genome);
+        }
+        pop
+    } else {
+        (0..POPULATION_COUNT)
+            .map(|_| NeatGenome::new(ai_config.input_count, ai_config.output_count))
+            .collect()
+    };
 
     let mut generation = 0u32;
     loop {
@@ -83,6 +108,8 @@ fn main() {
             "generation {}: top fitness: {:.2}  second: {:.2}",
             generation, pop[0].fitness, pop[1].fitness
         );
+
+        AiConfig::save_bytes(&ai_config.game_name, pop[0].to_bytes()).ok();
 
         let evolved = NeatGenome::reproduce(pop.drain(..).collect(), POPULATION_COUNT as u8, &mut rng);
         drop(pop);
