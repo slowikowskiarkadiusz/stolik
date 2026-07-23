@@ -4,10 +4,11 @@ use crate::{
         color::Color,
         color_matrix::ColorMatrix,
         components::{
-            collider::{Collider, ColliderPartDebug},
+            collider::{Collider, ColliderPartDebug, CollisionResult},
             physics::Physics,
             world::World,
         },
+        hash_map::HashMap,
         input::input::Input,
         scene::{EmptyScene, Scene},
         threading_provider::Thread,
@@ -40,6 +41,8 @@ pub struct Engine {
     pub inputs: [Box<dyn Input>; 2],
     asyncable_storage: AsyncableStorage,
     screen: ColorMatrix,
+    overlaps: HashMap<ActorId, Vec<ActorId>>,
+    collisions: HashMap<ActorId, Vec<(ActorId, CollisionResult)>>,
 }
 
 impl Engine {
@@ -56,6 +59,8 @@ impl Engine {
             inputs,
             asyncable_storage: AsyncableStorage::new(),
             screen: ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none()),
+            overlaps: HashMap::new(),
+            collisions: HashMap::new(),
         }
     }
 
@@ -120,14 +125,14 @@ impl Engine {
 
         {
             let mut_scene = self.current_scene.as_mut();
-            let collisions = Physics::update(&mut self.world, delta_time);
-            mut_scene.on_collisions(&collisions, &mut self.world, delta_time);
+            Physics::update(&mut self.world, delta_time, &mut self.collisions);
+            mut_scene.on_collisions(&self.collisions, &mut self.world, delta_time);
         }
 
         {
-            let overlaps = Collider::detect_overlaps(&self.world);
+            Collider::detect_overlaps(&self.world, &mut self.overlaps);
             let mut_scene = self.current_scene.as_mut();
-            mut_scene.on_overlaps(&overlaps, &mut self.world, delta_time);
+            mut_scene.on_overlaps(&self.overlaps, &mut self.world, delta_time);
             self.combine_color_matrixes(frame);
             on_frame_finished(&self.screen);
 

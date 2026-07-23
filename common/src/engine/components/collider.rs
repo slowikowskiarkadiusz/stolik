@@ -87,8 +87,8 @@ impl Collider {
         }
     }
 
-    pub fn detect_overlaps(world: &World) -> HashMap<u16, Vec<u16>> {
-        let mut dict = HashMap::<ActorId, Vec<ActorId>>::new();
+    pub fn detect_overlaps(world: &World, dict: &mut HashMap<u16, Vec<u16>>) {
+        dict.clear();
         let actors = world.get_actors();
         for (ai, first_actor) in actors.iter().enumerate() {
             for second_actor in &actors[ai + 1..] {
@@ -121,11 +121,10 @@ impl Collider {
                 }
             }
         }
-        dict
     }
 
-    pub fn detect_collisions(world: &World) -> HashMap<u16, Vec<(u16, CollisionResult)>> {
-        let mut dict = HashMap::<ActorId, Vec<(ActorId, CollisionResult)>>::new();
+    pub fn detect_collisions(world: &World, dict: &mut HashMap<u16, Vec<(u16, CollisionResult)>>) {
+        dict.clear();
         let actors = world.get_actors();
         for (ai, first_actor) in actors.iter().enumerate() {
             for second_actor in &actors[ai + 1..] {
@@ -173,7 +172,6 @@ impl Collider {
                 }
             }
         }
-        dict
     }
 
     pub fn is_empty(&self) -> bool {

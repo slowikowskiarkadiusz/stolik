@@ -56,19 +56,17 @@ impl Physics {
         g.y = value.y;
     }
 
-    pub fn update(world: &mut World, delta_time: f32) -> HashMap<u16, Vec<(u16, CollisionResult)>> {
+    pub fn update(world: &mut World, delta_time: f32, collisions: &mut HashMap<u16, Vec<(u16, CollisionResult)>>) {
         let actors: Vec<ActorId> = world.get_actors().iter().copied().collect();
-        let mut collisions: HashMap<u16, Vec<(u16, CollisionResult)>> = HashMap::new();
         Physics::apply_forces(&actors, world, delta_time);
         for _ in 0..ITERATIONS {
-            collisions = Collider::detect_collisions(world);
-            for res in &collisions {
+            Collider::detect_collisions(world, collisions);
+            for res in collisions.iter() {
                 for col in res.1 {
                     Physics::apply_impuls(&res.0, &col, world, delta_time);
                 }
             }
         }
-        collisions
     }
 
     fn apply_forces(actors: &Vec<ActorId>, world: &mut World, delta_time: f32) {
