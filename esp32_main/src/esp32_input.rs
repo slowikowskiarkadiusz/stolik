@@ -75,7 +75,6 @@ pub struct Esp32Input<'a> {
     keys_down: Vec<IoPin>,
     keys_up: Vec<IoPin>,
     keys_press: Vec<IoPin>,
-    last_expander_data: u8,
 }
 
 pub struct Esp32InputPinSetup<'a> {
@@ -144,7 +143,6 @@ impl<'a> Esp32Input<'a> {
             keys_down: Vec::new(),
             keys_up: Vec::new(),
             keys_press: Vec::new(),
-            last_expander_data: 0xFF,
         }
     }
 

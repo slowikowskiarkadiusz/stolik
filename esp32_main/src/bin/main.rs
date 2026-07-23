@@ -195,11 +195,25 @@ async fn hub75_task(
             fb = new_fb;
         }
 
-        let mut xfer = hub75.render(fb).map_err(|(e, _hub75)| e).expect("failed to start render!");
-        xfer.wait_for_done().await.expect("rendering wait_for_done failed!");
+        let mut xfer = match hub75.render(fb) {
+            Ok(x) => x,
+            Err((e, hub75_back)) => {
+                esp_println::println!("hub75 render start error: {:?}", e);
+                hub75 = hub75_back;
+                continue;
+            }
+        };
+        if let Err(e) = xfer.wait_for_done().await {
+            esp_println::println!("hub75 wait_for_done error: {:?}", e);
+            let (_, new_hub75) = xfer.wait();
+            hub75 = new_hub75;
+            continue;
+        }
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
-        result.expect("transfer failed");
+        if let Err(e) = result {
+            esp_println::println!("hub75 transfer error: {:?}", e);
+        }
 
         count += 1;
         const FPS_INTERVAL: Duration = Duration::from_secs(1);
