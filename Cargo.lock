@@ -9,6 +9,7 @@ dependencies = [
  "common",
  "desktop_main",
  "minifb",
+ "rand",
 ]
 
 [[package]]

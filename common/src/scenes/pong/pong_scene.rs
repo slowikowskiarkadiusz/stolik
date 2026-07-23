@@ -183,11 +183,15 @@ impl Scene for PongScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_data_for_ai(&self) -> DataForAi {
-        self.data_for_ai
+        DataForAi {
+            inputs: self.data_for_ai.inputs.clone(),
+            points: self.data_for_ai.points,
+            is_gameover: self.data_for_ai.is_gameover,
+        }
     }
 
     fn is_game_over(&self) -> bool {
-        self.current_scene.is_game_over()
+        !self.do_play
     }
 }
 
@@ -235,6 +239,10 @@ impl PongScene {
         for i in 0..2 {
             if overlaps.contains_key(&self.ball.unwrap()) && overlaps[&self.ball.unwrap()].contains(&self.paddle[i].unwrap()) {
                 self.data_for_ai.points[i] += 1.0;
+                println!("{} {}", i, self.data_for_ai.points[i]);
+                if self.data_for_ai.points[i] >= 100.0 {
+                    self.data_for_ai.is_gameover = true;
+                }
                 self.can_collide[i] = false;
                 self.can_bounce = true;
                 let ball_transform = &world.get_transform(&self.ball.unwrap()).unwrap();
@@ -285,11 +293,11 @@ impl PongScene {
 
         if &ball.center.y < &p1_zone.center.y {
             self.score[1] += 1;
-            self.data_for_ai.points[0] -= 10.0;
+            // self.data_for_ai.points[0] -= 10.0;
             scored = true;
         } else if &ball.center.y > &p2_zone.center.y {
             self.score[0] += 1;
-            self.data_for_ai.points[1] -= 10.0;
+            // self.data_for_ai.points[1] -= 10.0;
             scored = true;
         }
 

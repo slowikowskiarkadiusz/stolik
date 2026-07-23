@@ -36,6 +36,7 @@ enum NodeType {
     Bias,
 }
 
+#[derive(Clone)]
 pub struct NeatGenome {
     nodes: BTreeMap<Id, NodeType>,
     connections: Vec<Connection>,
@@ -47,17 +48,20 @@ pub struct NeatGenome {
 }
 
 impl NeatGenome {
-    pub fn reproduce(genomes: Vec<NeatGenome>, population_size: u8, rng: &mut SmallRng) -> Vec<NeatGenome> {
+    pub fn reproduce(mut genomes: Vec<NeatGenome>, population_size: u8, rng: &mut SmallRng) -> Vec<NeatGenome> {
+        genomes.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(core::cmp::Ordering::Equal));
+
         let mut new_population = Vec::<NeatGenome>::new();
-        let mut sorted: Vec<_> = genomes;
 
-        new_population.push(sorted.remove(0));
-        new_population.push(sorted.remove(1));
+        // elity — najlepsze 2 przechodzą bez zmian
+        new_population.push(genomes[0].clone());
+        new_population.push(genomes[1].clone());
 
-        for child_index in 0..population_size {
-            let first_parent = sorted.remove(tournament_select(&sorted, population_size / 3, rng));
-            let second_parent = sorted.remove(tournament_select(&sorted, population_size / 3, rng));
-            new_population.push(bara_bara(&first_parent, &second_parent, rng));
+        let tournament_size = (population_size / 3).max(2);
+        while new_population.len() < population_size as usize {
+            let a = tournament_select(&genomes, tournament_size, rng);
+            let b = tournament_select(&genomes, tournament_size, rng);
+            new_population.push(bara_bara(&genomes[a], &genomes[b], rng));
         }
 
         new_population
@@ -121,7 +125,7 @@ impl NeatGenome {
             .map(|f| (f.0.clone(), f.1.clone()))
             .collect();
 
-        for i in 0..inputs.len() {
+        for i in 0..inputs.len().min(input_nodes.len()) {
             node_values.insert(input_nodes[i].0, inputs[i]);
         }
 
@@ -133,7 +137,7 @@ impl NeatGenome {
             let mut sum: f64 = 0.0;
 
             for connection in self.connections.iter().filter(|f| f.to == node_id && f.is_enabled) {
-                sum += node_values[&connection.from] * connection.weight;
+                sum += node_values.get(&connection.from).copied().unwrap_or(0.0) * connection.weight;
             }
 
             node_values.insert(node_id, sigmoid(sum));
@@ -245,11 +249,11 @@ impl NeatGenome {
             false
         }
 
-        let non_inputs: Vec<&Id> = self.nodes.iter().filter(|f| f.1 != &NodeType::Input).map(|f| f.0).collect();
-        let node_from = non_inputs[rng.gen_range(0..non_inputs.len())];
-
         let non_outputs: Vec<&Id> = self.nodes.iter().filter(|f| f.1 != &NodeType::Output).map(|f| f.0).collect();
-        let node_to = non_outputs[rng.gen_range(0..non_outputs.len())];
+        let node_from = non_outputs[rng.gen_range(0..non_outputs.len())];
+
+        let non_inputs: Vec<&Id> = self.nodes.iter().filter(|f| f.1 != &NodeType::Input).map(|f| f.0).collect();
+        let node_to = non_inputs[rng.gen_range(0..non_inputs.len())];
 
         if node_from == node_to {
             return;
@@ -299,7 +303,7 @@ fn bara_bara(parent1: &NeatGenome, parent2: &NeatGenome, rng: &mut SmallRng) -> 
     let mut nodes = BTreeMap::<Id, NodeType>::new();
 
     let better = if parent1.fitness >= parent2.fitness { parent1 } else { parent2 };
-    let worse = if parent1.fitness >= parent2.fitness { parent2 } else { parent2 };
+    let worse = if parent1.fitness >= parent2.fitness { parent2 } else { parent1 };
 
     for better_node in &better.nodes {
         nodes.insert(better_node.0.clone(), better_node.1.clone());
@@ -313,7 +317,13 @@ fn bara_bara(parent1: &NeatGenome, parent2: &NeatGenome, rng: &mut SmallRng) -> 
         let new_connection = if let Some(matching) = find_matching
             && rng.gen_range(0..2) < 1
         {
-            matching.clone()
+            Connection {
+                from: connection.from,
+                to: connection.to,
+                weight: matching.weight,
+                is_enabled: matching.is_enabled,
+                innovation: connection.innovation,
+            }
         } else {
             connection.clone()
         };

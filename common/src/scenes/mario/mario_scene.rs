@@ -194,7 +194,7 @@ impl Scene for MarioScene {
     }
 
     fn is_game_over(&self) -> bool {
-        self.current_scene.is_game_over()
+        false
     }
 }
 

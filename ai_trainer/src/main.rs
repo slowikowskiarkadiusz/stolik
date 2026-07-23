@@ -1,117 +1,101 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-    thread,
-};
-
+use crate::ai_input::AiInput;
 use common::{
-    engine::{ai::neat_genome::NeatGenome, color_matrix::ColorMatrix, engine::Engine, input::key::KEYS_LENGTH, scene::Scene},
+    engine::{ai::neat_genome::NeatGenome, color_matrix::ColorMatrix, engine::Engine, input::key::KEYS_LENGTH},
     scenes::pong::pong_scene::PongScene,
 };
-use desktop_main::{desktop_input::DesktopInput, desktop_threading_provider::DesktopThread};
-use minifb::Key;
-
-use crate::ai_input::AiInput;
-
-const POPULATION_COUNT: usize = 10;
+use rand::{SeedableRng, rngs::SmallRng};
+use std::{
+    sync::{Arc, Mutex},
+    thread::{self, JoinHandle},
+};
 
 pub mod ai_input;
 
-struct AiTrainingConfig {
-    input_count: u32,
-    output_count: u32,
-    scene_fn: Box<dyn FnOnce() -> Box<dyn Scene> + Send + Sync>,
-}
+const POPULATION_COUNT: usize = 10;
+const INPUT_COUNT: u32 = 3;
+const OUTPUT_COUNT: u32 = 1;
 
 fn main() {
-    let setup = get_pong_config();
-    let population: Vec<NeatGenome> = (0..POPULATION_COUNT)
-        .map(|_| NeatGenome::new(setup.input_count, setup.output_count))
-        .collect();
+    let mut rng = SmallRng::from_entropy();
+    let mut population: Vec<NeatGenome> = (0..POPULATION_COUNT).map(|_| NeatGenome::new(INPUT_COUNT, OUTPUT_COUNT)).collect();
 
-    let population = Arc::new(Mutex::new(population));
+    let mut generation = 0u32;
+    loop {
+        let population_arc = Arc::new(Mutex::new(population));
+        let mut handles: Vec<JoinHandle<()>> = Vec::new();
 
-    let mut handles: Vec<JoinHandle<f64>> = Vec::new();
+        for pair_index in (0..POPULATION_COUNT).step_by(2) {
+            let population_arc = Arc::clone(&population_arc);
+            let handle = thread::spawn(move || {
+                let p0_held: Arc<Mutex<[bool; KEYS_LENGTH as usize]>> = Arc::new(Mutex::new([false; KEYS_LENGTH as usize]));
+                let p1_held: Arc<Mutex<[bool; KEYS_LENGTH as usize]>> = Arc::new(Mutex::new([false; KEYS_LENGTH as usize]));
 
-    for pair_index in (0..POPULATION_COUNT).step_by(2) {
-        let population = Arc::clone(&population);
+                let mut engine = Engine::new(
+                    [Box::new(AiInput::new(p0_held.clone())), Box::new(AiInput::new(p1_held.clone()))],
+                    Some(Box::new(PongScene::new(false))),
+                );
+                let on_frame: Arc<dyn Fn(&ColorMatrix) + Send + Sync> = Arc::new(|_: &ColorMatrix| {});
 
-        let handle = thread::spawn(move || {
-            let p0_input: Arc<Mutex<[bool; KEYS_LENGTH as usize]>> = Arc::new(Mutex::new([false; KEYS_LENGTH as usize]));
-            let p1_input: Arc<Mutex<[bool; KEYS_LENGTH as usize]>> = Arc::new(Mutex::new([false; KEYS_LENGTH as usize]));
+                engine.ensure_scene();
 
-            let mut engine = Engine::new(
-                [Box::new(AiInput::new(p0_input.clone())), Box::new(AiInput::new(p1_input.clone()))],
-                Some(Box::new(PongScene::new(false))),
-            );
+                loop {
+                    let ai_data = engine.get_scene_data_for_ai();
 
-            let on_frame_func: Arc<dyn Fn(&ColorMatrix) + Send + Sync> = Arc::new(|_mat: &ColorMatrix| {});
-            engine.ensure_scene();
+                    if ai_data.inputs[0].is_empty() || ai_data.inputs[1].is_empty() {
+                        engine.tick_frame(1.0 / 33.0, &on_frame);
+                        if engine.is_game_over() {
+                            break;
+                        }
+                        continue;
+                    }
 
-            main_loop = loop {
-                let ai_data = engine.get_scene_data_for_ai();
+                    let (p0_outputs, p1_outputs) = {
+                        let mut pop = population_arc.lock().unwrap_or_else(|e| e.into_inner());
+                        let p0_out = pop[pair_index].activate(ai_data.inputs[0].clone());
+                        pop[pair_index].fitness = ai_data.points[0];
+                        let p1_out = pop[pair_index + 1].activate(ai_data.inputs[1].clone());
+                        pop[pair_index + 1].fitness = ai_data.points[1];
+                        (p0_out, p1_out)
+                    };
 
-                let (p0_outputs, p1_outputs) = {
-                    let mut pop = population.lock().unwrap();
-                    let p0_outputs = pop[pair_index].activate(ai_data.inputs[0].clone());
-                    pop[pair_index].fitness = ai_data.points[0];
-                    let p1_outputs = pop[pair_index + 1].activate(ai_data.inputs[1].clone());
-                    pop[pair_index + 1].fitness = ai_data.points[1];
-                    (p0_outputs, p1_outputs)
-                };
+                    *p0_held.lock().unwrap() = keys_from_outputs(&p0_outputs);
+                    *p1_held.lock().unwrap() = keys_from_outputs(&p1_outputs);
 
-                *p0_input.lock().unwrap() = [
-                    false,
-                    false,
-                    p0_outputs[0] > 0.5,
-                    p0_outputs[0] < 0.5,
-                    false,
-                    false,
-                    false,
-                    false,
-                    false,
-                ];
-                *p1_input.lock().unwrap() = [
-                    false,
-                    false,
-                    p1_outputs[0] > 0.5,
-                    p1_outputs[0] < 0.5,
-                    false,
-                    false,
-                    false,
-                    false,
-                    false,
-                ];
+                    engine.tick_frame(1.0 / 33.0, &on_frame);
 
-                engine.tick_frame(1.0 / 33.0, &on_frame_func);
-
-                if engine.is_game_over() {
-                    break main_loop;
+                    if engine.is_game_over() {
+                        break;
+                    }
                 }
-            };
+            });
 
-            let (p0_fitness, p1_fitness) = {
-                let mut pop = population.lock().unwrap();
-                let p0_fitness = pop[pair_index].get_fitness();
-                let p1_fitness = pop[pair_index + 1].get_fitness();
-                (p0_fitness, p1_fitness)
-            };
+            handles.push(handle);
+        }
 
-            [p0_fitness, p1_fitness]
-        });
+        for handle in handles {
+            handle.join().unwrap();
+        }
 
-        handles.push(handle);
-    }
+        let mut pop = population_arc.lock().unwrap();
+        pop.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
 
-    for handle in handles {
-        handle.join().unwrap();
+        println!(
+            "generation {}: top fitness: {:.2}  second: {:.2}",
+            generation, pop[0].fitness, pop[1].fitness
+        );
+
+        let evolved = NeatGenome::reproduce(pop.drain(..).collect(), POPULATION_COUNT as u8, &mut rng);
+        drop(pop);
+        population = evolved;
+        generation += 1;
     }
 }
 
-fn get_pong_config() -> AiTrainingConfig {
-    AiTrainingConfig {
-        input_count: 2,
-        output_count: 1,
-        scene_fn: Box::new(|| Box::new(PongScene::new(false))),
+fn keys_from_outputs(outputs: &[f64]) -> [bool; KEYS_LENGTH as usize] {
+    let mut keys = [false; KEYS_LENGTH as usize];
+    if let Some(&v) = outputs.first() {
+        keys[2] = v > 0.5;
+        keys[3] = v < 0.5;
     }
+    keys
 }
