@@ -1,3 +1,5 @@
+use std::println;
+
 use crate::{
     engine::{
         self,
@@ -11,7 +13,7 @@ use crate::{
         },
         engine::ActorId,
         hash_map::HashMap,
-        input::input::Input,
+        input::{input::Input, key::KEYS_LENGTH},
         scene::Scene,
         v2::V2,
     },
@@ -40,6 +42,7 @@ pub struct TetrisScene {
 
 impl Scene for TetrisScene {
     fn init(&mut self, world: &mut World) {
+        // println!("Opening Tetris!");
         // println!("[Tetris] init start");
         let seed = SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()).next_u32();
 
@@ -126,11 +129,24 @@ impl Scene for TetrisScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_data_for_ai(&self) -> DataForAi {
-        todo!()
+        let p1_board = self.tetris_world.get_board(&self.p1_board_actor_id);
+        let p2_board = self.tetris_world.get_board(&self.p2_board_actor_id);
+        DataForAi {
+            inputs: [
+                p1_board.map(|b| b.get_data_for_ai()).unwrap_or_default(),
+                p2_board.map(|b| b.get_data_for_ai()).unwrap_or_default(),
+            ],
+            points: [
+                p1_board.map(|b| b.points).unwrap_or(0.0),
+                p2_board.map(|b| b.points).unwrap_or(0.0),
+            ],
+            is_gameover: self.is_player_dead > 0,
+            outputs_to_keys: tetris_outputs_to_keys,
+        }
     }
 
     fn is_game_over(&self) -> bool {
-        false
+        self.is_player_dead > 0
     }
 }
 
@@ -162,4 +178,17 @@ impl TetrisScene {
             print_victory_text(result, if is_p1 { 1 } else { 2 }, camera, true);
         }
     }
+}
+
+fn tetris_outputs_to_keys(outputs: &[f64]) -> [bool; KEYS_LENGTH as usize] {
+    let mut keys = [false; KEYS_LENGTH as usize];
+    if outputs.len() >= 5 {
+        keys[2] = outputs[0] < 0.4; // Left
+        keys[3] = outputs[0] > 0.6; // Right
+        keys[1] = outputs[1] > 0.5; // Up (hard drop)
+        keys[0] = outputs[2] > 0.5; // Down (fast drop)
+        keys[5] = outputs[3] > 0.5; // Blue (rotate right)
+        keys[6] = outputs[4] > 0.5; // Green (rotate left)
+    }
+    keys
 }

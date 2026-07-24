@@ -7,6 +7,7 @@ use crate::{
         actor::rectangle_actor::create_rectangle_actor,
         ai::neat_genome::DataForAi,
         asyncable::{AsyncableType, add_asyncable},
+        input::key::KEYS_LENGTH,
         color::Color,
         color_matrix::ColorMatrix,
         components::{
@@ -51,6 +52,7 @@ pub struct PongScene {
 
 impl Scene for PongScene {
     fn init(&mut self, world: &mut World) {
+        println!("Opening Pong!");
         let screen_size = SCREEN_SIZE as f32;
         let size_factor = screen_size / 32.0;
         self.paddle = [
@@ -177,6 +179,7 @@ impl Scene for PongScene {
             inputs: self.data_for_ai.inputs.clone(),
             points: self.data_for_ai.points,
             is_gameover: self.data_for_ai.is_gameover,
+            outputs_to_keys: pong_outputs_to_keys,
         }
     }
 
@@ -204,6 +207,7 @@ impl PongScene {
                 inputs: [Vec::new(), Vec::new()],
                 points: [0.0, 0.0],
                 is_gameover: false,
+                outputs_to_keys: pong_outputs_to_keys,
             },
         }
     }
@@ -346,4 +350,13 @@ impl PongScene {
             self.data_for_ai.inputs = [p0_inputs, p1_inputs];
         }
     }
+}
+
+fn pong_outputs_to_keys(outputs: &[f64]) -> [bool; KEYS_LENGTH as usize] {
+    let mut keys = [false; KEYS_LENGTH as usize];
+    if let Some(&v) = outputs.first() {
+        keys[2] = v > 0.5; // Left
+        keys[3] = v < 0.5; // Right
+    }
+    keys
 }

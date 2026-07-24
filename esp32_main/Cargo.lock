@@ -78,6 +78,7 @@ dependencies = [
  "esp-println",
  "libm",
  "rand",
+ "serde",
  "spin",
 ]
 

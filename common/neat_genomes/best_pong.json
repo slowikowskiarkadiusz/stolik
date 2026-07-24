@@ -1,0 +1,50 @@
+{
+  "nodes": {
+    "0": "Input",
+    "1": "Input",
+    "2": "Input",
+    "3": "Output",
+    "4": "Hidden"
+  },
+  "connections": [
+    {
+      "from": 4,
+      "to": 3,
+      "weight": 2.544186797602668,
+      "is_enabled": true,
+      "innovation": 11
+    },
+    {
+      "from": 1,
+      "to": 4,
+      "weight": 1.9035673788558136,
+      "is_enabled": true,
+      "innovation": 10
+    },
+    {
+      "from": 0,
+      "to": 3,
+      "weight": 1.8053178369670455,
+      "is_enabled": true,
+      "innovation": 0
+    },
+    {
+      "from": 1,
+      "to": 3,
+      "weight": -2.0895683486790664,
+      "is_enabled": true,
+      "innovation": 1
+    },
+    {
+      "from": 2,
+      "to": 3,
+      "weight": 0.07558393146694331,
+      "is_enabled": true,
+      "innovation": 2
+    }
+  ],
+  "fitness": 106.0,
+  "species_id": 0,
+  "inputs_count": 3,
+  "outputs_count": 1
+}

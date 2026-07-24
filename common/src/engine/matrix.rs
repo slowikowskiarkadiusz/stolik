@@ -191,6 +191,7 @@ impl<T: Default + Clone> Matrix<T> {
 
 use core::f32::consts::PI;
 use core::fmt::{self, Display, Write};
+use core::write;
 
 use crate::engine::v2::V2;
 

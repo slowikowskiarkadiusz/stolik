@@ -1,6 +1,7 @@
 extern crate alloc;
 
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use rand::RngCore;
 use rand::{SeedableRng, rngs::SmallRng};
 
@@ -63,6 +64,7 @@ pub struct Board {
     spawn_bag_len: usize,
     do_play: bool,
     pub is_dead: bool,
+    pub points: f64,
     opacity: i16,
     pub size: V2,
     seed: u32,
@@ -108,6 +110,7 @@ impl Board {
             spawn_bag_len: 0,
             do_play: true,
             is_dead: false,
+            points: 0.0,
             opacity: 255,
             size: size.clone(),
             seed,
@@ -478,7 +481,15 @@ impl Board {
             self.spawn(None, None);
             self.can_drop = true;
 
+            // self.points += 1.0;
             let damage_to_deal = self.clear_lines();
+            self.points += match damage_to_deal {
+                1 => 20.0,
+                2 => 50.0,
+                3 => 150.0,
+                4 => 200.0,
+                _ => 0.0,
+            };
             self.pop_garbage_lines();
 
             return damage_to_deal;
@@ -581,6 +592,26 @@ impl Board {
 
     pub fn stop(&mut self) {
         self.do_play = false;
+    }
+
+    pub fn get_data_for_ai(&self) -> Vec<f64> {
+        let mut inputs = Vec::new();
+        for y in 0..BOARD_HEIGHT {
+            for x in 0..BOARD_WIDTH {
+                inputs.push(if *self.is_cell_taken.get(x, y) { 1.0 } else { 0.0 });
+            }
+        }
+        if let Some(agent) = &self.current_agent {
+            for spot in agent.get_taken_spots() {
+                inputs.push(spot.x as f64 / BOARD_WIDTH as f64);
+                inputs.push(spot.y as f64 / BOARD_HEIGHT as f64);
+            }
+        } else {
+            for _ in 0..8 {
+                inputs.push(0.0);
+            }
+        }
+        inputs
     }
 }
 

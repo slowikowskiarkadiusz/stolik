@@ -57,9 +57,10 @@ impl Scene for MenuScene {
     fn init(&mut self, _world: &mut World) {
         self.options = vec![
             MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong", false),
-            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong -- vs ai", true),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong vs ai", true),
             MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))), "tetris", "tetris", false),
-            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))), "tetris", "tetris -- solo", false),
+            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))), "tetris", "tetris solo", false),
+            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))), "tetris", "tetris vs ai", true),
             MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario", false),
             MenuOption::new(Box::new(|| Box::new(TanksScene::new())), "tanks", "tanks", false),
             MenuOption::new(Box::new(|| Box::new(AstroDuelScene::new())), "astro_duel", "astro duel", false),
@@ -140,11 +141,7 @@ impl Scene for MenuScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_data_for_ai(&self) -> DataForAi {
-        DataForAi {
-            inputs: todo!(),
-            points: todo!(),
-            is_gameover: todo!(),
-        }
+        todo!()
     }
 
     fn is_game_over(&self) -> bool {

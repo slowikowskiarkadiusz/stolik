@@ -170,7 +170,7 @@ impl Engine {
             let data = self.current_scene.get_data_for_ai();
             if !data.inputs[1].is_empty() {
                 let outputs = state.genome.activate(data.inputs[1].clone());
-                *state.held.lock() = ai_outputs_to_keys(&outputs);
+                *state.held.lock() = (data.outputs_to_keys)(&outputs);
             }
         }
     }
@@ -202,15 +202,6 @@ impl Engine {
     pub fn is_game_over(&self) -> bool {
         self.current_scene.is_game_over()
     }
-}
-
-fn ai_outputs_to_keys(outputs: &[f64]) -> [bool; KEYS_LENGTH as usize] {
-    let mut keys = [false; KEYS_LENGTH as usize];
-    if let Some(&v) = outputs.first() {
-        keys[2] = v > 0.5;
-        keys[3] = v < 0.5;
-    }
-    keys
 }
 
 pub fn open_scene(factory: SceneFactory, p1_genome: Option<NeatGenome>) {
