@@ -25,6 +25,7 @@ pub struct GameOfLifeScene {
     turn_timer: f32,
     currently_selected: V2,
     selection_blink_timer: f32,
+    selected_this_position: bool,
 }
 
 impl Scene for GameOfLifeScene {
@@ -60,15 +61,17 @@ impl Scene for GameOfLifeScene {
 
             if dif.mag() > 0.0 {
                 self.selection_blink_timer = SELECTION_BLINK_DELAY;
-            }
-
-            if inputs[0].is_key_down(Key::Blue) {
-                let csx = self.currently_selected.x as usize;
-                let csy = self.currently_selected.y as usize;
-                self.set(csx, csy, !self.get(csx, csy));
+                self.selected_this_position = false;
             }
 
             self.currently_selected += dif;
+
+            if inputs[0].is_key_press(Key::Blue) && !self.selected_this_position {
+                let csx = self.currently_selected.x as usize;
+                let csy = self.currently_selected.y as usize;
+                self.set(csx, csy, !self.get(csx, csy));
+                self.selected_this_position = true;
+            }
         } else {
             self.turn_timer -= delta_time;
             if self.turn_timer <= 0.0 {
@@ -134,7 +137,12 @@ impl Scene for GameOfLifeScene {
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
     fn get_data_for_ai(&self) -> DataForAi {
-        todo!()
+        DataForAi {
+            inputs: todo!(),
+            points: todo!(),
+            is_gameover: todo!(),
+            outputs_to_keys: todo!(),
+        }
     }
 
     fn is_game_over(&self) -> bool {
@@ -151,6 +159,7 @@ impl GameOfLifeScene {
             turn_timer: TURN_DELAY,
             currently_selected: V2::new(SCREEN_SIZEF32 / 2.0, SCREEN_SIZEF32 / 2.0),
             selection_blink_timer: SELECTION_BLINK_DELAY,
+            selected_this_position: false,
         }
     }
 

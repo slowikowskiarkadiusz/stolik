@@ -137,6 +137,7 @@ const FRAME_COUNT: usize = compute_frame_count(BITS);
 static REFRESH_RATE: AtomicU32 = AtomicU32::new(0);
 static RENDER_RATE: AtomicU32 = AtomicU32::new(0);
 static SIMPLE_COUNTER: AtomicU32 = AtomicU32::new(0);
+static HUB75_TOTAL: AtomicU32 = AtomicU32::new(0);
 
 type FBType = DmaFrameBuffer<PANEL_ROWS, FB_COLS, NROWS, BITS, FRAME_COUNT>;
 type TiledFBType = TiledFrameBuffer<
@@ -198,13 +199,13 @@ async fn hub75_task(
         let mut xfer = match hub75.render(fb) {
             Ok(x) => x,
             Err((e, hub75_back)) => {
-                esp_println::println!("hub75 render start error: {:?}", e);
+                esp_println::println!("[hub75]   render start error: {:?}", e);
                 hub75 = hub75_back;
                 continue;
             }
         };
         if let Err(e) = xfer.wait_for_done().await {
-            esp_println::println!("hub75 wait_for_done error: {:?}", e);
+            esp_println::println!("[hub75]   DMA error: {:?}", e);
             let (_, new_hub75) = xfer.wait();
             hub75 = new_hub75;
             continue;
@@ -212,8 +213,9 @@ async fn hub75_task(
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
         if let Err(e) = result {
-            esp_println::println!("hub75 transfer error: {:?}", e);
+            esp_println::println!("[hub75]   transfer error: {:?}", e);
         }
+        HUB75_TOTAL.fetch_add(1, Ordering::Relaxed);
 
         count += 1;
         const FPS_INTERVAL: Duration = Duration::from_secs(1);
@@ -271,7 +273,9 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
         tx.signal(fb);
 
         // get the next frame buffer
+        esp_println::println!("[display] awaiting fb from hub75");
         fb = rx.wait().await;
+        esp_println::println!("[display] got fb");
 
         // count up the rate we are rendering full buffer
         count += 1;
@@ -302,7 +306,7 @@ unsafe extern "C" {
 #[esp_rtos::main]
 async fn main(_s: embassy_executor::Spawner) {
     // esp_println::println!("ZZZZZZ3");
-    esp_alloc::heap_allocator!(64 * 1024);
+    esp_alloc::heap_allocator!(128 * 1024);
     // esp_println::println!("ZZZZZZ2");
     // info!("Main starting!");
     // info!("main: stack size:  {}", unsafe {
@@ -412,9 +416,19 @@ async fn main(_s: embassy_executor::Spawner) {
         cpu1_fnctn,
     );
 
+    let mut main_tick = 0u32;
     loop {
         if SIMPLE_COUNTER.fetch_add(1, Ordering::Relaxed) >= 99999 {
             SIMPLE_COUNTER.store(0, Ordering::Relaxed);
+        }
+        main_tick += 1;
+        if main_tick % 20 == 0 {
+            esp_println::println!(
+                "[main]    hub75_total={}  render={}/s  heap_free={}",
+                HUB75_TOTAL.load(Ordering::Relaxed),
+                RENDER_RATE.load(Ordering::Relaxed),
+                esp_alloc::HEAP.free(),
+            );
         }
         Timer::after(Duration::from_millis(100)).await;
     }
@@ -439,7 +453,7 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     engine.ensure_scene();
     //println!("engine: scene ready, entering loop");
 
-    let target_frame = Duration::from_millis(33);
+    let target_frame = Duration::from_millis(50);
     let mut last = Instant::now();
     let mut frame_counter = 0u32;
 
@@ -451,12 +465,16 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
         engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
 
         frame_counter += 1;
-        if frame_counter % 60 == 0 {
-            esp_println::println!("heap free: {} B", esp_alloc::HEAP.free());
+        if frame_counter % 10 == 0 {
+            let elapsed_ms = frame_start.elapsed().as_millis();
+            esp_println::println!(
+                "[engine]  frame={}  tick_ms={}  heap_free={}",
+                frame_counter, elapsed_ms, esp_alloc::HEAP.free()
+            );
         }
 
         let elapsed = frame_start.elapsed();
-        let wait = if elapsed < target_frame { target_frame - elapsed } else { Duration::from_millis(1) };
+        let wait = if elapsed < target_frame { target_frame - elapsed } else { Duration::from_millis(10) };
         Timer::after(wait).await;
     }
 }
