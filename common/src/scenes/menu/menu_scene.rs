@@ -4,7 +4,10 @@ use alloc::{boxed::Box, vec, vec::Vec};
 use crate::{
     engine::{
         actor::{arrow_actor::render_arrow, text::render_text},
-        ai::{ai_config::AiConfig, neat_genome::{DataForAi, NeatGenome}},
+        ai::{
+            ai_config::AiConfig,
+            neat_genome::{DataForAi, NeatGenome},
+        },
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
@@ -27,23 +30,23 @@ use crate::{
 
 struct MenuOption {
     next_scene_factory: SceneFactory,
-    next_p1_genome: Option<NeatGenome>,
     next_scene_code_name: &'static str,
     next_scene_print_name: &'static str,
+    is_vs_ai: bool,
 }
 
 impl MenuOption {
-    pub fn new(next_scene_factory: SceneFactory, next_scene_code_name: &'static str, next_scene_print_name: &'static str, is_vs_ai: bool) -> Self {
-        let next_p1_genome = if is_vs_ai {
-            NeatGenome::from_bytes(AiConfig::get(next_scene_code_name).bytes)
-        } else {
-            None
-        };
+    pub fn new(
+        next_scene_factory: SceneFactory,
+        next_scene_code_name: &'static str,
+        next_scene_print_name: &'static str,
+        is_vs_ai: bool,
+    ) -> Self {
         Self {
             next_scene_factory,
-            next_p1_genome,
             next_scene_code_name,
             next_scene_print_name,
+            is_vs_ai,
         }
     }
 }
@@ -58,9 +61,24 @@ impl Scene for MenuScene {
         self.options = vec![
             MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong", false),
             MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong vs ai", true),
-            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))), "tetris", "tetris", false),
-            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))), "tetris", "tetris solo", false),
-            MenuOption::new(Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))), "tetris", "tetris vs ai", true),
+            MenuOption::new(
+                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))),
+                "tetris",
+                "tetris",
+                false,
+            ),
+            MenuOption::new(
+                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))),
+                "tetris",
+                "tetris solo",
+                false,
+            ),
+            MenuOption::new(
+                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))),
+                "tetris",
+                "tetris vs ai",
+                true,
+            ),
             MenuOption::new(Box::new(|| Box::new(MarioScene::new())), "mario", "mario", false),
             MenuOption::new(Box::new(|| Box::new(TanksScene::new())), "tanks", "tanks", false),
             MenuOption::new(Box::new(|| Box::new(AstroDuelScene::new())), "astro_duel", "astro duel", false),
@@ -91,7 +109,11 @@ impl Scene for MenuScene {
         if inputs[0].is_key_down(Key::Start) {
             let selected = self.options.remove(self.cursor_position as usize);
             let name = selected.next_scene_code_name;
-            let genome = selected.next_p1_genome;
+            let genome = if selected.is_vs_ai {
+                AiConfig::get(name).load_genome()
+            } else {
+                None
+            };
             open_scene(
                 Box::new(move || Box::new(ControlsScene::new(name, selected.next_scene_factory, genome))),
                 None,

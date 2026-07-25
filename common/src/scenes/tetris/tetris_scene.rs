@@ -1,4 +1,5 @@
-use std::println;
+#[cfg(feature = "esp")]
+use esp_println::println;
 
 use crate::{
     engine::{

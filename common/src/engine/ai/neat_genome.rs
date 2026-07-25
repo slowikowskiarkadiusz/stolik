@@ -303,25 +303,15 @@ fn sigmoid(x: f64) -> f64 {
 }
 
 impl NeatGenome {
-    #[cfg(feature = "std")]
-    pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_vec_pretty(self).unwrap_or_default()
+    pub fn from_json(json: &str) -> Option<Self> {
+        if json.trim().is_empty() {
+            return None;
+        }
+        serde_json::from_str(json).ok()
     }
 
-    #[cfg(not(feature = "std"))]
-    pub fn to_bytes(&self) -> Vec<u8> {
-        Vec::new()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.is_empty() { return None; }
-        serde_json::from_slice(bytes).ok()
-    }
-
-    #[cfg(not(feature = "std"))]
-    pub fn from_bytes(_bytes: &[u8]) -> Option<Self> {
-        None
+    pub fn to_json(&self) -> alloc::string::String {
+        serde_json::to_string_pretty(self).unwrap_or_default()
     }
 }
 

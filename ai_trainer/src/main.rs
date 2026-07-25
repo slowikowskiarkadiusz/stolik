@@ -27,14 +27,14 @@ fn main() {
                 game_name: todo!(),
                 input_count: todo!(),
                 output_count: todo!(),
-                bytes: todo!(),
+                json: todo!(),
                 scene_factory: todo!(),
             }
         }
     };
 
     let mut rng = SmallRng::from_entropy();
-    let mut population: Vec<NeatGenome> = if let Some(best) = NeatGenome::from_bytes(ai_config.bytes) {
+    let mut population: Vec<NeatGenome> = if let Some(best) = ai_config.load_genome() {
         let mut pop = vec![best.clone()];
         while pop.len() < POPULATION_COUNT {
             let mut genome = best.clone();
@@ -121,7 +121,7 @@ fn main() {
             generation, pop[0].fitness, pop[1].fitness
         );
 
-        AiConfig::save_bytes(&ai_config.game_name, pop[0].to_bytes()).ok();
+        AiConfig::save_json(&ai_config.game_name, pop[0].to_json()).ok();
 
         let evolved = NeatGenome::reproduce(pop.drain(..).collect(), POPULATION_COUNT as u8, &mut rng);
         drop(pop);

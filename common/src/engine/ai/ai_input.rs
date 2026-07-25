@@ -1,5 +1,6 @@
 extern crate alloc;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use spin::Mutex;
 use crate::engine::input::{
     gesture::Gestures,
@@ -29,7 +30,7 @@ impl AiInput {
     fn is_key(&self, key: Option<Key>, key_state: KeyState) -> bool {
         fn func(key: Option<Key>, arr: &[bool]) -> bool {
             if let Some(k) = key {
-                return AiInput::map_key(k).iter().any(|kk| arr[kk.clone() as usize]);
+                return AiInput::map_key(k).iter().any(|kk: &Key| arr[*kk as usize]);
             } else {
                 return arr.iter().any(|x| !!x);
             }
@@ -44,9 +45,9 @@ impl AiInput {
 
     fn map_key(key: Key) -> Vec<Key> {
         match key {
-            Key::Down | Key::Up | Key::Left | Key::Right | Key::Blue | Key::Green | Key::Start => vec![key],
-            Key::AnyDirection => vec![Key::Up, Key::Down, Key::Left, Key::Right],
-            Key::Any => vec![Key::Up, Key::Down, Key::Left, Key::Right, Key::Blue, Key::Green],
+            Key::Down | Key::Up | Key::Left | Key::Right | Key::Blue | Key::Green | Key::Start => alloc::vec![key],
+            Key::AnyDirection => alloc::vec![Key::Up, Key::Down, Key::Left, Key::Right],
+            Key::Any => alloc::vec![Key::Up, Key::Down, Key::Left, Key::Right, Key::Blue, Key::Green],
         }
     }
 }
