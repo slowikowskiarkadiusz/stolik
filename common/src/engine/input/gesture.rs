@@ -44,7 +44,7 @@ const LONG_PRESS_DURATION_SEC: f32 = 0.5;
 const REPEATER_PRESS_DURATION_SEC: f32 = 0.3;
 
 pub struct Gestures {
-    states: HashMap<State, Box<dyn Fn(Key, &InputSnapshot) -> bool>>,
+    states: HashMap<State, Box<dyn Fn(Key, &InputSnapshot) -> bool + Send>>,
     last_action_timestamps: [HashMap<State, MaxHeap>; KEYS_LENGTH as usize],
     gestures_this_frame: HashMap<String, bool>,
     single_gestures_this_frame: HashMap<String, Gesture>,
@@ -54,7 +54,7 @@ pub struct Gestures {
 
 impl Gestures {
     pub fn new() -> Self {
-        let mut states = HashMap::<State, Box<dyn Fn(Key, &InputSnapshot) -> bool>>::new();
+        let mut states = HashMap::<State, Box<dyn Fn(Key, &InputSnapshot) -> bool + Send>>::new();
         states.insert(State::Down, Box::new(|key, snapshot| snapshot[&key].is_down));
         states.insert(State::Press, Box::new(|key, snapshot| snapshot[&key].is_press));
         states.insert(State::Up, Box::new(|key, snapshot| snapshot[&key].is_up));

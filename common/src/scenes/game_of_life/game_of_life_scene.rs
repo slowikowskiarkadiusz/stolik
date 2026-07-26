@@ -3,7 +3,6 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
 use crate::engine::{
-    ai::neat_genome::DataForAi,
     color::Color,
     color_matrix::ColorMatrix,
     components::{camera::Camera, collider::CollisionResult, world::World},
@@ -135,15 +134,6 @@ impl Scene for GameOfLifeScene {
     fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
-
-    fn get_data_for_ai(&self) -> DataForAi {
-        DataForAi {
-            inputs: todo!(),
-            points: todo!(),
-            is_gameover: todo!(),
-            outputs_to_keys: todo!(),
-        }
-    }
 
     fn is_game_over(&self) -> bool {
         false

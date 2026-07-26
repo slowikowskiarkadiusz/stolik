@@ -1,4 +1,5 @@
 use crate::engine::{
+    ai::ai_input::AiInput,
     hash_map::HashMap,
     input::{
         gesture::Gestures,
@@ -46,54 +47,28 @@ pub trait Input {
     fn is_key_press(&self, key: Key) -> bool;
     fn is_any_key_press(&self) -> bool;
     fn clear(&mut self);
+    fn as_ai_input_mut(&mut self) -> Option<&mut dyn AiInput> { None }
 }
 
-pub struct EmptyInput;
+pub struct EmptyInput {
+    gestures: Gestures,
+}
 
 impl EmptyInput {
     pub fn new() -> Self {
-        Self {}
+        Self { gestures: Gestures::new() }
     }
 }
 
 impl Input for EmptyInput {
-    fn gestures(&self) -> &Gestures {
-        todo!()
-    }
-
-    fn update(&mut self, _: f32) {
-        todo!()
-    }
-
-    fn late_update(&mut self, _: f32) {
-        todo!()
-    }
-
-    fn is_key_down(&self, _: Key) -> bool {
-        todo!()
-    }
-
-    fn is_any_key_down(&self) -> bool {
-        todo!()
-    }
-
-    fn is_key_up(&self, _: Key) -> bool {
-        todo!()
-    }
-
-    fn is_any_key_up(&self) -> bool {
-        todo!()
-    }
-
-    fn is_key_press(&self, _: Key) -> bool {
-        todo!()
-    }
-
-    fn is_any_key_press(&self) -> bool {
-        todo!()
-    }
-
-    fn clear(&mut self) {
-        todo!()
-    }
+    fn gestures(&self) -> &Gestures { &self.gestures }
+    fn update(&mut self, _: f32) {}
+    fn late_update(&mut self, _: f32) {}
+    fn is_key_down(&self, _: Key) -> bool { false }
+    fn is_any_key_down(&self) -> bool { false }
+    fn is_key_up(&self, _: Key) -> bool { false }
+    fn is_any_key_up(&self) -> bool { false }
+    fn is_key_press(&self, _: Key) -> bool { false }
+    fn is_any_key_press(&self) -> bool { false }
+    fn clear(&mut self) {}
 }

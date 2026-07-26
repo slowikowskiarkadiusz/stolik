@@ -9,8 +9,10 @@ use crate::engine::{
     components::{camera::Camera, collider::CollisionResult, world::World},
     engine::ActorId,
     hash_map::HashMap,
-    input::input::Input,
+    input::{input::Input, key::KEYS_LENGTH},
 };
+
+fn _noop_outputs_to_keys(_: &[f64]) -> [bool; KEYS_LENGTH as usize] { [false; KEYS_LENGTH as usize] }
 
 pub trait Scene {
     fn init(&mut self, world: &mut World);
@@ -18,7 +20,14 @@ pub trait Scene {
     fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix;
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, delta_time: f32);
     fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32);
-    fn get_data_for_ai(&self) -> DataForAi;
+    fn get_data_for_ai(&self) -> DataForAi {
+        DataForAi {
+            inputs: [Vec::new(), Vec::new()],
+            points: [0.0, 0.0],
+            is_gameover: false,
+            outputs_to_keys: _noop_outputs_to_keys,
+        }
+    }
     fn is_game_over(&self) -> bool;
 }
 

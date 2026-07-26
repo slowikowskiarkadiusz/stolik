@@ -4,10 +4,6 @@ use alloc::{boxed::Box, vec, vec::Vec};
 use crate::{
     engine::{
         actor::{arrow_actor::render_arrow, text::render_text},
-        ai::{
-            ai_config::AiConfig,
-            neat_genome::{DataForAi, NeatGenome},
-        },
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
@@ -59,22 +55,22 @@ pub struct MenuScene {
 impl Scene for MenuScene {
     fn init(&mut self, _world: &mut World) {
         self.options = vec![
-            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong", false),
-            MenuOption::new(Box::new(|| Box::new(PongScene::new())), "pong", "pong vs ai", true),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new(false))), "pong", "pong", false),
+            MenuOption::new(Box::new(|| Box::new(PongScene::new(true))), "pong", "pong vs ai", true),
             MenuOption::new(
-                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))),
+                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman, false))),
                 "tetris",
                 "tetris",
                 false,
             ),
             MenuOption::new(
-                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo))),
+                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::Solo, false))),
                 "tetris",
                 "tetris solo",
                 false,
             ),
             MenuOption::new(
-                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman))),
+                Box::new(|| Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman, true))),
                 "tetris",
                 "tetris vs ai",
                 true,
@@ -109,15 +105,7 @@ impl Scene for MenuScene {
         if inputs[0].is_key_down(Key::Start) {
             let selected = self.options.remove(self.cursor_position as usize);
             let name = selected.next_scene_code_name;
-            let genome = if selected.is_vs_ai {
-                AiConfig::get(name).load_genome()
-            } else {
-                None
-            };
-            open_scene(
-                Box::new(move || Box::new(ControlsScene::new(name, selected.next_scene_factory, genome))),
-                None,
-            );
+            open_scene(Box::new(move || Box::new(ControlsScene::new(name, selected.next_scene_factory))));
         }
 
         //todo move to render
@@ -161,15 +149,6 @@ impl Scene for MenuScene {
     fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
-
-    fn get_data_for_ai(&self) -> DataForAi {
-        DataForAi {
-            inputs: todo!(),
-            points: todo!(),
-            is_gameover: todo!(),
-            outputs_to_keys: todo!(),
-        }
-    }
 
     fn is_game_over(&self) -> bool {
         false

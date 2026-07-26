@@ -1,10 +1,10 @@
 use crate::{
     engine::{
-        ai::neat_genome::{DataForAi, NeatGenome}, asyncable::AsyncableStorage, color::Color, color_matrix::ColorMatrix, components::{
+        ai::neat_genome::DataForAi, asyncable::AsyncableStorage, color::Color, color_matrix::ColorMatrix, components::{
             collider::{Collider, ColliderPartDebug, CollisionResult},
             physics::Physics,
             world::World,
-        }, hash_map::HashMap, input::{input::Input, key::KEYS_LENGTH}, scene::{EmptyScene, Scene}, threading_provider::Thread, v2::V2,
+        }, hash_map::HashMap, input::input::{EmptyInput, Input}, scene::Scene, threading_provider::Thread, v2::V2,
     }, scenes::menu::menu_scene::MenuScene,
 };
 extern crate alloc;
@@ -15,9 +15,6 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Instant;
 
-use crate::engine::ai::ai_input::AiInput;
-use spin::Mutex;
-
 pub const SCREEN_SIZE: u8 = 64;
 pub const SCREEN_SIZEF32: f32 = SCREEN_SIZE as f32;
 pub const SCREEN_SIZEUSIZE: usize = SCREEN_SIZE as usize;
@@ -26,11 +23,11 @@ pub type ActorId = u16;
 
 pub type SceneFactory = Box<dyn FnOnce() -> Box<dyn Scene> + Send + Sync>;
 
-static SCENE_CHANNEL: Channel<CriticalSectionRawMutex, (SceneFactory, Option<NeatGenome>), 1> = Channel::new();
+static SCENE_CHANNEL: Channel<CriticalSectionRawMutex, SceneFactory, 1> = Channel::new();
+static INPUT_CHANNEL: Channel<CriticalSectionRawMutex, (usize, Box<dyn Input + Send>), 2> = Channel::new();
 
-struct AiState {
-    genome: NeatGenome,
-    held: Arc<Mutex<[bool; KEYS_LENGTH as usize]>>,
+pub fn set_input(player: usize, input: Box<dyn Input + Send>) {
+    INPUT_CHANNEL.sender().try_send((player, input)).ok();
 }
 
 pub struct Engine {
@@ -43,16 +40,18 @@ pub struct Engine {
     screen: ColorMatrix,
     overlaps: HashMap<ActorId, Vec<ActorId>>,
     collisions: HashMap<ActorId, Vec<(ActorId, CollisionResult)>>,
-    ai_state: Option<AiState>,
-    p1_backup: Option<Box<dyn Input>>,
 }
 
 impl Engine {
-    pub fn new(inputs: [Box<dyn Input>; 2], open_on_scene: Option<Box<dyn Scene>>) -> Self {
+    pub fn new(open_on_scene: Option<Box<dyn Scene>>) -> Self {
         let is_a_scene = open_on_scene.is_some();
         let mut scene = open_on_scene.unwrap_or_else(|| Box::new(MenuScene::new()));
         let mut world = World::new();
         scene.init(&mut world);
+        let mut inputs: [Box<dyn Input>; 2] = [Box::new(EmptyInput::new()), Box::new(EmptyInput::new())];
+        while let Ok((player, input)) = INPUT_CHANNEL.receiver().try_receive() {
+            if player < 2 { inputs[player] = input; }
+        }
         Self {
             delta_time: 0.0,
             world: world,
@@ -63,8 +62,6 @@ impl Engine {
             screen: ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none()),
             overlaps: HashMap::new(),
             collisions: HashMap::new(),
-            ai_state: None,
-            p1_backup: None,
         }
     }
 
@@ -109,9 +106,12 @@ impl Engine {
         self.delta_time = delta_time;
 
         let receiver = SCENE_CHANNEL.receiver();
-        if let Ok((scene_factory, p1_genome)) = receiver.try_receive() {
-            self.set_ai_player(p1_genome);
+        if let Ok(scene_factory) = receiver.try_receive() {
             self.change_scene(scene_factory);
+        }
+
+        while let Ok((player, input)) = INPUT_CHANNEL.receiver().try_receive() {
+            if player < 2 { self.inputs[player] = input; }
         }
 
         self.tick_ai_player();
@@ -148,29 +148,13 @@ impl Engine {
         }
     }
 
-    fn set_ai_player(&mut self, genome: Option<NeatGenome>) {
-        match genome {
-            Some(g) => {
-                let held = Arc::new(Mutex::new([false; KEYS_LENGTH as usize]));
-                let backup = core::mem::replace(&mut self.inputs[1], Box::new(AiInput::new(held.clone())));
-                self.p1_backup = Some(backup);
-                self.ai_state = Some(AiState { genome: g, held });
-            }
-            None => {
-                if let Some(backup) = self.p1_backup.take() {
-                    self.inputs[1] = backup;
-                }
-                self.ai_state = None;
-            }
-        }
-    }
-
     fn tick_ai_player(&mut self) {
-        if let Some(state) = &mut self.ai_state {
-            let data = self.current_scene.get_data_for_ai();
-            if !data.inputs[1].is_empty() {
-                let outputs = state.genome.activate(data.inputs[1].clone());
-                *state.held.lock() = (data.outputs_to_keys)(&outputs);
+        let data = self.current_scene.get_data_for_ai();
+        for player in 0..2 {
+            if !data.inputs[player].is_empty() {
+                if let Some(ai) = self.inputs[player].as_ai_input_mut() {
+                    ai.on_ai_data(&data.inputs[player], data.outputs_to_keys);
+                }
             }
         }
     }
@@ -190,9 +174,11 @@ impl Engine {
         F: FnOnce() -> Box<dyn Scene>,
     {
         self.world.clear_all();
-        let obj = new_scene_func();
-        self.current_scene = obj;
+        self.current_scene = new_scene_func();
         self.current_scene.as_mut().init(&mut self.world);
+        while let Ok((player, input)) = INPUT_CHANNEL.receiver().try_receive() {
+            if player < 2 { self.inputs[player] = input; }
+        }
     }
 
     pub fn get_scene_data_for_ai(&self) -> DataForAi {
@@ -204,7 +190,7 @@ impl Engine {
     }
 }
 
-pub fn open_scene(factory: SceneFactory, p1_genome: Option<NeatGenome>) {
+pub fn open_scene(factory: SceneFactory) {
     let sender = SCENE_CHANNEL.sender();
-    sender.try_send((factory, p1_genome)).ok();
+    sender.try_send(factory).ok();
 }

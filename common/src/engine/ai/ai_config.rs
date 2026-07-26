@@ -25,14 +25,14 @@ impl AiConfig {
                 input_count: 3,
                 output_count: 1,
                 json: include_str!("../../../neat_genomes/best_pong.json"),
-                scene_factory: || Box::new(PongScene::new()),
+                scene_factory: || Box::new(PongScene::new(false)),
             },
             "tetris" => AiConfig {
                 game_name: String::from(game_name),
                 input_count: 208,
                 output_count: 5,
                 json: include_str!("../../../neat_genomes/best_tetris.json"),
-                scene_factory: || Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman)),
+                scene_factory: || Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman, false)),
             },
             "tanks" => AiConfig {
                 game_name: String::from(game_name),

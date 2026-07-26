@@ -5,7 +5,7 @@ use rand::{Rng, SeedableRng, rngs::SmallRng};
 use crate::{
     engine::{
         actor::rectangle_actor::create_rectangle_actor,
-        ai::neat_genome::DataForAi,
+        ai::{default_ai_input::DefaultAiInput, neat_genome::DataForAi},
         asyncable::{AsyncableType, add_asyncable},
         input::key::KEYS_LENGTH,
         color::Color,
@@ -15,7 +15,7 @@ use crate::{
             collider::{ColliderType, CollisionResult},
             world::World,
         },
-        engine::{ActorId, SCREEN_SIZE, open_scene},
+        engine::{ActorId, SCREEN_SIZE, open_scene, set_input},
         hash_map::HashMap,
         input::{input::Input, key::Key},
         scene::Scene,
@@ -48,10 +48,14 @@ pub struct PongScene {
     do_play: bool,
     rng: SmallRng,
     data_for_ai: DataForAi,
+    use_ai: bool,
 }
 
 impl Scene for PongScene {
     fn init(&mut self, world: &mut World) {
+        if self.use_ai {
+            set_input(1, Box::new(DefaultAiInput::new_with_ai("pong")));
+        }
         println!("Opening Pong!");
         let screen_size = SCREEN_SIZE as f32;
         let size_factor = screen_size / 32.0;
@@ -140,7 +144,7 @@ impl Scene for PongScene {
                 print_victory_text(&mut result, if self.score[0] > self.score[1] { 1 } else { 2 }, camera, true);
                 add_asyncable(
                     Box::new(move |_, _| {
-                        open_scene(Box::new(|| Box::new(PongScene::new())), None);
+                        open_scene(Box::new(|| Box::new(PongScene::new(false))));
                     }),
                     10.0,
                     AsyncableType::Timeout,
@@ -186,10 +190,11 @@ impl Scene for PongScene {
     fn is_game_over(&self) -> bool {
         !self.do_play
     }
+
 }
 
 impl PongScene {
-    pub fn new() -> Self {
+    pub fn new(use_ai: bool) -> Self {
         Self {
             score: [0, 0],
             paddle: [None, None],
@@ -209,6 +214,7 @@ impl PongScene {
                 is_gameover: false,
                 outputs_to_keys: pong_outputs_to_keys,
             },
+            use_ai,
         }
     }
 

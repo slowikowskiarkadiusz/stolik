@@ -52,7 +52,7 @@ use esp_alloc;
 use alloc::boxed::Box;
 use common::engine::color::Color;
 use common::engine::color_matrix::ColorMatrix;
-use common::engine::engine::Engine;
+use common::engine::engine::{Engine, set_input};
 use embassy_executor::Spawner;
 use embassy_executor::task;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -438,7 +438,9 @@ async fn main(_s: embassy_executor::Spawner) {
 async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     //println!("engine: creating input");
     // esp_println::println!("ZZZZZZ");
-    let mut engine = Engine::new([Box::new(Esp32Input::new(0, input_pin_setup)), Box::new(Esp32Input::new(1, Esp32InputPinSetup::empty()))], None);
+    set_input(0, Box::new(Esp32Input::new(0, input_pin_setup)));
+    set_input(1, Box::new(Esp32Input::new(1, Esp32InputPinSetup::empty())));
+    let mut engine = Engine::new(None);
 
     // esp_println::println!("AAAAAA");
     //println!("engine: input ok");

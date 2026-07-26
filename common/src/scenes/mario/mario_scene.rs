@@ -3,7 +3,6 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 
 use crate::engine::{
-    ai::neat_genome::DataForAi,
     color::Color,
     color_matrix::ColorMatrix,
     components::{
@@ -188,10 +187,6 @@ impl Scene for MarioScene {
     }
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
-
-    fn get_data_for_ai(&self) -> DataForAi {
-        todo!()
-    }
 
     fn is_game_over(&self) -> bool {
         false

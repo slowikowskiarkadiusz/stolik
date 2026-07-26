@@ -5,12 +5,10 @@ use embassy_sync::lazy_lock::LazyLock;
 use crate::{
     engine::{
         actor::{arrow_actor::render_arrow, rectangle_actor::create_rectangle_actor, text::render_text},
-        ai::neat_genome::DataForAi,
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, world::World},
         engine::{ActorId, SCREEN_SIZE, SceneFactory, open_scene},
-        ai::neat_genome::NeatGenome,
         hash_map::HashMap,
         input::{input::Input, key::Key},
         scene::Scene,
@@ -48,7 +46,6 @@ pub struct ControlsScene {
     pages: Vec<Vec<ControlsData>>,
     current_page_index: u8,
     next_scene: SceneFactory,
-    next_p1_genome: Option<NeatGenome>,
     #[allow(dead_code)]
     lines_per_page: u8,
     print_page_timer_seconds: f32,
@@ -86,7 +83,7 @@ impl Scene for ControlsScene {
 
         if self.can_proceed && (inputs[0].is_any_key_down() || inputs[1].is_any_key_down()) {
             let factory = core::mem::replace(&mut self.next_scene, Box::new(|| Box::new(MenuScene::new())));
-            open_scene(factory, self.next_p1_genome.take());
+            open_scene(factory);
         }
     }
 
@@ -145,17 +142,13 @@ impl Scene for ControlsScene {
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
-    fn get_data_for_ai(&self) -> DataForAi {
-        todo!()
-    }
-
     fn is_game_over(&self) -> bool {
         false
     }
 }
 
 impl ControlsScene {
-    pub fn new(next_scene_name: &str, next_scene: SceneFactory, next_p1_genome: Option<NeatGenome>) -> Self {
+    pub fn new(next_scene_name: &str, next_scene: SceneFactory) -> Self {
         let lines_per_page = (SCREEN_SIZE / 2 - 5) / (BUTTON_SIZE + 1);
         Self {
             can_proceed: false,
@@ -164,11 +157,8 @@ impl ControlsScene {
                 POSSIBLE_CONTROL_SETS.get().get(next_scene_name).unwrap(),
                 lines_per_page.clone() as usize,
             ),
-            // current_icon_actors: Vec::new(),
-            // current_text_actors: Vec::new(),
             current_page_index: 0,
             next_scene,
-            next_p1_genome,
             lines_per_page,
             print_page_timer_seconds: 0.0,
             allow_proceeding_timer_sec: 2.0,

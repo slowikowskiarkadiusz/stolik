@@ -3,7 +3,6 @@ use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     engine::{
-        ai::neat_genome::DataForAi,
         color::Color,
         color_matrix::ColorMatrix,
         components::{camera::Camera, collider::CollisionResult, physics::Physics, world::World},
@@ -141,7 +140,7 @@ impl Scene for AstroDuelScene {
         if self.winner.is_some() {
             self.game_over_timer -= delta_time;
             if self.game_over_timer <= 0.0 {
-                open_scene(Box::new(|| Box::new(MenuScene::new())), None);
+                open_scene(Box::new(|| Box::new(MenuScene::new())));
             }
             return;
         }
@@ -333,10 +332,6 @@ impl Scene for AstroDuelScene {
     }
 
     fn on_collisions(&mut self, _: &HashMap<u16, Vec<(u16, CollisionResult)>>, _: &mut World, _: f32) {}
-
-    fn get_data_for_ai(&self) -> DataForAi {
-        todo!()
-    }
 
     fn is_game_over(&self) -> bool {
         false

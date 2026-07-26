@@ -16,7 +16,9 @@
       "Bash(grep \"esp-bootloader-esp-idf\" /Users/ark/.cargo/git/checkouts/esp-hub75-45524c7f96d256ba/191d486/Cargo.toml)",
       "Bash(xargs -I{} echo \"== {} ==\")",
       "Bash(rustup target *)",
-      "Bash(cargo +esp check --manifest-path esp32_main/Cargo.toml --target xtensa-esp32s3-none-elf)"
+      "Bash(cargo +esp check --manifest-path esp32_main/Cargo.toml --target xtensa-esp32s3-none-elf)",
+      "Bash(python3 -c ' *)",
+      "Bash(cp /Users/ark/Desktop/stolik/esp32_main/src/esp32_input.rs /tmp/esp32_input_backup.rs)"
     ]
   }
 }

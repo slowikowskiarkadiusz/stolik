@@ -4,7 +4,7 @@ use esp_println::println;
 use crate::{
     engine::{
         self,
-        ai::neat_genome::DataForAi,
+        ai::{default_ai_input::DefaultAiInput, neat_genome::DataForAi},
         color::Color,
         color_matrix::ColorMatrix,
         components::{
@@ -12,7 +12,7 @@ use crate::{
             collider::CollisionResult,
             world::{self, World},
         },
-        engine::ActorId,
+        engine::{ActorId, set_input},
         hash_map::HashMap,
         input::{input::Input, key::KEYS_LENGTH},
         scene::Scene,
@@ -39,10 +39,14 @@ pub struct TetrisScene {
     tetris_world: TetrisWorld,
     mode: TetrisSceneMode,
     is_player_dead: u8,
+    use_ai: bool,
 }
 
 impl Scene for TetrisScene {
     fn init(&mut self, world: &mut World) {
+        if self.use_ai {
+            set_input(1, Box::new(DefaultAiInput::new_with_ai("tetris")));
+        }
         // println!("Opening Tetris!");
         // println!("[Tetris] init start");
         let seed = SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()).next_u32();
@@ -149,16 +153,18 @@ impl Scene for TetrisScene {
     fn is_game_over(&self) -> bool {
         self.is_player_dead > 0
     }
+
 }
 
 impl TetrisScene {
-    pub fn new(mode: TetrisSceneMode) -> Self {
+    pub fn new(mode: TetrisSceneMode, use_ai: bool) -> Self {
         Self {
             p1_board_actor_id: ActorId::MAX,
             p2_board_actor_id: ActorId::MAX,
             tetris_world: TetrisWorld::new(),
             mode: mode,
             is_player_dead: 0,
+            use_ai,
         }
     }
 
