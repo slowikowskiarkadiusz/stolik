@@ -1,5 +1,5 @@
 extern crate alloc;
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
 use embassy_sync::once_lock::OnceLock;
 use spin::Mutex;
 

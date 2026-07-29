@@ -1,7 +1,5 @@
 use crate::engine::{
-    ai::ai_input::AiInput,
-    hash_map::HashMap,
-    input::{
+    ai::ai_input::AiInput, hash_map::HashMap, input::{
         gesture::Gestures,
         key::{KEYS_LENGTH, Key, u8_to_key},
     },
@@ -47,7 +45,9 @@ pub trait Input {
     fn is_key_press(&self, key: Key) -> bool;
     fn is_any_key_press(&self) -> bool;
     fn clear(&mut self);
-    fn as_ai_input_mut(&mut self) -> Option<&mut dyn AiInput> { None }
+    fn as_ai_input(&self) -> Option<&dyn AiInput>{
+        None
+    }
 }
 
 pub struct EmptyInput {

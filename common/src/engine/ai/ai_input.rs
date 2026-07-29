@@ -1,5 +1,11 @@
-use crate::engine::input::key::KEYS_LENGTH;
+use crate::engine::{ai::neat_genome::NeatGenome, input::input::Input};
 
-pub trait AiInput {
-    fn on_ai_data(&mut self, inputs: &[f64], outputs_to_keys: fn(&[f64]) -> [bool; KEYS_LENGTH as usize]);
+pub trait AiInput: Input + Send {
+    fn new(player: usize) -> Box<dyn AiInput + Send>
+    where
+        Self: Sized;
+
+    fn set_genome(&mut self, genome: NeatGenome);
+
+    fn get_genome(&self) -> &NeatGenome;
 }

@@ -11,18 +11,82 @@ use crate::engine::engine::{ActorId, SCREEN_SIZE};
 use crate::engine::input::gesture::{Gesture, State};
 use crate::engine::input::input::Input;
 use crate::engine::input::key::Key;
+use crate::scenes::tetris::board_ai_data::get_all_possible_future_boards_ai_data;
+use crate::scenes::tetris::tetris_ai_input::{set_tetris_ai_data, set_tetris_piece_center_x, set_tetris_piece_rotation};
 use crate::scenes::tetris::world::TetrisWorld;
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2},
     scenes::tetris::{block::Block, garbage_bar::GarbageBar, hold_logic::HoldLogic, shape::Shape},
 };
 
+use super::tetris_ai_input;
+
+#[derive(Clone, Copy)]
+pub struct TetrisAiData {
+    /// height of each column
+    pub column_heights: [u8; BOARD_WIDTH as usize],
+    /// height differences between neighbors
+    pub bumpiness: [u8; BOARD_WIDTH as usize - 1],
+    /// number of covered holes
+    pub holes: u8,
+    /// sum of all heights
+    pub aggregate_height: u8,
+    /// the heighest column
+    pub max_height: u8,
+    /// how many lines it's gonna score
+    pub lines_cleared: u8,
+
+    /// one-hot: I,O,T,S,Z,J,L
+    pub current_piece: [u8; 7],
+    /// one-hot: 0-3
+    pub current_rotation: [u8; 4],
+    /// piece's x pos
+    pub piece_x: u8,
+    // /// one-hot of next piece
+    // pub next_piece: [u8; 7],
+}
+
+impl TetrisAiData {
+    fn default() -> Self {
+        Self {
+            column_heights: [0; BOARD_WIDTH as usize],
+            bumpiness: [0; BOARD_WIDTH as usize - 1],
+            holes: 0,
+            aggregate_height: 0,
+            max_height: 0,
+            lines_cleared: 0,
+            current_piece: [0; 7],
+            current_rotation: [0; 4],
+            piece_x: 0,
+            // next_piece: [0; 7],
+        }
+    }
+
+    pub fn into_nn_inputs(&self) -> Vec<f64> {
+        let mut result = Vec::<f64>::new();
+        for x in self.column_heights {
+            result.push(x as f64 / BOARD_HEIGHT as f64);
+        }
+        result.push(self.holes as f64 / 10.0);
+        result.push(self.aggregate_height as f64 / (BOARD_HEIGHT * BOARD_WIDTH) as f64);
+        result.push(self.max_height as f64 / BOARD_HEIGHT as f64);
+        result.push(self.lines_cleared as f64 / 4.0);
+        for x in self.current_piece {
+            result.push(x as f64);
+        }
+        for x in self.current_rotation {
+            result.push(x as f64);
+        }
+        result
+    }
+}
+
 /// Rendering scale. Logic stays at 1×; all render matrices are pre-scaled at creation.
 /// Toggle between 1 and 2 for debugging — no per-frame scaling ever happens.
 pub const SCALE: u8 = 1;
 
-const BOARD_WIDTH: u8 = 10;
-const BOARD_HEIGHT: u8 = 20;
+pub const BOARD_WIDTH: u8 = 10;
+pub const BOARD_HEIGHT: u8 = 20;
 const DROPPING_DELAY_SEC: f32 = 1.0;
 const FASTER_DROPPING_DELAY_SEC: f32 = 0.1;
 const LOCK_DELAY_SEC: f32 = 1.0;
@@ -39,7 +103,7 @@ pub const BLOCKS_COLORS: &[Color; 7] = &[
 
 pub struct Board {
     is_cell_taken: Matrix<bool>,
-    current_agent: Option<Block>,
+    pub current_agent: Option<Block>,
     current_agent_shadow: Option<Block>,
     garbage_bar: GarbageBar,
     hold_logic: HoldLogic,
@@ -155,8 +219,12 @@ impl Board {
                 let center = current_agent.center.clone();
                 self.spawn(Some(center), held_shape);
                 self.already_switched_pieces = true;
+
+                self.send_piece_info();
             } else if input.gestures().is(Key::Down, State::Press, Gesture::Once, None) {
                 self.dropping_delay_value = FASTER_DROPPING_DELAY_SEC;
+
+                self.send_piece_info();
             } else {
                 self.dropping_delay_value = DROPPING_DELAY_SEC;
                 if input.gestures().is(Key::Left, State::Down, Gesture::Once, None)
@@ -170,6 +238,8 @@ impl Board {
                 {
                     self.move_block_by(V2::right());
                 }
+
+                self.send_piece_info();
             }
 
             let mut damage_from_hard_drop = 0u8;
@@ -287,6 +357,8 @@ impl Board {
         );
         self.current_agent = Some(new_agent);
         self.current_agent_shadow = Some(Block::new(drop_pos, new_shape, true));
+
+        self.send_ai_data();
     }
 
     fn move_block_by(&mut self, by: V2) {
@@ -386,7 +458,7 @@ impl Board {
     }
 
     /// Iterative drop calculation — avoids stack overflow risk of the recursive version.
-    fn calc_drop(is_cell_taken: &Matrix<bool>, start: i16, spots: [V2; 4]) -> i16 {
+    pub fn calc_drop(is_cell_taken: &Matrix<bool>, start: i16, spots: [V2; 4]) -> i16 {
         let mut i = start;
         loop {
             if spots
@@ -612,6 +684,25 @@ impl Board {
             }
         }
         inputs
+    }
+
+    fn get_tetris_ai_data(&self) -> [Option<TetrisAiData>; BOARD_WIDTH as usize * 4] {
+        if let Some(current_agent) = &self.current_agent {
+            get_all_possible_future_boards_ai_data(&self.is_cell_taken, &current_agent)
+        } else {
+            [None; BOARD_WIDTH as usize * 4]
+        }
+    }
+
+    fn send_piece_info(&self) {
+        if let Some(board_current_agent) = &self.current_agent {
+            set_tetris_piece_center_x(if self.is_p1 { 0 } else { 1 }, board_current_agent.center.x as u8);
+            set_tetris_piece_rotation(if self.is_p1 { 0 } else { 1 }, board_current_agent.rotation);
+        }
+    }
+
+    fn send_ai_data(&self) {
+        set_tetris_ai_data(if self.is_p1 { 0 } else { 1 }, self.get_tetris_ai_data());
     }
 }
 

@@ -2,11 +2,14 @@ extern crate alloc;
 use alloc::boxed::Box;
 use alloc::string::String;
 
+use crate::engine::ai::ai_input::AiInput;
 use crate::engine::ai::neat_genome::NeatGenome;
 use crate::engine::scene::Scene;
 use crate::scenes::astro_duel::astro_scene::AstroDuelScene;
+use crate::scenes::pong::pong_ai_input::PongAiInput;
 use crate::scenes::pong::pong_scene::PongScene;
 use crate::scenes::tanks::tanks_scene::TanksScene;
+use crate::scenes::tetris::tetris_ai_input::TetrisAiInput;
 use crate::scenes::tetris::tetris_scene::{TetrisScene, TetrisSceneMode};
 
 pub struct AiConfig {
@@ -15,6 +18,7 @@ pub struct AiConfig {
     pub output_count: u32,
     pub json: &'static str,
     pub scene_factory: fn() -> Box<dyn Scene>,
+    pub input_factory: fn(usize) -> Box<dyn AiInput + Send>,
 }
 
 impl AiConfig {
@@ -26,6 +30,7 @@ impl AiConfig {
                 output_count: 1,
                 json: include_str!("../../../neat_genomes/best_pong.json"),
                 scene_factory: || Box::new(PongScene::new(false)),
+                input_factory: PongAiInput::new,
             },
             "tetris" => AiConfig {
                 game_name: String::from(game_name),
@@ -33,6 +38,7 @@ impl AiConfig {
                 output_count: 5,
                 json: include_str!("../../../neat_genomes/best_tetris.json"),
                 scene_factory: || Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman, false)),
+                input_factory: TetrisAiInput::new,
             },
             "tanks" => AiConfig {
                 game_name: String::from(game_name),
@@ -40,6 +46,7 @@ impl AiConfig {
                 output_count: 1,
                 json: include_str!("../../../neat_genomes/best_tanks.json"),
                 scene_factory: || Box::new(TanksScene::new()),
+                input_factory: todo!(),
             },
             "astro-duel" => AiConfig {
                 game_name: String::from(game_name),
@@ -47,6 +54,7 @@ impl AiConfig {
                 output_count: 1,
                 json: include_str!("../../../neat_genomes/best_astro-duel.json"),
                 scene_factory: || Box::new(AstroDuelScene::new()),
+                input_factory: todo!(),
             },
             _ => {
                 panic!("Incorrect game name! ({})", game_name);
@@ -56,6 +64,7 @@ impl AiConfig {
                     output_count: todo!(),
                     json: todo!(),
                     scene_factory: todo!(),
+                    input_factory: todo!(),
                 }
             }
         }

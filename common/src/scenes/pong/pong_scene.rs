@@ -4,24 +4,15 @@ use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use crate::{
     engine::{
-        actor::rectangle_actor::create_rectangle_actor,
-        ai::{default_ai_input::DefaultAiInput, neat_genome::DataForAi},
-        asyncable::{AsyncableType, add_asyncable},
-        input::key::KEYS_LENGTH,
-        color::Color,
-        color_matrix::ColorMatrix,
-        components::{
+        actor::rectangle_actor::create_rectangle_actor, ai::ai_input::AiInput, asyncable::{AsyncableType, add_asyncable}, color::Color, color_matrix::ColorMatrix, components::{
             camera::Camera,
             collider::{ColliderType, CollisionResult},
             world::World,
-        },
-        engine::{ActorId, SCREEN_SIZE, open_scene, set_input},
-        hash_map::HashMap,
-        input::{input::Input, key::Key},
-        scene::Scene,
-        v2::V2,
+        }, engine::{ActorId, SCREEN_SIZE, open_scene, set_input}, hash_map::HashMap, input::{input::Input, key::Key}, scene::Scene, v2::V2,
+    }, scenes::{
+        pong::pong_ai_input::{PongAiData, PongAiInput, set_pong_ai_data},
+        utils::{P1_COLOR, P2_COLOR, print_score, print_victory_text},
     },
-    scenes::utils::{P1_COLOR, P2_COLOR, print_score, print_victory_text},
 };
 
 #[cfg(feature = "esp")]
@@ -47,14 +38,13 @@ pub struct PongScene {
     can_bounce: bool,
     do_play: bool,
     rng: SmallRng,
-    data_for_ai: DataForAi,
     use_ai: bool,
 }
 
 impl Scene for PongScene {
     fn init(&mut self, world: &mut World) {
         if self.use_ai {
-            set_input(1, Box::new(DefaultAiInput::new_with_ai("pong")));
+            set_input(1, PongAiInput::new(1));
         }
         println!("Opening Pong!");
         let screen_size = SCREEN_SIZE as f32;
@@ -178,15 +168,6 @@ impl Scene for PongScene {
 
     fn on_collisions(&mut self, _collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, _world: &mut World, _delta_time: f32) {}
 
-    fn get_data_for_ai(&self) -> DataForAi {
-        DataForAi {
-            inputs: self.data_for_ai.inputs.clone(),
-            points: self.data_for_ai.points,
-            is_gameover: self.data_for_ai.is_gameover,
-            outputs_to_keys: pong_outputs_to_keys,
-        }
-    }
-
     fn is_game_over(&self) -> bool {
         !self.do_play
     }
@@ -208,12 +189,6 @@ impl PongScene {
             can_bounce: true,
             do_play: true,
             rng: SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()),
-            data_for_ai: DataForAi {
-                inputs: [Vec::new(), Vec::new()],
-                points: [0.0, 0.0],
-                is_gameover: false,
-                outputs_to_keys: pong_outputs_to_keys,
-            },
             use_ai,
         }
     }
@@ -235,11 +210,6 @@ impl PongScene {
     fn bounce_off_paddle(&mut self, overlaps: &HashMap<u16, Vec<u16>>, world: &mut World) {
         for i in 0..2 {
             if overlaps.contains_key(&self.ball.unwrap()) && overlaps[&self.ball.unwrap()].contains(&self.paddle[i].unwrap()) {
-                self.data_for_ai.points[i] += 1.0;
-                println!("{} {}", i, self.data_for_ai.points[i]);
-                if self.data_for_ai.points[i] >= 100.0 {
-                    self.data_for_ai.is_gameover = true;
-                }
                 self.can_collide[i] = false;
                 self.can_bounce = true;
                 let ball_transform = &world.get_transform(&self.ball.unwrap()).unwrap();
@@ -353,16 +323,7 @@ impl PongScene {
                 p1_inputs.push(ball_transform.center.y as f64);
             }
 
-            self.data_for_ai.inputs = [p0_inputs, p1_inputs];
+            set_pong_ai_data(PongAiData { inputs: [p0_inputs, p1_inputs] });
         }
     }
-}
-
-fn pong_outputs_to_keys(outputs: &[f64]) -> [bool; KEYS_LENGTH as usize] {
-    let mut keys = [false; KEYS_LENGTH as usize];
-    if let Some(&v) = outputs.first() {
-        keys[2] = v > 0.5; // Left
-        keys[3] = v < 0.5; // Right
-    }
-    keys
 }

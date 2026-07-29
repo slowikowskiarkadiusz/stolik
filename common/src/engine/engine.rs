@@ -1,6 +1,6 @@
 use crate::{
     engine::{
-        ai::neat_genome::DataForAi, asyncable::AsyncableStorage, color::Color, color_matrix::ColorMatrix, components::{
+        asyncable::AsyncableStorage, color::Color, color_matrix::ColorMatrix, components::{
             collider::{Collider, ColliderPartDebug, CollisionResult},
             physics::Physics,
             world::World,
@@ -114,8 +114,6 @@ impl Engine {
             if player < 2 { self.inputs[player] = input; }
         }
 
-        self.tick_ai_player();
-
         let frame: ColorMatrix;
 
         {
@@ -148,17 +146,6 @@ impl Engine {
         }
     }
 
-    fn tick_ai_player(&mut self) {
-        let data = self.current_scene.get_data_for_ai();
-        for player in 0..2 {
-            if !data.inputs[player].is_empty() {
-                if let Some(ai) = self.inputs[player].as_ai_input_mut() {
-                    ai.on_ai_data(&data.inputs[player], data.outputs_to_keys);
-                }
-            }
-        }
-    }
-
     fn combine_color_matrixes(&mut self, frame: ColorMatrix) {
         self.screen.fill(Color::none());
         let camera = self.world.get_camera();
@@ -179,10 +166,6 @@ impl Engine {
         while let Ok((player, input)) = INPUT_CHANNEL.receiver().try_receive() {
             if player < 2 { self.inputs[player] = input; }
         }
-    }
-
-    pub fn get_scene_data_for_ai(&self) -> DataForAi {
-        self.current_scene.get_data_for_ai()
     }
 
     pub fn is_game_over(&self) -> bool {
