@@ -37,6 +37,7 @@ impl Scene for TetrisScene {
         if self.use_ai {
             set_input(1, TetrisAiInput::new(1));
         }
+        println!("Opening Tetris!");
         let seed = SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()).next_u32();
 
         self.p1_board_actor_id = create_board_actor(world, &mut self.tetris_world, true, seed);

@@ -1,5 +1,6 @@
 extern crate alloc;
-use core::sync::atomic::{AtomicU8, AtomicU16, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU8, AtomicU16, AtomicU64, Ordering};
+use std::println;
 
 use crate::{
     engine::{
@@ -21,6 +22,36 @@ static TETRIS_PIECE_CENTER_X_0: AtomicU8 = AtomicU8::new(0);
 static TETRIS_PIECE_CENTER_X_1: AtomicU8 = AtomicU8::new(0);
 static TETRIS_AI_DATA_0: Mutex<Option<[Option<TetrisAiData>; BOARD_WIDTH as usize * 4]>> = Mutex::new(None);
 static TETRIS_AI_DATA_1: Mutex<Option<[Option<TetrisAiData>; BOARD_WIDTH as usize * 4]>> = Mutex::new(None);
+static TETRIS_FITNESS_0: AtomicU64 = AtomicU64::new(0);
+static TETRIS_FITNESS_1: AtomicU64 = AtomicU64::new(0);
+
+static TETRIS_NEEDS_AI_DATA_0: AtomicBool = AtomicBool::new(false);
+static TETRIS_NEEDS_AI_DATA_1: AtomicBool = AtomicBool::new(false);
+
+pub fn take_tetris_needs_ai_data(player: u8) -> bool {
+    match player {
+        0 => TETRIS_NEEDS_AI_DATA_0.swap(false, Ordering::Relaxed),
+        1 => TETRIS_NEEDS_AI_DATA_1.swap(false, Ordering::Relaxed),
+        _ => false,
+    }
+}
+
+fn request_tetris_ai_data(player: usize) {
+    match player {
+        0 => TETRIS_NEEDS_AI_DATA_0.store(true, Ordering::Relaxed),
+        1 => TETRIS_NEEDS_AI_DATA_1.store(true, Ordering::Relaxed),
+        _ => {}
+    }
+}
+
+pub fn set_tetris_fitness(player: u8, points: f64) {
+    let bits = points.to_bits();
+    match player {
+        0 => TETRIS_FITNESS_0.store(bits, Ordering::Relaxed),
+        1 => TETRIS_FITNESS_1.store(bits, Ordering::Relaxed),
+        _ => {}
+    }
+}
 
 pub fn set_tetris_ai_data(player: u8, newdata: [Option<TetrisAiData>; BOARD_WIDTH as usize * 4]) {
     match player {
@@ -79,6 +110,7 @@ pub struct TetrisAiInput {
     player: usize,
     goto_x: Option<u8>,
     goto_rotation: Option<u16>,
+    last_center_x: u8,
 }
 
 impl AiInput for TetrisAiInput {
@@ -95,6 +127,7 @@ impl AiInput for TetrisAiInput {
             player,
             goto_x: None,
             goto_rotation: None,
+            last_center_x: 0,
         })
     }
 
@@ -116,37 +149,54 @@ impl Input for TetrisAiInput {
         let mut binding = get_tetris_ai_data(self.player as u8).lock();
         let mut tetris_ai_data = binding.as_mut();
         if tetris_ai_data.is_some() {
-            let mut max_score = 0.0;
-            let mut max_score_index = 0;
-            let iter: Vec<_> = tetris_ai_data.unwrap()[self.player].iter().collect();
-            for d in 0..iter.len() {
-                let data = iter[d];
-                // if let Some(data) = iter[d] {
+            let mut max_score = f64::NEG_INFINITY;
+            let mut best_idx: Option<usize> = None;
+            let iter: Vec<_> = tetris_ai_data.unwrap().iter().enumerate().filter_map(|(i, x)| x.as_ref().map(|d| (i, d))).collect();
+            for (idx, data) in &iter {
                 let score = self.genome.activate(data.into_nn_inputs())[0];
-
                 if score > max_score {
                     max_score = score;
-                    max_score_index = d;
+                    best_idx = Some(*idx);
                 }
-                // }
             }
 
-            self.goto_x = Some(iter[max_score_index].piece_x);
-            self.goto_rotation = Some(iter[max_score_index].current_rotation.iter().position(|f| *f == 1).unwrap() as u16 * 90);
+            if let Some(idx) = best_idx {
+                if let Some((_, data)) = iter.iter().find(|(i, _)| *i == idx) {
+                    self.goto_x = Some(data.piece_x);
+                    self.goto_rotation = Some((idx % 4) as u16 * 90);
+                }
+            }
 
-            tetris_ai_data = None;
+            *binding = None;
         } else if let Some(goto_x) = self.goto_x
             && let Some(goto_rotation) = self.goto_rotation
         {
             let center_x = get_tetris_piece_center_x(self.player).load(Ordering::SeqCst);
-            if get_tetris_piece_rotation(self.player).load(Ordering::SeqCst) != goto_rotation {
-                self.keys_down[Key::Blue as usize] = center_x < goto_x;
+            let current_rotation = get_tetris_piece_rotation(self.player).load(Ordering::SeqCst);
+            let rotation_ok = current_rotation == goto_rotation;
+            let x_ok = center_x == goto_x;
+            let stuck = !x_ok && center_x == self.last_center_x;
+            if stuck {
+                self.goto_x = None;
+                self.goto_rotation = None;
+                request_tetris_ai_data(self.player);
             } else {
-                self.keys_down[Key::Left as usize] = center_x < goto_x;
-                self.keys_down[Key::Right as usize] = center_x > goto_x;
-                self.keys_down[Key::Up as usize] = center_x == goto_x;
+                if !rotation_ok {
+                    self.keys_down[Key::Blue as usize] = true;
+                }
+                self.keys_down[Key::Right as usize] = center_x < goto_x;
+                self.keys_down[Key::Left as usize] = center_x > goto_x;
+                self.keys_down[Key::Up as usize] = x_ok && rotation_ok;
             }
+            self.last_center_x = center_x;
         }
+
+        let fitness_bits = match self.player {
+            0 => TETRIS_FITNESS_0.load(Ordering::Relaxed),
+            1 => TETRIS_FITNESS_1.load(Ordering::Relaxed),
+            _ => 0,
+        };
+        self.genome.fitness = f64::from_bits(fitness_bits);
 
         self.gestures.tick(self.get_snapshot(), delta_time);
     }

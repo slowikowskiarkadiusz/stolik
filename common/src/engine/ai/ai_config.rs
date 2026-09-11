@@ -35,7 +35,7 @@ impl AiConfig {
             "tetris" => AiConfig {
                 game_name: String::from(game_name),
                 input_count: 208,
-                output_count: 5,
+                output_count: 1,
                 json: include_str!("../../../neat_genomes/best_tetris.json"),
                 scene_factory: || Box::new(TetrisScene::new(TetrisSceneMode::AgainstHuman, false)),
                 input_factory: TetrisAiInput::new,

@@ -12,7 +12,7 @@ use crate::engine::input::gesture::{Gesture, State};
 use crate::engine::input::input::Input;
 use crate::engine::input::key::Key;
 use crate::scenes::tetris::board_ai_data::get_all_possible_future_boards_ai_data;
-use crate::scenes::tetris::tetris_ai_input::{set_tetris_ai_data, set_tetris_piece_center_x, set_tetris_piece_rotation};
+use crate::scenes::tetris::tetris_ai_input::{set_tetris_ai_data, set_tetris_fitness, set_tetris_piece_center_x, set_tetris_piece_rotation, take_tetris_needs_ai_data};
 use crate::scenes::tetris::world::TetrisWorld;
 use crate::{
     engine::{color::Color, color_matrix::ColorMatrix, matrix::Matrix, v2::V2},
@@ -42,6 +42,8 @@ pub struct TetrisAiData {
     pub current_rotation: [u8; 4],
     /// piece's x pos
     pub piece_x: u8,
+    /// piece's y pos when ai data was generated
+    pub piece_y: u8,
     // /// one-hot of next piece
     // pub next_piece: [u8; 7],
 }
@@ -58,6 +60,7 @@ impl TetrisAiData {
             current_piece: [0; 7],
             current_rotation: [0; 4],
             piece_x: 0,
+            piece_y: 0,
             // next_piece: [0; 7],
         }
     }
@@ -71,6 +74,7 @@ impl TetrisAiData {
         result.push(self.aggregate_height as f64 / (BOARD_HEIGHT * BOARD_WIDTH) as f64);
         result.push(self.max_height as f64 / BOARD_HEIGHT as f64);
         result.push(self.lines_cleared as f64 / 4.0);
+        result.push(self.piece_y as f64 / BOARD_HEIGHT as f64);
         for x in self.current_piece {
             result.push(x as f64);
         }
@@ -210,6 +214,10 @@ impl Board {
         }
 
         self.garbage_bar.tick(delta_time);
+        self.send_piece_info();
+        if take_tetris_needs_ai_data(if self.is_p1 { 0 } else { 1 }) {
+            self.send_ai_data();
+        }
 
         let mut damage_to_do = 0;
 
@@ -249,10 +257,12 @@ impl Board {
 
             if input.gestures().is(Key::Blue, State::Down, Gesture::Once, None) {
                 self.rotate_block(1);
+                self.send_piece_info();
             }
 
             if input.gestures().is(Key::Green, State::Down, Gesture::Once, None) {
                 self.rotate_block(-1);
+                self.send_piece_info();
             }
 
             let damage_to_deal = damage_from_hard_drop + self.fall(delta_time);
@@ -562,6 +572,7 @@ impl Board {
                 4 => 200.0,
                 _ => 0.0,
             };
+            set_tetris_fitness(if self.is_p1 { 0 } else { 1 }, self.points);
             self.pop_garbage_lines();
 
             return damage_to_deal;

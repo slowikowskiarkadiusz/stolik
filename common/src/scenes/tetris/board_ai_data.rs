@@ -43,8 +43,10 @@ pub fn get_all_possible_future_boards_ai_data(
     current_agent: &Block,
 ) -> [Option<TetrisAiData>; BOARD_WIDTH as usize * 4] {
     let mut result: [Option<TetrisAiData>; BOARD_WIDTH as usize * 4] = [None; BOARD_WIDTH as usize * 4];
+    let piece_y = current_agent.center.y as u8;
 
-    for rotation in [0u16, 90, 180, 270] {
+    let rotations: &[u16] = if current_agent.shape == Shape::O { &[0] } else { &[0, 90, 180, 270] };
+    for &rotation in rotations {
         for x in 0..BOARD_WIDTH {
             if let Some(future_board) = get_future_board(current_agent, is_cell_taken, x, rotation) {
                 let column_heights = get_column_heights(&future_board);
@@ -67,6 +69,7 @@ pub fn get_all_possible_future_boards_ai_data(
                         result
                     },
                     piece_x: x,
+                    piece_y,
                     // next_piece: {
                     //     let mut result: [u8; 7] = [0; 7];
                     //     result[next_shape.clone() as u8] = 1;
