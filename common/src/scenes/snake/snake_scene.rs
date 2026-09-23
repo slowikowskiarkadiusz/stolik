@@ -84,6 +84,8 @@ fn create_initial_snake(is_p1: bool) -> SnakeNode {
 
 impl Scene for SnakeScene {
     fn init(&mut self, world: &mut World) {
+        world.get_mut_camera().set_viewport((V2::zero(), V2::one() * BOARD_SIZE as f32));
+
         self.snake.push(create_initial_snake(false));
         self.snake_timers.push(0.0);
 
@@ -105,6 +107,8 @@ impl Scene for SnakeScene {
                 result.set(point.x as u8, point.y as u8, color);
             }
         }
+
+        result.set(self.point_position.x as u8, self.point_position.y as u8, Color::white());
 
         print_score(self.score[0], self.score[1], &mut result);
 
@@ -218,7 +222,8 @@ impl SnakeScene {
     fn handle_input(&mut self, inputs: [&Box<dyn Input + 'static>; 2], world: &mut World, delta_time: f32) {
         for i in 0..self.snake.len() {
             if self.snake_timers[i] <= 0.0 && inputs[i].is_key_press(Key::AnyDirection) {
-                let mul = if i == 0 { 1.0 } else { -1.0 };
+                // let mul = if i == 0 { 1.0 } else { -1.0 };
+                let mul = 1.0;
 
                 let by = if inputs[i].is_key_press(Key::Left) {
                     V2::new(-1.0 * mul, 0.0)
