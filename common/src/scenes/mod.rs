@@ -7,3 +7,4 @@ pub mod tetris;
 pub mod utils;
 pub mod tanks;
 pub mod game_of_life;
+pub mod snake;

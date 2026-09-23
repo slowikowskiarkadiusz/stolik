@@ -16,15 +16,8 @@ use crate::{
         input::{input::Input, key::Key},
         scene::Scene,
         v2::V2,
-    },
-    scenes::{
-        astro_duel::astro_scene::AstroDuelScene,
-        controls::controls_scene::ControlsScene,
-        game_of_life::game_of_life_scene::GameOfLifeScene,
-        mario::mario_scene::MarioScene,
-        pong::pong_scene::PongScene,
-        tanks::tanks_scene::TanksScene,
-        tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
+    }, scenes::{
+        astro_duel::astro_scene::AstroDuelScene, controls::controls_scene::ControlsScene, game_of_life::game_of_life_scene::GameOfLifeScene, mario::mario_scene::MarioScene, pong::pong_scene::PongScene, snake::snake_scene::SnakeScene, tanks::tanks_scene::TanksScene, tetris::tetris_scene::{TetrisScene, TetrisSceneMode},
     },
 };
 
@@ -83,6 +76,8 @@ impl Scene for MenuScene {
             MenuOption::new(Box::new(|| Box::new(TanksScene::new())), "tanks", "tanks", false),
             MenuOption::new(Box::new(|| Box::new(AstroDuelScene::new())), "astro_duel", "astro duel", false),
             MenuOption::new(Box::new(|| Box::new(GameOfLifeScene::new())), "game_of_life", "game of life", false),
+            MenuOption::new(Box::new(|| Box::new(SnakeScene::new(false))), "snake", "snake", false),
+            MenuOption::new(Box::new(|| Box::new(SnakeScene::new(true))), "snake", "snake solo", false),
         ];
     }
 

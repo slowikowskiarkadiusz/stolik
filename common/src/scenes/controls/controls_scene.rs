@@ -296,6 +296,12 @@ static POSSIBLE_CONTROL_SETS: LazyLock<HashMap<String, Vec<ControlsData>>> = Laz
             ],
         ),
         (
+            String::from("snake"),
+            vec![
+                ControlsData::new(vec![Key::AnyDirection], "move", None),
+            ],
+        ),
+        (
             String::from("astro_duel"),
             vec![
                 ControlsData::new(vec![Key::AnyDirection], "thrust", None),
