@@ -47,7 +47,7 @@ pub fn render_text(
     let bottom_right = &top_left + &container_size;
     let center = (&top_left + &bottom_right) / 2.0;
 
-    let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
+    let generated = generate_word_matrix(&text, Some(container_size.x as u8), &color, reverse).0;
 
     result.write(&generated, &center, rotation, None, None, camera);
 
@@ -69,21 +69,29 @@ pub fn create_text_actor_at_center(
     if let Some(opt) = options {
         reverse = opt.reverse;
     }
-    let generated = generate_word_matrix(&text, container_size.x as u8, &color, reverse).0;
+    let generated = generate_word_matrix(&text, Some(container_size.x as u8), &color, reverse).0;
 
     result.write(&generated, &center, rotation, None, None, Some(camera));
 
     world.add_new_actor(Some(Transform::new(center, container_size)), None, None)
 }
 
-pub fn generate_word_matrix(text: &str, max_width: u8, color: &Color, reverse: bool) -> (ColorMatrix, Option<ColorMatrix>) {
+pub fn generate_word_matrix(text: &str, max_width: Option<u8>, color: &Color, reverse: bool) -> (ColorMatrix, Option<ColorMatrix>) {
     let mut word_render_length = 0;
     for letter in text.chars() {
         word_render_length += get_letter_width(&letter);
         word_render_length += 1;
     }
     word_render_length -= 1;
-    let mut full_word_matrix = ColorMatrix::new(u8::max(max_width, word_render_length), LETTER_HEIGHT, Color::none());
+    let mut full_word_matrix = ColorMatrix::new(
+        if let Some(max_w) = max_width {
+            u8::max(max_w, word_render_length)
+        } else {
+            word_render_length
+        },
+        LETTER_HEIGHT,
+        Color::none(),
+    );
     let color_none = Color::none();
 
     let mut current_position: u8 = 0;
@@ -98,13 +106,17 @@ pub fn generate_word_matrix(text: &str, max_width: u8, color: &Color, reverse: b
         current_position += 1;
     }
 
-    if word_render_length <= max_width {
-        (full_word_matrix, None)
+    if let Some(max_w) = max_width {
+        if word_render_length <= max_w {
+            (full_word_matrix, None)
+        } else {
+            (
+                full_word_matrix.snippet(&V2::zero(), &V2::new(max_w as f32, LETTER_HEIGHT as f32)),
+                Some(full_word_matrix),
+            )
+        }
     } else {
-        (
-            full_word_matrix.snippet(&V2::zero(), &V2::new(max_width as f32, LETTER_HEIGHT as f32)),
-            Some(full_word_matrix),
-        )
+        (full_word_matrix, None)
     }
 }
 

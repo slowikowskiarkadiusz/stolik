@@ -164,14 +164,14 @@ impl Scene for TanksScene {
         }
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> Vec<ColorMatrix> {
         world
             .get_mut_camera()
             .set_viewport((V2::zero(), V2::new(SCREEN_SIZEF32, SCREEN_SIZEF32)));
 
         let w = match self.world.as_ref() {
             Some(w) => w,
-            None => return ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none()),
+            None => return vec![ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none())],
         };
 
         let mut result = w.obstacle.render();
@@ -198,10 +198,10 @@ impl Scene for TanksScene {
         }
 
         if let Some(winner) = w.winner {
-            print_victory_text(&mut result, winner, camera, true);
+            print_victory_text(&mut result, winner, true);
         }
 
-        result
+        vec![result]
     }
 
     fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}

@@ -111,7 +111,7 @@ impl Scene for PongScene {
         self.save_ai_data(world);
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> Vec<ColorMatrix> {
         let mut result = ColorMatrix::new(
             camera.get_viewport().get_size().x as u8,
             camera.get_viewport().get_size().y as u8,
@@ -137,7 +137,7 @@ impl Scene for PongScene {
 
             if self.score.iter().any(|x| x == &MAX_SCORE) {
                 self.do_play = false;
-                print_victory_text(&mut result, if self.score[0] > self.score[1] { 1 } else { 2 }, camera, true);
+                print_victory_text(&mut result, if self.score[0] > self.score[1] { 1 } else { 2 }, true);
                 add_asyncable(
                     Box::new(move |_, _| {
                         open_scene(Box::new(|| Box::new(PongScene::new())), None);
@@ -165,7 +165,7 @@ impl Scene for PongScene {
             }
         }
 
-        result
+        vec![result]
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {

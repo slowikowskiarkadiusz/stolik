@@ -123,7 +123,7 @@ impl Scene for MenuScene {
         // }
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> Vec<ColorMatrix> {
         let vsize = camera.get_viewport().get_size();
         let mut result = ColorMatrix::new(vsize.x as u8, vsize.y as u8, Color::none());
 
@@ -150,7 +150,7 @@ impl Scene for MenuScene {
             &mut result,
         );
 
-        result
+        vec![result]
     }
 
     fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}

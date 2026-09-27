@@ -1,11 +1,21 @@
 use crate::{
     engine::{
-        ai::neat_genome::{DataForAi, NeatGenome}, asyncable::AsyncableStorage, color::Color, color_matrix::ColorMatrix, components::{
+        ai::neat_genome::{DataForAi, NeatGenome},
+        asyncable::AsyncableStorage,
+        color::Color,
+        color_matrix::ColorMatrix,
+        components::{
             collider::{Collider, ColliderPartDebug, CollisionResult},
             physics::Physics,
             world::World,
-        }, hash_map::HashMap, input::{input::Input, key::KEYS_LENGTH}, scene::{EmptyScene, Scene}, threading_provider::Thread, v2::V2,
-    }, scenes::menu::menu_scene::MenuScene,
+        },
+        hash_map::HashMap,
+        input::{input::Input, key::KEYS_LENGTH},
+        scene::{EmptyScene, Scene},
+        threading_provider::Thread,
+        v2::V2,
+    },
+    scenes::menu::menu_scene::MenuScene,
 };
 extern crate alloc;
 use alloc::boxed::Box;
@@ -116,7 +126,7 @@ impl Engine {
 
         self.tick_ai_player();
 
-        let frame: ColorMatrix;
+        let frames: Vec<ColorMatrix>;
 
         {
             let mut_scene = self.current_scene.as_mut();
@@ -126,7 +136,7 @@ impl Engine {
 
             mut_scene.tick([&self.inputs[0], &self.inputs[1]], &mut self.world, delta_time);
             let camera = self.world.get_camera();
-            frame = mut_scene.render(&camera, &mut self.world, delta_time);
+            frames = mut_scene.render(&camera, &mut self.world, delta_time);
             self.asyncable_storage.update(&mut self.world, delta_time);
         }
 
@@ -140,7 +150,7 @@ impl Engine {
             Collider::detect_overlaps(&self.world, &mut self.overlaps);
             let mut_scene = self.current_scene.as_mut();
             mut_scene.on_overlaps(&self.overlaps, &mut self.world, delta_time);
-            self.combine_color_matrixes(frame);
+            self.combine_color_matrixes(frames);
             on_frame_finished(&self.screen);
 
             self.inputs[0].as_mut().late_update(delta_time);
@@ -175,14 +185,20 @@ impl Engine {
         }
     }
 
-    fn combine_color_matrixes(&mut self, frame: ColorMatrix) {
+    fn combine_color_matrixes(&mut self, frames: Vec<ColorMatrix>) {
         self.screen.fill(Color::none());
         let camera = self.world.get_camera();
 
-        self.screen.write_at_origin(&frame, &V2::zero());
+        if let Some(first_frame) = frames.first() {
+            self.screen.write_at_origin(&first_frame, &V2::zero(), None);
+        }
 
         let size = 1.0 / camera.get_viewport_size_relative_to_screen();
         self.screen.scale(size, Color::none(), false);
+
+        if frames.len() >= 2 {
+            self.screen.write_at_origin(&frames[1], &V2::zero(), Some(true));
+        }
     }
 
     pub fn change_scene<F>(&mut self, new_scene_func: F)

@@ -17,7 +17,8 @@ macro_rules! write_m {
 pub type ColorMatrix = Matrix<Color>;
 
 impl Matrix<Color> {
-    pub fn write_at_origin(&mut self, other: &ColorMatrix, origin: &V2) -> &ColorMatrix {
+    pub fn write_at_origin(&mut self, other: &ColorMatrix, origin: &V2, blend_colors: Option<bool>) -> &ColorMatrix {
+        let blend_colors: bool = blend_colors.unwrap_or_default();
         if origin.x < self.width as f32 && origin.y < self.height as f32 {
             for x in 0..other.width {
                 for y in 0..other.height {
@@ -25,7 +26,30 @@ impl Matrix<Color> {
                     let ty = y + origin.y as u8;
 
                     if tx < self.width && ty < self.height {
-                        self.set(tx, ty, other.get(x, y).clone());
+                        let src = other.get(x, y).clone();
+                        if !other.get(x, y).is_none() {
+                            if blend_colors {
+                                let dst = self.get(tx as u8, ty as u8);
+                                let sa = src.a as f32 / 255.0;
+                                let da = dst.a as f32 / 255.0;
+                                let out_a = sa + da * (1.0 - sa);
+                                if out_a <= 0.0 {
+                                    self.set(tx as u8, ty as u8, Color::none());
+                                } else {
+                                    let inv_sa = 1.0 - sa;
+                                    let r = (src.r as f32 * sa + dst.r as f32 * da * inv_sa) / out_a;
+                                    let g = (src.g as f32 * sa + dst.g as f32 * da * inv_sa) / out_a;
+                                    let b = (src.b as f32 * sa + dst.b as f32 * da * inv_sa) / out_a;
+                                    self.set(
+                                        tx as u8,
+                                        ty as u8,
+                                        Color::new(roundf(r) as u8, roundf(g) as u8, roundf(b) as u8, roundf(out_a * 255.0) as u8),
+                                    );
+                                }
+                            } else {
+                                self.set(tx as u8, ty as u8, src.clone());
+                            }
+                        }
                     }
                 }
             }

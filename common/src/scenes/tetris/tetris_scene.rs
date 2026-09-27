@@ -94,7 +94,7 @@ impl Scene for TetrisScene {
         }
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> Vec<ColorMatrix> {
         world.get_mut_camera().set_viewport((V2::zero(), V2::one() * 32.0));
         // println!("[Tetris] render start");
 
@@ -122,7 +122,7 @@ impl Scene for TetrisScene {
         self.on_players_death(world, camera, &mut result);
         // println!("[Tetris] render 3");
 
-        result
+        vec![result]
     }
 
     fn on_overlaps(&mut self, _: &engine::hash_map::HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}
@@ -176,7 +176,7 @@ impl TetrisScene {
                 p2_board.dim(51);
             }
 
-            print_victory_text(result, if is_p1 { 1 } else { 2 }, camera, true);
+            print_victory_text(result, if is_p1 { 1 } else { 2 }, true);
         }
     }
 }

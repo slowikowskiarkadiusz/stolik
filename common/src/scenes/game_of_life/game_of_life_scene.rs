@@ -103,7 +103,7 @@ impl Scene for GameOfLifeScene {
         }
     }
 
-    fn render(&mut self, _camera: &Camera, _world: &mut World, _delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, _camera: &Camera, _world: &mut World, _delta_time: f32) -> Vec<ColorMatrix> {
         let mut result = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
 
         for x in 0usize..SCREEN_SIZEUSIZE {
@@ -129,7 +129,7 @@ impl Scene for GameOfLifeScene {
             );
         }
 
-        result
+        vec![result]
     }
 
     fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}

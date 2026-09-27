@@ -31,10 +31,10 @@ use crate::{
 use esp_println::println;
 
 static MAX_SCORE: u8 = 3;
-static BOARD_SIZE: u8 = 32;
+static BOARD_SIZE: u8 = 16;
 static SIZE_FACTOR: f32 = (SCREEN_SIZE / BOARD_SIZE) as f32;
 static INIT_SNAKE_LENGTH: u8 = 3;
-static MOVEMENT_TIMER_SECONDS: f32 = 0.5;
+static MOVEMENT_TIMER_SECONDS: f32 = 0.1;
 
 struct SnakeNode {
     pub x: u8,
@@ -45,13 +45,17 @@ struct SnakeNode {
 impl SnakeNode {
     pub fn get_all_points(&self) -> Vec<V2> {
         let mut result = Vec::<V2>::new();
+        result.push(V2::new(self.x as f32, self.y as f32)); // dodaj głowę
         let mut maybe_current: &Option<Box<SnakeNode>> = &self.next;
         while let Some(current) = maybe_current {
             result.push(V2::new(current.x as f32, current.y as f32));
-            maybe_current = &current.next
+            maybe_current = &current.next;
         }
-
         result
+    }
+
+    pub fn get_pos(&self) -> V2 {
+        V2::new(self.x as f32, self.y as f32)
     }
 }
 
@@ -62,6 +66,7 @@ pub struct SnakeScene {
     point_position: V2,
     do_play: bool,
     is_solo: bool,
+    loser: Option<usize>,
     rng: SmallRng,
     data_for_ai: DataForAi,
 }
@@ -70,7 +75,11 @@ fn create_initial_snake(is_p1: bool) -> SnakeNode {
     fn internal(is_p1: bool, offset: u8) -> SnakeNode {
         SnakeNode {
             x: BOARD_SIZE / 2 - offset,
-            y: (if is_p1 { BOARD_SIZE / 2 + 10 } else { BOARD_SIZE / 2 - 10 }),
+            y: (if is_p1 {
+                BOARD_SIZE / 2 + (BOARD_SIZE / 3)
+            } else {
+                BOARD_SIZE / 2 - (BOARD_SIZE / 3)
+            }),
             next: if offset < INIT_SNAKE_LENGTH {
                 Some(Box::new(internal(is_p1, offset + 1)))
             } else {
@@ -93,13 +102,28 @@ impl Scene for SnakeScene {
     }
 
     fn tick(&mut self, inputs: [&Box<dyn Input>; 2], world: &mut World, delta_time: f32) {
-        self.handle_input(inputs, world, delta_time);
+        if self.loser.is_none() {
+            self.handle_input(inputs, world, delta_time);
 
-        self.save_ai_data(world);
+            self.loser = self.check_if_collision();
+
+            if self.loser.is_some() {
+                let is_solo = self.is_solo.clone();
+                add_asyncable(
+                    Box::new(move |_, _| {
+                        open_scene(Box::new(move || Box::new(SnakeScene::new(is_solo))), None);
+                    }),
+                    10.0,
+                    AsyncableType::Timeout,
+                );
+            }
+            self.save_ai_data(world);
+        }
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, _delta_time: f32) -> Vec<ColorMatrix> {
         let mut result = ColorMatrix::new(BOARD_SIZE, BOARD_SIZE, Color::none());
+        let mut result2 = ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none());
 
         for i in 0..self.snake.len() {
             let color = if i == 0 { P1_COLOR } else { P2_COLOR };
@@ -110,38 +134,13 @@ impl Scene for SnakeScene {
 
         result.set(self.point_position.x as u8, self.point_position.y as u8, Color::white());
 
-        print_score(self.score[0], self.score[1], &mut result);
+        print_score(self.score[0], self.score[1], &mut result2);
 
-        // if self.score.iter().any(|x| x == &MAX_SCORE) {
-        //     self.do_play = false;
-        //     print_victory_text(&mut result, if self.score[0] > self.score[1] { 1 } else { 2 }, camera, true);
-        //     add_asyncable(
-        //         Box::new(move |_, _| {
-        //             open_scene(Box::new(|| Box::new(SnakeScene::new())), None);
-        //         }),
-        //         10.0,
-        //         AsyncableType::Timeout,
-        //     );
+        if let Some(loser) = self.loser {
+            print_victory_text(&mut result2, if loser == 0 { 2 } else { 1 }, true);
+        }
 
-        //     if let Some(ball_id) = self.ball {
-        //         world.murder(&ball_id);
-        //     }
-        // }
-
-        // if camera.can_see_actor(self.ball.unwrap(), world) {
-        //     if let Some(transform) = world.get_mut_transform(&self.ball.unwrap()) {
-        //         result.write(
-        //             &ColorMatrix::new(transform.size.x as u8, transform.size.y as u8, Color::white()),
-        //             &transform.center,
-        //             None,
-        //             None,
-        //             None,
-        //             Some(camera),
-        //         );
-        //     }
-        // }
-
-        result
+        vec![result, result2]
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {}
@@ -171,6 +170,7 @@ impl SnakeScene {
             point_position: V2::zero(),
             do_play: true,
             is_solo: is_solo,
+            loser: None,
             rng: SmallRng::seed_from_u64(embassy_time::Instant::now().as_micros()),
             data_for_ai: DataForAi {
                 inputs: [Vec::new(), Vec::new()],
@@ -186,14 +186,13 @@ impl SnakeScene {
         for i in 0..self.snake.len() {
             let head_pos = V2::new(self.snake[i].x as f32, self.snake[i].y as f32);
             for j in 0..self.snake.len() {
-                if i != j {
-                    if self.snake[j]
-                        .get_all_points()
-                        .iter()
-                        .any(|f| f.x == head_pos.x && f.y == head_pos.y)
-                    {
-                        return Some(i);
-                    }
+                if self.snake[j]
+                    .get_all_points()
+                    .iter()
+                    .skip(if i == j { 1 } else { 0 })
+                    .any(|f| f.x == head_pos.x && f.y == head_pos.y)
+                {
+                    return Some(i);
                 }
             }
         }
@@ -206,24 +205,25 @@ impl SnakeScene {
             if let Some(next) = snake_node.next.as_mut() {
                 internal(next, snake_node.x, snake_node.y);
             }
-
             snake_node.x = parent_x;
             snake_node.y = parent_y;
         }
 
-        head.x += by.x as u8;
-        head.y += by.y as u8;
+        let old_x = head.x;
+        let old_y = head.y;
+        head.x = (head.x as f32 + by.x) as u8;
+        head.y = (head.y as f32 + by.y) as u8;
 
         if let Some(next) = head.next.as_mut() {
-            internal(next, head.x, head.y);
+            internal(next, old_x, old_y); // stara pozycja głowy
         }
     }
 
     fn handle_input(&mut self, inputs: [&Box<dyn Input + 'static>; 2], world: &mut World, delta_time: f32) {
         for i in 0..self.snake.len() {
             if self.snake_timers[i] <= 0.0 && inputs[i].is_key_press(Key::AnyDirection) {
-                // let mul = if i == 0 { 1.0 } else { -1.0 };
-                let mul = 1.0;
+                let mul = if i == 0 { 1.0 } else { -1.0 };
+                // let mul = 1.0;
 
                 let by = if inputs[i].is_key_press(Key::Left) {
                     V2::new(-1.0 * mul, 0.0)
@@ -237,7 +237,39 @@ impl SnakeScene {
                     V2::zero()
                 };
 
-                SnakeScene::move_snake(&mut self.snake[i], by);
+                let new_pos = self.snake[i].get_pos() + by;
+
+                if new_pos == self.snake[i].get_pos()
+                    || !((new_pos.x) >= 0.0 && (new_pos.x) < BOARD_SIZE as f32 && (new_pos.y) >= 0.0 && (new_pos.y) < BOARD_SIZE as f32)
+                {
+                    return;
+                }
+
+                if let Some(ref next) = self.snake[i].next {
+                    let next_pos = next.get_pos();
+
+                    let is_allowed = next_pos == (self.snake[i].get_pos() + by);
+
+                    if !(by.mag() > 0.0 && !is_allowed) {
+                        return;
+                    }
+                }
+
+                if (self.snake[i].get_pos() + by) == self.point_position {
+                    self.score[i] += 1;
+                    let old = self.snake.remove(i);
+                    self.snake.insert(
+                        i,
+                        SnakeNode {
+                            x: self.point_position.x as u8,
+                            y: self.point_position.y as u8,
+                            next: Some(Box::new(old)),
+                        },
+                    );
+                    self.reset_point(world);
+                } else {
+                    SnakeScene::move_snake(&mut self.snake[i], by);
+                }
 
                 self.snake_timers[i] = MOVEMENT_TIMER_SECONDS;
             }

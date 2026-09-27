@@ -202,7 +202,7 @@ impl Board {
 
     pub fn render_into(&self, offset: V2, dst: &mut ColorMatrix) {
         // One full-frame copy — replaces fill() + write(border) + write(dropped_blocks).
-        dst.write_at_origin(&self.static_buf, &offset);
+        dst.write_at_origin(&self.static_buf, &offset, None);
 
         let scale = SCALE as i16;
         // Garbage bar and hold: blit() instead of write() — no sin/cos, no float math.

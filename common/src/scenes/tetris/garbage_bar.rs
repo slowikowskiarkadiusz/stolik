@@ -68,7 +68,7 @@ impl GarbageBar {
             if self.current_level == 0 {
                 self.is_ready_to_be_popped = false;
                 self.ready_timer = None;
-                self.color_matrix.write_at_origin(&self.blink_off_color_matrix, &V2::zero());
+                self.color_matrix.write_at_origin(&self.blink_off_color_matrix, &V2::zero(), None);
             }
             return true;
         } else {

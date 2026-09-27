@@ -90,7 +90,7 @@ impl Scene for ControlsScene {
         }
     }
 
-    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix {
+    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> Vec<ColorMatrix> {
         let mut result = ColorMatrix::new(
             camera.get_viewport().get_size().x as u8,
             camera.get_viewport().get_size().y as u8,
@@ -138,7 +138,7 @@ impl Scene for ControlsScene {
             }
         }
 
-        result
+        vec![result]
     }
 
     fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}

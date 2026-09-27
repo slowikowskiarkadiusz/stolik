@@ -15,7 +15,7 @@ use crate::engine::{
 pub trait Scene {
     fn init(&mut self, world: &mut World);
     fn tick(&mut self, inputs: [&Box<dyn Input>; 2], world: &mut World, delta_time: f32);
-    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> ColorMatrix;
+    fn render(&mut self, camera: &Camera, world: &mut World, delta_time: f32) -> Vec<ColorMatrix>;
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, delta_time: f32);
     fn on_collisions(&mut self, collisions: &HashMap<u16, Vec<(u16, CollisionResult)>>, world: &mut World, delta_time: f32);
     fn get_data_for_ai(&self) -> DataForAi;
@@ -39,7 +39,7 @@ impl Scene for EmptyScene {
         todo!()
     }
 
-    fn render(&mut self, _: &Camera, _: &mut World, _: f32) -> ColorMatrix {
+    fn render(&mut self, _: &Camera, _: &mut World, _: f32) -> Vec<ColorMatrix> {
         todo!()
     }
 

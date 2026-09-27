@@ -1,12 +1,12 @@
-use libm::roundf;
 use crate::engine::{
-    actor::text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, generate_word_matrix, render_text},
+    actor::text::{LETTER_HEIGHT, MAX_LETTER_WIDTH, create_text_actor_at_center, generate_word_matrix, render_text},
     color::Color,
     color_matrix::ColorMatrix,
     components::camera::Camera,
     engine::SCREEN_SIZEF32,
     v2::V2,
 };
+use libm::roundf;
 
 pub const fn cmyk_to_rgb(c: u8, m: u8, y: u8, k: u8) -> (u8, u8, u8) {
     let r = (255.0 * (1.0 - c as f32 / 100.0) * (1.0 - k as f32 / 100.0)) as u8;
@@ -46,41 +46,22 @@ fn downscale_matrix(source: &ColorMatrix, scale: f32) -> ColorMatrix {
     result
 }
 
-pub fn print_victory_text(out: &mut ColorMatrix, winner: u8, camera: &Camera, show_for_both_sides: bool) {
-    let screen = camera.get_viewport().get_size();
-    let screen_center_x = screen.x / 2.0;
-    let scale = (screen.x / 64.0).min(1.0);
+pub fn print_victory_text(out: &mut ColorMatrix, winner: u8, show_for_both_sides: bool) {
+    fn internal(text: &str, center: V2, rotation: Option<f32>, color: Color, result: &mut ColorMatrix) {
+        let container_size = V2::new(result.width as f32, 6.0);
+        let generated = generate_word_matrix(&text, None, &color, false).0;
+
+        result.write(&generated, &center, rotation, None, None, None);
+    }
 
     let text = if winner == 1 { "P1 WON" } else { "P2 WON" };
     let color = if winner == 1 { P1_COLOR } else { P2_COLOR };
-    let black = Color::new(0, 0, 0, 255);
-    let (full_word_matrix, _) = generate_word_matrix(text, screen.x as u8, &color, false);
-    let word_matrix = if scale < 1.0 { downscale_matrix(&full_word_matrix, scale) } else { full_word_matrix };
+    let black = Color::new(0, 0, 0, 150);
 
-    let background_half_width = (word_matrix.width as f32 / 2.0 + 2.0).min(screen_center_x);
-    let background_half_height = (4.5 * screen.y / 64.0).max(3.0);
-    let background_left = (screen_center_x - background_half_width).max(0.0) as u8;
-    let background_right = (screen_center_x + background_half_width).min(screen.x) as u8;
+    out.write_at_origin(&ColorMatrix::new(out.width, out.height, black), &V2::zero(), Some(true));
 
-    if show_for_both_sides {
-        let bottom_text_y = screen.y * 47.0 / 64.0;
-        let bottom_box_top = (bottom_text_y - background_half_height).max(0.0) as u8;
-        let bottom_box_bottom = (bottom_text_y + background_half_height).min(screen.y) as u8;
-        for x in background_left..background_right { for y in bottom_box_top..bottom_box_bottom { out.set(x, y, black); } }
-        out.write(&word_matrix, &V2::new(screen_center_x, bottom_text_y), None, None, None, None);
-
-        let top_text_y = screen.y * 15.5 / 64.0;
-        let top_box_top = (top_text_y - background_half_height).max(0.0) as u8;
-        let top_box_bottom = (top_text_y + background_half_height).min(screen.y) as u8;
-        for x in background_left..background_right { for y in top_box_top..top_box_bottom { out.set(x, y, black); } }
-        out.write(&word_matrix, &V2::new(screen_center_x, top_text_y), Some(180.0), None, None, None);
-    } else {
-        let center_y = screen.y / 2.0;
-        let box_top = (center_y - background_half_height).max(0.0) as u8;
-        let box_bottom = (center_y + background_half_height).min(screen.y) as u8;
-        for x in background_left..background_right { for y in box_top..box_bottom { out.set(x, y, black); } }
-        out.write(&word_matrix, &V2::new(screen_center_x, center_y), None, None, None, None);
-    }
+    internal(text, out.get_size() / 2.0 + V2::down() * 6.0, None, color, out);
+    internal(text, out.get_size() / 2.0 + V2::up() * 6.0, Some(180.0), color, out);
 }
 
 pub fn print_score(score_p1: u8, score_p2: u8, result: &mut ColorMatrix) {
