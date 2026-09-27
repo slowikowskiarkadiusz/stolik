@@ -274,7 +274,7 @@ impl Scene for AstroDuelScene {
             print_victory_text(&mut result, winner, true);
         }
 
-        vec![result]
+        alloc::vec![result]
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _: f32) {

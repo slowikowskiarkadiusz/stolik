@@ -165,7 +165,7 @@ impl Scene for PongScene {
             }
         }
 
-        vec![result]
+        alloc::vec![result]
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {

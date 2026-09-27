@@ -122,7 +122,7 @@ impl Scene for TetrisScene {
         self.on_players_death(world, camera, &mut result);
         // println!("[Tetris] render 3");
 
-        vec![result]
+        alloc::vec![result]
     }
 
     fn on_overlaps(&mut self, _: &engine::hash_map::HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}

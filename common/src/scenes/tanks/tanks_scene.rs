@@ -171,7 +171,7 @@ impl Scene for TanksScene {
 
         let w = match self.world.as_ref() {
             Some(w) => w,
-            None => return vec![ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none())],
+            None => return alloc::vec![ColorMatrix::new(SCREEN_SIZE, SCREEN_SIZE, Color::none())],
         };
 
         let mut result = w.obstacle.render();
@@ -201,7 +201,7 @@ impl Scene for TanksScene {
             print_victory_text(&mut result, winner, true);
         }
 
-        vec![result]
+        alloc::vec![result]
     }
 
     fn on_overlaps(&mut self, _: &HashMap<ActorId, Vec<ActorId>>, _: &mut World, _: f32) {}

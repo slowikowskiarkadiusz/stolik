@@ -129,7 +129,7 @@ impl Scene for GameOfLifeScene {
             );
         }
 
-        vec![result]
+        alloc::vec![result]
     }
 
     fn on_overlaps(&mut self, _overlaps: &HashMap<ActorId, Vec<ActorId>>, _world: &mut World, _delta_time: f32) {}

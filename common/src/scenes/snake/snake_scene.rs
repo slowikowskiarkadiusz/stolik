@@ -1,5 +1,5 @@
 extern crate alloc;
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, vec::Vec, vec};
 use libm::cosf;
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
@@ -140,7 +140,7 @@ impl Scene for SnakeScene {
             print_victory_text(&mut result2, if loser == 0 { 2 } else { 1 }, true);
         }
 
-        vec![result, result2]
+        alloc::vec![result, result2]
     }
 
     fn on_overlaps(&mut self, overlaps: &HashMap<ActorId, Vec<ActorId>>, world: &mut World, _delta_time: f32) {}
@@ -226,9 +226,9 @@ impl SnakeScene {
                 // let mul = 1.0;
 
                 let by = if inputs[i].is_key_press(Key::Left) {
-                    V2::new(-1.0 * mul, 0.0)
+                    V2::new(-1.0, 0.0)
                 } else if inputs[i].is_key_press(Key::Right) {
-                    V2::new(1.0 * mul, 0.0)
+                    V2::new(1.0, 0.0)
                 } else if inputs[i].is_key_press(Key::Up) {
                     V2::new(0.0, -1.0 * mul)
                 } else if inputs[i].is_key_press(Key::Down) {
