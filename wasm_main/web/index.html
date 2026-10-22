@@ -2,18 +2,50 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Stolik</title>
 <style>
-  html, body { margin: 0; background: #000; color: #888; font: 13px/1.4 monospace; height: 100%; }
-  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
-  canvas { width: min(92vmin, 720px); height: min(92vmin, 720px); background: #000; }
-  p { margin: 0; text-align: center; }
+  :root { --screen: min(94vw, 60vh); --pad: min(34vw, 15vh); }
+  html, body { margin: 0; height: 100%; background: #000; color: #888; font: 13px/1.4 monospace; overflow: hidden; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 8px 0; box-sizing: border-box;
+         -webkit-user-select: none; user-select: none; touch-action: none; }
+  canvas { width: var(--screen); height: var(--screen); background: #000; flex: none; }
+
+  .controls { width: min(96vw, 640px); height: var(--pad); display: flex; align-items: center; justify-content: space-between; flex: none; }
+  .controls.top { transform: rotate(180deg); }
+  .buttons { display: flex; align-items: center; gap: calc(var(--pad) * 0.12); }
+  .btn { width: calc(var(--pad) * 0.42); height: calc(var(--pad) * 0.42); border-radius: 50%; border: 3px solid rgba(255,255,255,.25);
+         box-sizing: border-box; touch-action: none; }
+  .btn.blue { background: #1e63ff; }
+  .btn.green { background: #20c040; }
+  .btn.start { background: #f2f2f2; width: calc(var(--pad) * 0.34); height: calc(var(--pad) * 0.34); }
+  .btn.active { filter: brightness(1.6); border-color: #fff; }
+  .stick { width: var(--pad); height: var(--pad); border-radius: 50%; background: #1a1a1a; border: 3px solid #333; position: relative; touch-action: none; flex: none; }
+  .stick .knob { position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; margin: -21% 0 0 -21%; border-radius: 50%; background: #d33; }
+  .hint { position: absolute; bottom: 2px; font-size: 10px; color: #444; pointer-events: none; }
 </style>
 </head>
 <body>
+<div class="controls top" id="p2">
+  <div class="buttons">
+    <div class="btn blue" data-player="1" data-key="5"></div>
+    <div class="btn green" data-player="1" data-key="6"></div>
+  </div>
+  <div class="stick" data-stick="1"><div class="knob"></div></div>
+</div>
+
 <canvas id="screen" width="640" height="640"></canvas>
-<p>Space: start · P1: WASD, F, G · P2: arrows, O, P</p>
+
+<div class="controls bottom" id="p1">
+  <div class="buttons">
+    <div class="btn blue" data-player="0" data-key="5"></div>
+    <div class="btn green" data-player="0" data-key="6"></div>
+  </div>
+  <div class="btn start" data-player="0" data-key="8" data-also="1"></div>
+  <div class="stick" data-stick="0"><div class="knob"></div></div>
+</div>
+<div class="hint">keyboard — Space: start · P1: WASD, F, G · P2: arrows, O, P</div>
+
 <script type="module">
 import init, { Stolik } from "./pkg/wasm_main.js";
 
@@ -47,6 +79,59 @@ function setKey(code, pressed) {
 
 addEventListener("keydown", e => { if (!e.repeat && setKey(e.code, true)) e.preventDefault(); });
 addEventListener("keyup", e => { if (setKey(e.code, false)) e.preventDefault(); });
+
+// On-screen buttons
+for (const el of document.querySelectorAll(".btn")) {
+  const players = [Number(el.dataset.player)];
+  if (el.dataset.also) players.push(Number(el.dataset.also));
+  const key = Number(el.dataset.key);
+  const set = pressed => { for (const p of players) game.set_key(p, key, pressed); el.classList.toggle("active", pressed); };
+  el.addEventListener("pointerdown", e => { el.setPointerCapture(e.pointerId); set(true); e.preventDefault(); });
+  for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) el.addEventListener(t, () => set(false));
+}
+
+// On-screen 8-way sticks. Direction is read in screen space and mapped like the keyboard
+// (player 2 up/down are swapped in the engine, see KEYMAP).
+for (const el of document.querySelectorAll(".stick")) {
+  const player = Number(el.dataset.stick);
+  const knob = el.querySelector(".knob");
+  const held = { up: false, down: false, left: false, right: false };
+  const flipped = player === 1; // the whole pad is rotated by 180° in CSS
+
+  function apply(next) {
+    const keyFor = { up: player === 0 ? K.Up : K.Down, down: player === 0 ? K.Down : K.Up, left: K.Left, right: K.Right };
+    for (const dir of Object.keys(held)) {
+      if (held[dir] !== next[dir]) { held[dir] = next[dir]; game.set_key(player, keyFor[dir], next[dir]); }
+    }
+  }
+
+  function move(e) {
+    const r = el.getBoundingClientRect();
+    let dx = e.clientX - (r.left + r.width / 2);
+    let dy = e.clientY - (r.top + r.height / 2);
+    const max = r.width / 2;
+    const len = Math.hypot(dx, dy);
+    const dir = { up: false, down: false, left: false, right: false };
+    if (len > max * 0.3) {
+      const t = Math.tan(Math.PI / 8); // 22.5°: 8 sectors
+      if (Math.abs(dx) > t * Math.abs(dy)) { if (dx > 0) dir.right = true; else dir.left = true; }
+      if (Math.abs(dy) > t * Math.abs(dx)) { if (dy > 0) dir.down = true; else dir.up = true; }
+    }
+    apply(dir);
+    const k = len > max ? max / len : 1;
+    const sign = flipped ? -1 : 1; // knob lives inside the rotated element
+    knob.style.transform = `translate(${dx * k * sign * 0.55}px, ${dy * k * sign * 0.55}px)`;
+  }
+
+  function release() {
+    apply({ up: false, down: false, left: false, right: false });
+    knob.style.transform = "";
+  }
+
+  el.addEventListener("pointerdown", e => { el.setPointerCapture(e.pointerId); move(e); e.preventDefault(); });
+  el.addEventListener("pointermove", e => { if (el.hasPointerCapture(e.pointerId)) move(e); });
+  for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) el.addEventListener(t, release);
+}
 
 function draw(rgba) {
   ctx.fillStyle = "#000";
