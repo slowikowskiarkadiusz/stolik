@@ -71,3 +71,14 @@ Keymap (as per `desktop_main/src/desktop_input.rs`):
 | Right        | Player 2 Stick Right  |
 | O            | Player 2 Blue Button  |
 | P            | Player 2 Green Button |
+
+# Web (WebAssembly)
+`wasm_main/` compiles the engine to WebAssembly and renders each pixel of the frame as a circle on a canvas (`wasm_main/web/index.html`).
+
+```
+cargo install wasm-bindgen-cli --version <version from Cargo.lock>
+./wasm_main/build.sh
+cd wasm_main/dist && python3 -m http.server
+```
+
+The `wasm` branch is built and pushed to the `gh-pages` branch by `.github/workflows/pages.yml`.

@@ -1,4 +1,4 @@
 [workspace]
-members = ["desktop_main", "common", "ai_trainer"]
+members = ["desktop_main", "common", "ai_trainer", "wasm_main"]
 exclude = ["esp32_main"]
 resolver = "2"

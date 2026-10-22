@@ -1,0 +1,14 @@
+[package]
+name = "wasm_main"
+version = "0.0.1"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+common = { path = "../common", default-features = false }
+wasm-bindgen = "0.2"
+embassy-time = { version = "0.5.0", default-features = false, features = ["tick-hz-1_000_000"] }
+embassy-time-driver = "0.2"
+critical-section = { version = "1.2.0", features = ["restore-state-none"] }

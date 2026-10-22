@@ -1349,6 +1349,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm_main"
+version = "0.0.1"
+dependencies = [
+ "common",
+ "critical-section",
+ "embassy-time",
+ "embassy-time-driver",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "wasmparser"
 version = "0.244.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

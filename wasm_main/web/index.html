@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stolik</title>
+<style>
+  html, body { margin: 0; background: #000; color: #888; font: 13px/1.4 monospace; height: 100%; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  canvas { width: min(92vmin, 720px); height: min(92vmin, 720px); background: #000; }
+  p { margin: 0; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="screen" width="640" height="640"></canvas>
+<p>Space: start · P1: WASD, F, G · P2: arrows, O, P</p>
+<script type="module">
+import init, { Stolik } from "./pkg/wasm_main.js";
+
+// Numeric values of common::engine::input::key::Key
+const K = { Down: 0, Up: 1, Left: 2, Right: 3, Blue: 5, Green: 6, Start: 8 };
+
+// Same mapping as desktop_main/src/desktop_input.rs (player 2 up/down are swapped there)
+const KEYMAP = {
+  Space: [[0, K.Start], [1, K.Start]],
+  KeyS: [[0, K.Down]], KeyW: [[0, K.Up]], KeyA: [[0, K.Left]], KeyD: [[0, K.Right]],
+  KeyF: [[0, K.Blue]], KeyG: [[0, K.Green]],
+  ArrowDown: [[1, K.Up]], ArrowUp: [[1, K.Down]], ArrowLeft: [[1, K.Left]], ArrowRight: [[1, K.Right]],
+  KeyO: [[1, K.Blue]], KeyP: [[1, K.Green]],
+};
+
+await init();
+const game = new Stolik();
+const size = game.size();
+
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+const cell = canvas.width / size;
+const radius = cell / 3;
+
+function setKey(code, pressed) {
+  const targets = KEYMAP[code];
+  if (!targets) return false;
+  for (const [player, key] of targets) game.set_key(player, key, pressed);
+  return true;
+}
+
+addEventListener("keydown", e => { if (!e.repeat && setKey(e.code, true)) e.preventDefault(); });
+addEventListener("keyup", e => { if (setKey(e.code, false)) e.preventDefault(); });
+
+function draw(rgba) {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
+      ctx.fillStyle = (r | g | b) === 0 ? "#111" : `rgb(${r},${g},${b})`;
+      ctx.beginPath();
+      ctx.arc(x * cell + cell / 2, y * cell + cell / 2, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+const FRAME_MS = 33; // engine targets ~30 fps
+let last = performance.now();
+let acc = 0;
+function loop(now) {
+  acc += now - last;
+  last = now;
+  if (acc >= FRAME_MS) {
+    const dt = Math.min(acc, 100) / 1000;
+    acc = 0;
+    const frame = game.tick(dt);
+    if (frame.length) draw(frame);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

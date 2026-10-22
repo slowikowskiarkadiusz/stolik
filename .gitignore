@@ -13,3 +13,4 @@
 
 # Logs
 *.log
+wasm_main/dist/
