@@ -14,6 +14,8 @@ use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU8, Ordering};
 use embassy_executor::task;
 use embassy_time::Timer;
+
+use crate::{mark, trace};
 use esp_hal::{
     gpio::{AnyPin, Input as GpioInput, InputConfig, Pull},
     peripherals::I2C0,
@@ -309,17 +311,30 @@ pub async fn read_expander_data(setup: Esp32ExpanderPinSetup<'static>) {
 
     const ADDR: u8 = 0x20;
 
-    let _ = i2c.write(ADDR, &[0x01, 0xFF]);
-    let _ = i2c.write(ADDR, &[0x0D, 0xFF]);
+    mark!(trace::EXPANDER, "i2c init write (blocking)");
+    if let Err(e) = i2c.write(ADDR, &[0x01, 0xFF]) {
+        esp_println::println!("[expander] init write 0x01 error: {:?}", e);
+    }
+    if let Err(e) = i2c.write(ADDR, &[0x0D, 0xFF]) {
+        esp_println::println!("[expander] init write 0x0D error: {:?}", e);
+    }
 
+    let mut errors = 0u32;
     loop {
+        trace::EXPANDER.tick();
         let mut data = [0xFFu8; 2];
-        if i2c.write_read(ADDR, &[0x12], &mut data).is_ok() {
-            EXPANDER_DATA.store(data[1], Ordering::Relaxed);
-        } else {
-            let _ = i2c.apply_config(&esp_hal::i2c::master::Config::default()
-                .with_software_timeout(esp_hal::i2c::master::SoftwareTimeout::None));
+        mark!(trace::EXPANDER, "i2c write_read (blocking, no timeout)");
+        match i2c.write_read(ADDR, &[0x12], &mut data) {
+            Ok(()) => EXPANDER_DATA.store(data[1], Ordering::Relaxed),
+            Err(e) => {
+                errors += 1;
+                esp_println::println!("[expander] write_read error #{}: {:?}", errors, e);
+                mark!(trace::EXPANDER, "i2c apply_config after error");
+                let _ = i2c.apply_config(&esp_hal::i2c::master::Config::default()
+                    .with_software_timeout(esp_hal::i2c::master::SoftwareTimeout::None));
+            }
         }
+        mark!(trace::EXPANDER, "Timer::after_millis(10).await");
         Timer::after_millis(10).await;
     }
 }

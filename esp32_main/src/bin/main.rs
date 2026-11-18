@@ -85,6 +85,8 @@ use esp_rtos::embassy::Executor;
 use esp_rtos::embassy::InterruptExecutor;
 use esp32_main::esp32_input::Esp32Input;
 use esp32_main::esp32_input::Esp32InputPinSetup;
+use esp32_main::mark;
+use esp32_main::trace;
 use spin::Mutex;
 
 const SCREEN_PIXELS: usize = 64 * 64;
@@ -170,6 +172,7 @@ async fn hub75_task(
 ) {
     // info!("hub75_task: starting!");
 
+    mark!(trace::HUB75, "init Hub75::new_async");
     let tx_descriptors = esp_hub75::hub75_dma_descriptors!(FBType);
     //println!("hub75: descriptors allocated");
 
@@ -189,13 +192,17 @@ async fn hub75_task(
     let mut fb = fb;
 
     loop {
+        trace::HUB75.tick();
         // if there is a new buffer available, get it and send the old one
         if rx.signaled() {
+            mark!(trace::HUB75, "rx.wait().await (new fb from display)");
             let new_fb = rx.wait().await;
+            mark!(trace::HUB75, "tx.signal(old fb)");
             tx.signal(fb);
             fb = new_fb;
         }
 
+        mark!(trace::HUB75, "hub75.render(fb)");
         let mut xfer = match hub75.render(fb) {
             Ok(x) => x,
             Err((e, hub75_back)) => {
@@ -204,12 +211,14 @@ async fn hub75_task(
                 continue;
             }
         };
+        mark!(trace::HUB75, "xfer.wait_for_done().await (DMA)");
         if let Err(e) = xfer.wait_for_done().await {
             esp_println::println!("[hub75]   DMA error: {:?}", e);
             let (_, new_hub75) = xfer.wait();
             hub75 = new_hub75;
             continue;
         }
+        mark!(trace::HUB75, "xfer.wait() (blocking)");
         let (result, new_hub75) = xfer.wait();
         hub75 = new_hub75;
         if let Err(e) = result {
@@ -233,8 +242,10 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
     let mut start = Instant::now();
 
     loop {
+        trace::DISPLAY.tick();
         // Read frame data directly from static buffer
         {
+            mark!(trace::DISPLAY, "SHARED.lock() + copy to fb");
             let s = SHARED.lock();
             if s.valid {
                 for y in 0..64u8 {
@@ -270,12 +281,12 @@ async fn display_task(rx: &'static FrameBufferExchange, tx: &'static FrameBuffer
         // }
 
         // send the frame buffer to be rendered
+        mark!(trace::DISPLAY, "tx.signal(fb)");
         tx.signal(fb);
 
         // get the next frame buffer
-        esp_println::println!("[display] awaiting fb from hub75");
+        mark!(trace::DISPLAY, "rx.wait().await (fb back from hub75)");
         fb = rx.wait().await;
-        esp_println::println!("[display] got fb");
 
         // count up the rate we are rendering full buffer
         count += 1;
@@ -390,15 +401,25 @@ async fn main(_s: embassy_executor::Spawner) {
             let high_pri_spawner = hp_executor.start(Priority::Priority3);
 // esp_println::println!("ZZZZZZ5");
 
-            high_pri_spawner.spawn(hub75_task(hub75_per, &RX, &TX, fb1)).ok();
-            high_pri_spawner.spawn(esp32_main::esp32_input::read_expander_data(expander_pin_setup)).ok();
+            if let Err(e) = high_pri_spawner.spawn(hub75_task(hub75_per, &RX, &TX, fb1)) {
+                esp_println::println!("[cpu1]    spawn hub75_task failed: {:?}", e);
+            }
+            if let Err(e) = high_pri_spawner.spawn(esp32_main::esp32_input::read_expander_data(expander_pin_setup)) {
+                esp_println::println!("[cpu1]    spawn read_expander_data failed: {:?}", e);
+            }
 // esp_println::println!("ZZZZZZ6");
 
+            esp_println::println!("[cpu1]    high priority tasks spawned");
             let lp_executor = mk_static!(Executor, Executor::new());
             lp_executor.run(|spawner: Spawner| {
 // esp_println::println!("ZZZZZZ7");
-                spawner.spawn(run_engine(input_pin_setup)).ok();
-                spawner.spawn(display_task(&TX, &RX, fb0)).ok();
+                if let Err(e) = spawner.spawn(run_engine(input_pin_setup)) {
+                    esp_println::println!("[cpu1]    spawn run_engine failed: {:?}", e);
+                }
+                if let Err(e) = spawner.spawn(display_task(&TX, &RX, fb0)) {
+                    esp_println::println!("[cpu1]    spawn display_task failed: {:?}", e);
+                }
+                esp_println::println!("[cpu1]    low priority tasks spawned");
             });
 // esp_println::println!("ZZZZZZ8");
         }
@@ -416,20 +437,25 @@ async fn main(_s: embassy_executor::Spawner) {
         cpu1_fnctn,
     );
 
+    esp_println::println!("[main]    second core started, reporting every 1s");
     let mut main_tick = 0u32;
     loop {
+        trace::MAIN.tick();
         if SIMPLE_COUNTER.fetch_add(1, Ordering::Relaxed) >= 99999 {
             SIMPLE_COUNTER.store(0, Ordering::Relaxed);
         }
         main_tick += 1;
-        if main_tick % 20 == 0 {
+        if main_tick % 10 == 0 {
+            mark!(trace::MAIN, "report");
             esp_println::println!(
-                "[main]    hub75_total={}  render={}/s  heap_free={}",
+                "[main]    hub75_total={}  refresh={}/s  render={}/s",
                 HUB75_TOTAL.load(Ordering::Relaxed),
+                REFRESH_RATE.load(Ordering::Relaxed),
                 RENDER_RATE.load(Ordering::Relaxed),
-                esp_alloc::HEAP.free(),
             );
+            trace::report(esp_alloc::HEAP.free());
         }
+        mark!(trace::MAIN, "Timer::after(100ms).await");
         Timer::after(Duration::from_millis(100)).await;
     }
 }
@@ -438,6 +464,7 @@ async fn main(_s: embassy_executor::Spawner) {
 async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     //println!("engine: creating input");
     // esp_println::println!("ZZZZZZ");
+    mark!(trace::ENGINE, "Engine::new");
     let mut engine = Engine::new([Box::new(Esp32Input::new(0, input_pin_setup)), Box::new(Esp32Input::new(1, Esp32InputPinSetup::empty()))], None);
 
     // esp_println::println!("AAAAAA");
@@ -450,6 +477,7 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     });
 
     //println!("engine: ensure_scene");
+    mark!(trace::ENGINE, "engine.ensure_scene()");
     engine.ensure_scene();
     //println!("engine: scene ready, entering loop");
 
@@ -457,24 +485,28 @@ async fn run_engine(input_pin_setup: Esp32InputPinSetup<'static>) {
     let mut last = Instant::now();
     let mut frame_counter = 0u32;
 
+    let mut max_tick_ms = 0u64;
     loop {
+        trace::ENGINE.tick();
         let frame_start = Instant::now();
         let dt = frame_start.duration_since(last);
         last = frame_start;
 
+        mark!(trace::ENGINE, "engine.tick_frame (sync, no await)");
         engine.tick_frame(dt.as_millis() as f32 / 1000.0, &on_frame_func);
 
+        let tick_ms = frame_start.elapsed().as_millis();
+        if tick_ms > max_tick_ms {
+            max_tick_ms = tick_ms;
+        }
         frame_counter += 1;
-        if frame_counter % 10 == 0 {
-            let elapsed_ms = frame_start.elapsed().as_millis();
-            esp_println::println!(
-                "[engine]  frame={}  tick_ms={}  heap_free={}",
-                frame_counter, elapsed_ms, esp_alloc::HEAP.free()
-            );
+        if frame_counter % 20 == 0 {
+            esp_println::println!("[engine]  frame={}  tick_ms={}  max_tick_ms={}", frame_counter, tick_ms, max_tick_ms);
         }
 
         let elapsed = frame_start.elapsed();
         let wait = if elapsed < target_frame { target_frame - elapsed } else { Duration::from_millis(10) };
+        mark!(trace::ENGINE, "Timer::after(wait).await");
         Timer::after(wait).await;
     }
 }
